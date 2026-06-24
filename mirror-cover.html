@@ -1,0 +1,2126 @@
+<!-- Mirror - AI亲密关系镜像与低冲突沟通系统 -->
+<!-- 对话流交互架构 v2.0 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Mirror - AI亲密关系镜像与低冲突沟通系统</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪞</text></svg>" />
+  <style>
+    /* ══════════════════════════════════════════ CSS 变量 ══════════════════════════════════════════ */
+    :root {
+      --bg: #08090B;      /* 默认背景色 */
+      --bg-elevated: #0D1015;
+      --surface: rgba(255,255,255,0.04);
+      --surface-glass: rgba(255,255,255,0.06);
+      --ink: #E8EDF5;
+      --muted: #8892A0;
+      --faint: #5A6472;
+      --blue: #7EA7FF;
+      --cyan: #9AE6FF;
+      --rule: rgba(126,167,255,0.1);
+      --glass-blur: 40px;
+      --radius: 24px;
+      --shadow-soft: 0 20px 60px rgba(0,0,0,0.4);
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --time: 500ms;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, "PingFang SC", "HarmonyOS Sans SC", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ══════════════════════════════════════════ 封面视图 ══════════════════════════════════════════ */
+    .cover { position: relative; width: 100%; height: 100vh; min-height: 600px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; padding: 0; margin: 0; }
+    .cover-bg { position: absolute; inset: 0; z-index: 0; opacity: 0; animation: bgReveal 2.5s var(--ease) 0.3s forwards; }
+    .cover-bg img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; filter: brightness(0.82) saturate(0.4) contrast(1.08); transform: scale(1.06); animation: bgSettle 2.8s var(--ease) 0.3s forwards; }
+    @keyframes bgReveal { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes bgSettle { from { transform: scale(1.18); filter: brightness(0.5) saturate(0.25) contrast(1.12); } to { transform: scale(1.06); filter: brightness(0.82) saturate(0.4) contrast(1.08); } }
+    .cover-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,9,11,0.35) 0%, transparent 25%, transparent 45%, rgba(8,9,11,0.82) 78%, rgba(8,9,11,1) 100%); }
+    .shard-container { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+    .shard { position: absolute; background-image: url('assets/mirror-cover-v7.png'); background-repeat: no-repeat; will-change: transform, opacity; opacity: 0; box-shadow: inset 0 0 0 0.5px rgba(200,184,160,0.08); animation: shardFlyIn var(--dur, 1.5s) cubic-bezier(0.22, 1, 0.36, 1) var(--delay, 0s) forwards; }
+    @keyframes shardFlyIn { 0% { opacity: 0; transform: translate(var(--tx,0),var(--ty,0)) rotate(var(--tr,0deg)) scale(var(--ts,0.7)); filter: brightness(1.6) saturate(0.2) blur(2px); } 60% { opacity: 1; filter: brightness(1.15) saturate(0.6) blur(0); } 100% { opacity: 1; transform: translate(0,0) rotate(0deg) scale(1); filter: brightness(1) saturate(1) blur(0); } }
+    .shard-container.heal { animation: containerHeal 1s var(--ease) forwards; }
+    @keyframes containerHeal { to { opacity: 0; } }
+    .mirror-flash { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, rgba(255,248,230,0.25) 0%, transparent 55%); opacity: 0; animation: flashPulse 1.2s ease-out 2.8s forwards; }
+    @keyframes flashPulse { 0% { opacity: 0; transform: scale(0.8); } 25% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.2); } }
+    .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0; z-index: 1; pointer-events: none; animation: orbFloat 10s var(--ease) infinite alternate, orbFadeIn 2s var(--ease) 2s forwards; }
+    .orb-1 { width: 350px; height: 350px; background: var(--blue); top: 5%; left: -8%; animation-delay: 0s,2s; opacity: 0.06; }
+    .orb-2 { width: 250px; height: 250px; background: var(--cyan); bottom: 15%; right: -5%; animation-delay: 3s,2.3s; opacity: 0.05; }
+    @keyframes orbFloat { from { transform: translate(0,0); } to { transform: translate(40px,-30px); } }
+    @keyframes orbFadeIn { to { opacity: 0.06; } }
+    .cover-content { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 24px; max-width: 720px; width: calc(100% - 48px); }
+    .eyebrow { font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 28px; opacity: 0; animation: fadeUp 0.8s var(--ease) 2.8s forwards; }
+    .title-main { font-size: clamp(3.5rem,12vw,8rem); font-weight: 700; letter-spacing: -0.04em; line-height: 1; margin-bottom: 32px; opacity: 0; animation: fadeUp 1s var(--ease) 3s forwards; background: linear-gradient(180deg,#F0E8E0 0%,#C8B8A0 50%,#7EA7FF 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .title-sub { font-size: clamp(1.1rem,3vw,1.5rem); font-weight: 400; line-height: 1.7; color: rgba(232,237,245,0.75); margin-bottom: 16px; opacity: 0; animation: fadeUp 0.9s var(--ease) 3.3s forwards; }
+    .tagline { font-size: clamp(0.85rem,2vw,1rem); color: rgba(232,237,245,0.5); letter-spacing: 0.04em; margin-bottom: 48px; opacity: 0; animation: fadeUp 0.8s var(--ease) 3.5s forwards; }
+    .divider { width: 40px; height: 1px; background: linear-gradient(90deg,transparent,var(--blue),transparent); margin-bottom: 48px; opacity: 0; animation: fadeIn 1s var(--ease) 3.7s forwards; }
+    .cta-group { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; opacity: 0; animation: fadeUp 0.9s var(--ease) 3.9s forwards; }
+    .btn { padding: 14px 32px; border-radius: 999px; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.01em; cursor: pointer; transition: all 0.35s var(--ease); border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-family: inherit; }
+    .btn-primary { background: linear-gradient(135deg,#7EA7FF,#5A8AEE); color: #08090B; box-shadow: 0 4px 20px rgba(126,167,255,0.25); }
+    .btn-primary:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 8px 30px rgba(126,167,255,0.4); }
+    .btn-secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--rule); backdrop-filter: blur(12px); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.06); border-color: rgba(126,167,255,0.25); transform: translateY(-3px) scale(1.03); }
+    .btn-ghost { padding: 10px 20px; border-radius: 999px; font-size: 0.85rem; font-weight: 500; background: transparent; border: 1px solid var(--rule); color: var(--muted); cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--ink); background: rgba(126,167,255,0.06); }
+    .btn-sm { padding: 8px 16px; font-size: 0.82rem; }
+    .safety-bar { position: absolute; bottom: 32px; left: 0; right: 0; z-index: 2; display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; padding: 0 24px; opacity: 0; animation: fadeIn 1s var(--ease) 4.2s forwards; }
+    .safety-item { font-size: 0.75rem; color: var(--faint); display: flex; align-items: center; gap: 6px; }
+    .safety-item::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); opacity: 0.5; }
+    .safety-item:nth-child(2)::before { background: var(--blue); }
+    .safety-item:nth-child(3)::before { background: var(--muted); }
+    .skills-bar { display: flex; justify-content: center; gap: 16px; padding: 0 20px; margin-top: 40px; flex-wrap: wrap; }
+    .skill-item { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+    .skill-icon { font-size: 1.3rem; }
+    .skill-name { font-size: 0.75rem; font-weight: 600; color: var(--ink); }
+    .skill-desc { font-size: 0.65rem; color: var(--faint); max-width: 80px; }
+    .scroll-hint { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; animation: fadeIn 1s var(--ease) 4.4s forwards; }
+    .scroll-hint span { font-size: 0.7rem; color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; }
+    .scroll-line { width: 1px; height: 32px; background: linear-gradient(180deg,var(--blue),transparent); animation: scrollPulse 2s var(--ease) infinite; }
+    @keyframes scrollPulse { 0%,100% { opacity: 0.3; transform: scaleY(0.6); } 50% { opacity: 0.8; transform: scaleY(1); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(var(--dy,20px)); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes bgReveal { from { opacity: 0; } to { opacity: 1; } }
+    .cover.fade-out { animation: coverFadeOut 0.8s var(--ease) forwards; }
+    @keyframes coverFadeOut { to { opacity: 0; transform: scale(1.02); pointer-events: none; } }
+    .cover.hidden { display: none; }
+
+    /* ══════════════════════════════════════════ 对话视图 ══════════════════════════════════════════ */
+    .chat-view { position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column; }
+    .chat-view.active { display: flex; }
+    .mode-card { background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 20px; padding: 32px 28px; text-align: center; transition: all 0.3s var(--ease); }
+    .mode-card:hover { border-color: rgba(126,167,255,0.3); transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+    .mode-card-title { font-size: 1.3rem; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+    .mode-card-desc { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+
+    /* 顶部进度条 */
+    .chat-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(126,167,255,0.1); z-index: 10; }
+    .chat-progress-fill { height: 100%; background: linear-gradient(90deg, var(--blue), var(--cyan)); transition: width 0.5s var(--ease); width: 0%; }
+    .chat-progress-label { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; color: var(--faint); letter-spacing: 0.05em; z-index: 10; white-space: nowrap; }
+
+    /* 顶部栏 */
+    .chat-header { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; padding-top: 32px; background: rgba(8,9,11,0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--rule); flex-shrink: 0; }
+    .chat-header-left { display: flex; align-items: center; gap: 12px; }
+    .chat-back-btn { padding: 6px 12px; border-radius: 999px; background: var(--surface-glass); border: 1px solid var(--rule); color: var(--muted); font-size: 0.78rem; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; display: flex; align-items: center; gap: 4px; }
+    .chat-back-btn:hover { border-color: var(--blue); color: var(--ink); }
+    .chat-title { font-size: 0.95rem; font-weight: 600; color: var(--ink); }
+    .chat-subtitle { font-size: 0.72rem; color: var(--faint); }
+    .chat-header-right { display: flex; align-items: center; gap: 8px; }
+    .chat-settings-btn { padding: 6px 12px; border-radius: 999px; background: var(--surface-glass); border: 1px solid var(--rule); color: var(--muted); font-size: 0.78rem; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
+    .chat-settings-btn:hover { border-color: var(--blue); color: var(--ink); }
+
+    /* 对话线程 */
+    .chat-thread { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 16px 8px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scroll-behavior: smooth; }
+
+    /* 消息气泡基础样式 */
+    .msg { max-width: 85%; padding: 14px 18px; border-radius: 18px; font-size: 0.92rem; line-height: 1.7; animation: msgIn 0.4s var(--ease); }
+    @keyframes msgIn { to { opacity: 1; transform: translateY(0); } }
+
+    /* 用户消息 - 靠右 */
+    .msg-user { background: rgba(126,167,255,0.12); border: 1px solid rgba(126,167,255,0.18); color: var(--ink); margin-left: auto; border-bottom-right-radius: 4px; }
+
+    /* AI 消息 - 靠左 */
+    .msg-ai { background: rgba(255,255,255,0.03); border: 1px solid var(--rule); color: var(--ink); margin-right: auto; border-bottom-left-radius: 4px; }
+    .msg-ai-avatar { width: 30px; height: 30px; border-radius: 50%; background: rgba(126,167,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; color: var(--blue); flex-shrink: 0; font-weight: 600; margin-top: 2px; }
+    .msg-ai-body { flex: 1; min-width: 0; }
+
+    /* 系统消息 - 居中 */
+    .msg-system { align-self: center; background: transparent; border: none; color: var(--faint); font-size: 0.78rem; text-align: center; padding: 6px 16px; }
+
+    /* 加载消息 */
+    .msg-loading { align-self: flex-start; background: var(--surface-glass); backdrop-filter: blur(24px); border: 1px solid var(--rule); border-bottom-left-radius: 4px; padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; }
+    .loading-spinner { width: 28px; height: 28px; border: 2px solid var(--rule); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 0.9rem; color: var(--ink); font-weight: 500; }
+    .loading-dots { animation: dots 1.5s steps(4, end) infinite; }
+    @keyframes dots { 0%, 20% { opacity: 0; } 40% { opacity: 1; } 60% { opacity: 1; } 80%, 100% { opacity: 0; } }
+    .loading-sub { font-size: 0.78rem; color: var(--faint); }
+
+    /* 追问表单消息 */
+    .msg-followup { align-self: flex-start; background: var(--surface-glass); backdrop-filter: blur(24px); border: 1px solid var(--rule); border-bottom-left-radius: 4px; padding: 18px 20px; width: 92%; max-width: 520px; }
+    .followup-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; color: var(--blue); text-transform: uppercase; margin-bottom: 12px; }
+    .followup-questions { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+    .followup-q { font-size: 0.9rem; color: var(--ink); font-weight: 500; line-height: 1.5; }
+    .followup-q-input { width: 100%; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 10px 14px; color: var(--ink); font-size: 0.88rem; font-family: inherit; resize: vertical; min-height: 50px; transition: border-color 0.3s var(--ease); outline: none; }
+    .followup-q-input:focus { border-color: rgba(126,167,255,0.3); }
+    .followup-q-input::placeholder { color: var(--faint); }
+    .followup-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+    /* 分析卡片消息 */
+    .msg-card { align-self: center; background: var(--surface-glass); backdrop-filter: blur(40px); border: 1px solid var(--rule); border-radius: 20px; padding: 24px; width: 94%; max-width: 520px; box-shadow: var(--shadow-soft), inset 0 0 40px rgba(126,167,255,0.02); }
+    .card-title { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; color: var(--blue); text-transform: uppercase; margin-bottom: 16px; text-align: center; }
+    .card-rows { display: flex; flex-direction: column; gap: 12px; }
+    .card-row { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 14px; background: rgba(0,0,0,0.15); border: 1px solid var(--rule); opacity: 0; transform: translateY(8px); animation: cardRowIn 0.4s var(--ease) forwards; }
+    .card-row:nth-child(1) { animation-delay: 0.1s; }
+    .card-row:nth-child(2) { animation-delay: 0.2s; }
+    .card-row:nth-child(3) { animation-delay: 0.3s; }
+    .card-row:nth-child(4) { animation-delay: 0.4s; }
+    .card-row:nth-child(5) { animation-delay: 0.5s; }
+    @keyframes cardRowIn { to { opacity: 1; transform: translateY(0); } }
+    .card-row-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; color: var(--faint); text-transform: uppercase; }
+    .card-row-value { font-size: 0.9rem; color: var(--ink); line-height: 1.6; }
+
+    /* Mirror Layer 消息 - 镜像反光效果 */
+    .msg-mirror { align-self: center; background: var(--surface-glass); backdrop-filter: blur(60px); border: 1px solid rgba(126,167,255,0.18); border-radius: 20px; padding: 24px; width: 94%; max-width: 520px; position: relative; overflow: hidden; box-shadow: var(--shadow-soft); }
+    .msg-mirror::before { content: ""; position: absolute; top: -50%; left: 50%; transform: translateX(-50%); width: 300px; height: 300px; background: radial-gradient(circle, rgba(126,167,255,0.06), transparent 70%); pointer-events: none; }
+    .msg-mirror::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(126,167,255,0.3), transparent); animation: mirrorShine 3s var(--ease) infinite; }
+    @keyframes mirrorShine { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+    .mirror-title { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; color: var(--blue); text-transform: uppercase; margin-bottom: 16px; text-align: center; }
+    .mirror-trans { display: flex; flex-direction: column; gap: 12px; }
+    .mirror-trans-item { padding: 14px 16px; border-radius: 14px; opacity: 0; transform: translateY(8px); animation: cardRowIn 0.4s var(--ease) forwards; }
+    .mirror-trans-item:nth-child(1) { animation-delay: 0.1s; background: rgba(255,100,100,0.06); border: 1px solid rgba(255,100,100,0.12); }
+    .mirror-trans-item:nth-child(2) { animation-delay: 0.3s; background: rgba(255,200,100,0.06); border: 1px solid rgba(255,200,100,0.12); }
+    .mirror-trans-item:nth-child(3) { animation-delay: 0.5s; background: rgba(126,167,255,0.08); border: 1px solid rgba(126,167,255,0.18); }
+    .mirror-trans-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .mirror-trans-label.attack { color: #FF6B6B; }
+    .mirror-trans-label.inner { color: #FFC864; }
+    .mirror-trans-label.mirror { color: var(--blue); }
+    .mirror-trans-text { font-size: 0.9rem; color: var(--ink); line-height: 1.6; }
+    .mirror-arrow { text-align: center; color: var(--faint); font-size: 1rem; padding: 2px 0; }
+
+    /* 洞察消息 */
+    .msg-insight { align-self: center; background: rgba(126,167,255,0.06); border: 1px solid rgba(126,167,255,0.12); border-radius: 16px; padding: 16px 20px; width: 92%; max-width: 520px; }
+    .insight-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; color: var(--blue); text-transform: uppercase; margin-bottom: 8px; }
+    .insight-text { font-size: 0.88rem; color: var(--muted); line-height: 1.7; }
+
+    /* 建议消息 */
+    .msg-advice { align-self: center; background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 16px; padding: 16px 20px; width: 92%; max-width: 520px; }
+    .advice-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; color: var(--cyan); text-transform: uppercase; margin-bottom: 8px; }
+    .advice-text { font-size: 0.88rem; color: var(--ink); line-height: 1.7; }
+
+    /* ══════════════════════════════════════════ 全屏分步卡片 ══════════════════════════════════════════ */
+    .step-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(8,9,11,0.92); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.4s var(--ease); }
+    .step-overlay.active { opacity: 1; pointer-events: auto; }
+    .step-card { background: var(--bg-elevated); border: 1px solid var(--rule); border-radius: 24px; padding: 36px 32px; max-width: 520px; width: 92%; max-height: 85vh; overflow-y: auto; transform: translateY(30px) scale(0.96); opacity: 0; transition: all 0.5s var(--ease); }
+    .step-overlay.active .step-card { transform: translateY(0) scale(1); opacity: 1; }
+    .step-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .step-counter { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; color: var(--blue); text-transform: uppercase; }
+    .step-close { background: none; border: none; color: var(--faint); font-size: 1.3rem; cursor: pointer; padding: 4px 8px; transition: color 0.2s; }
+    .step-close:hover { color: var(--ink); }
+    .step-title { font-size: 1.2rem; font-weight: 600; color: var(--ink); margin-bottom: 20px; }
+    .step-body { font-size: 0.92rem; color: var(--muted); line-height: 1.8; }
+    .step-footer { margin-top: 28px; text-align: center; }
+    .step-next { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; border-radius: 999px; background: linear-gradient(135deg,#7EA7FF,#5A8AEE); color: #08090B; font-size: 0.9rem; font-weight: 600; border: none; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
+    .step-next:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(126,167,255,0.3); }
+    /* 分析卡片行（全屏版） */
+    .step-card .card-row { background: rgba(0,0,0,0.2); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; opacity: 1; transform: none; animation: none; }
+    .step-card .card-row-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; color: var(--faint); text-transform: uppercase; margin-bottom: 4px; }
+    .step-card .card-row-value { font-size: 0.9rem; color: var(--ink); line-height: 1.6; }
+    /* Mirror Layer（全屏版） */
+    .step-mirror-item { padding: 16px 18px; border-radius: 14px; margin-bottom: 12px; }
+    .step-mirror-item.attack { background: rgba(255,100,100,0.06); border: 1px solid rgba(255,100,100,0.12); }
+    .step-mirror-item.inner { background: rgba(255,200,100,0.06); border: 1px solid rgba(255,200,100,0.12); }
+    .step-mirror-item.mirror { background: rgba(126,167,255,0.08); border: 1px solid rgba(126,167,255,0.18); }
+    .step-mirror-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .step-mirror-label.attack { color: #FF6B6B; }
+    .step-mirror-label.inner { color: #FFC864; }
+    .step-mirror-label.mirror { color: var(--blue); }
+    .step-mirror-text { font-size: 0.92rem; color: var(--ink); line-height: 1.7; }
+    .step-arrow { text-align: center; color: var(--faint); font-size: 1.2rem; margin: 8px 0; }
+    /* 追问全屏卡片 */
+    .followup-fullscreen { background: var(--bg-elevated); border: 1px solid var(--rule); border-radius: 24px; padding: 36px 32px; max-width: 520px; width: 92%; }
+    .followup-fs-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; color: var(--blue); text-transform: uppercase; margin-bottom: 20px; }
+    .followup-fs-q { font-size: 0.92rem; color: var(--ink); margin-bottom: 8px; font-weight: 500; }
+    .followup-fs-input { width: 100%; min-height: 60px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--rule); background: rgba(0,0,0,0.2); color: var(--ink); font-size: 0.88rem; line-height: 1.5; resize: none; font-family: inherit; outline: none; margin-bottom: 16px; transition: border-color 0.3s; }
+    .followup-fs-input:focus { border-color: rgba(126,167,255,0.3); }
+    .followup-fs-input::placeholder { color: var(--faint); }
+    .followup-fs-actions { display: flex; gap: 12px; justify-content: center; margin-top: 8px; }
+
+    /* ══════════════════════════════════════════ 充足度判断卡片 ══════════════════════════════════════════ */
+    .sufficiency-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(8,9,11,0.92); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.4s var(--ease); }
+    .sufficiency-overlay.active { opacity: 1; pointer-events: auto; }
+    .sufficiency-cards { display: flex; gap: 16px; max-width: 560px; width: 92%; flex-wrap: wrap; justify-content: center; }
+    .sufficiency-card { flex: 1; min-width: 220px; background: var(--bg-elevated); border: 1px solid var(--rule); border-radius: 20px; padding: 28px 24px; cursor: pointer; transition: all 0.3s var(--ease); text-align: center; }
+    .sufficiency-card:hover { border-color: rgba(126,167,255,0.3); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+    .sufficiency-card-icon { font-size: 2rem; margin-bottom: 12px; }
+    .sufficiency-card-title { font-size: 1rem; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+    .sufficiency-card-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+    .sufficiency-card-hints { margin-top: 12px; text-align: left; }
+    .sufficiency-card-hint { font-size: 0.76rem; color: var(--faint); padding: 4px 0; display: flex; align-items: flex-start; gap: 6px; }
+    .sufficiency-card-hint::before { content: "·"; color: var(--blue); flex-shrink: 0; }
+
+    /* 操作按钮组消息 */
+    .msg-actions { align-self: center; display: flex; flex-direction: column; gap: 10px; align-items: center; width: 92%; max-width: 400px; padding: 8px 0; }
+    .msg-actions .btn { width: 100%; justify-content: center; }
+
+    /* 快捷标签 */
+    .quick-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 4px 0; }
+    .quick-tag { font-size: 0.78rem; padding: 7px 14px; border-radius: 999px; background: var(--surface-glass); border: 1px solid var(--rule); color: var(--muted); cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
+    .quick-tag:hover { background: rgba(126,167,255,0.15); border-color: var(--blue); color: var(--ink); }
+
+    /* ══════════════════════════════════════════ 两级标签体系 ══════════════════════════════════════════ */
+    .tag-categories { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 8px 0; }
+    .tag-category { font-size: 0.82rem; padding: 8px 16px; border-radius: 999px; background: var(--surface-glass); border: 1px solid var(--rule); color: var(--muted); cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; position: relative; }
+    .tag-category:hover { background: rgba(126,167,255,0.12); border-color: rgba(126,167,255,0.25); color: var(--ink); }
+    .tag-category.active { background: rgba(126,167,255,0.15); border-color: var(--blue); color: var(--blue); }
+    .tag-sub-list { display: none; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 8px 0 4px; animation: fadeUp 0.3s var(--ease); }
+    .tag-sub-list.active { display: flex; }
+    .tag-sub { font-size: 0.76rem; padding: 6px 12px; border-radius: 999px; background: rgba(126,167,255,0.06); border: 1px solid rgba(126,167,255,0.12); color: var(--muted); cursor: pointer; transition: all 0.25s var(--ease); font-family: inherit; }
+    .tag-sub:hover { background: rgba(126,167,255,0.15); border-color: rgba(126,167,255,0.3); color: var(--ink); transform: translateY(-1px); }
+    .input-guide { text-align: center; padding: 12px 16px 8px; font-size: 0.82rem; color: var(--faint); line-height: 1.8; }
+    .input-guide-example { display: inline-block; margin-top: 4px; padding: 4px 10px; border-radius: 8px; background: rgba(126,167,255,0.06); border: 1px solid rgba(126,167,255,0.1); color: var(--muted); font-size: 0.78rem; font-style: italic; }
+    .input-guide-arrow { color: var(--faint); margin: 0 4px; }
+    .input-placeholder-overlay { position: absolute; inset: 0; padding: 12px 16px; font-size: 0.82rem; color: var(--faint); line-height: 1.8; pointer-events: none; opacity: 1; transition: opacity 0.3s var(--ease); overflow: hidden; }
+    .input-placeholder-overlay.hidden { opacity: 0; }
+    .input-placeholder-overlay .guide-line { display: block; }
+    .input-placeholder-overlay .guide-example { display: inline-block; margin-top: 2px; padding: 2px 6px; border-radius: 6px; background: rgba(126,167,255,0.04); font-style: italic; }
+
+    /* ══════════════════════════════════════════════════════ 底部输入区 ══════════════════════════════════════════ */
+    .input-area { position: relative; z-index: 10; flex-shrink: 0; padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); background: rgba(8,9,11,0.85); backdrop-filter: blur(30px); border-top: 1px solid var(--rule); display: none; }
+    .input-area.active { display: block; animation: inputSlideUp 0.3s var(--ease); }
+     .disclaimer-bar { padding: 8px 16px; text-align: center; background: rgba(0,0,0,0.3); border-top: 1px solid var(--rule); font-size: 0.72rem; color: var(--faint); display: flex; align-items: center; justify-content: center; gap: 6px; }
+     .disclaimer-icon { font-size: 0.9rem; }
+     .disclaimer-text { opacity: 0.7; }
+    @keyframes inputSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .input-row { display: flex; gap: 10px; align-items: flex-end; }
+    .input-textarea { flex: 1; min-height: 44px; max-height: 120px; padding: 12px 16px; border-radius: 20px; border: 1px solid var(--rule); background: var(--surface-glass); backdrop-filter: blur(24px); color: var(--ink); font-size: 0.9rem; line-height: 1.5; resize: none; font-family: inherit; transition: border-color 0.3s var(--ease); outline: none; }
+    .input-textarea:focus { border-color: rgba(126,167,255,0.3); }
+    .input-textarea::placeholder { color: var(--faint); }
+    .input-send { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg,#7EA7FF,#5A8AEE); border: none; color: #08090B; font-size: 1.1rem; cursor: pointer; transition: all 0.3s var(--ease); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .input-send:hover { transform: scale(1.08); box-shadow: 0 4px 16px rgba(126,167,255,0.3); }
+    .input-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .input-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .input-char-count { font-size: 0.72rem; color: var(--faint); }
+
+    /* ══════════════════════════════════════════ 设置面板 ══════════════════════════════════════════ */
+    .settings-panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 85vw); z-index: 500; background: var(--bg-elevated); border-left: 1px solid var(--rule); padding: 24px; display: none; flex-direction: column; gap: 16px; overflow-y: auto; animation: panelSlideIn 0.3s var(--ease); }
+    .settings-panel.open { display: flex; }
+    @keyframes panelSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .settings-overlay { position: fixed; inset: 0; z-index: 499; background: rgba(0,0,0,0.5); display: none; }
+    .settings-overlay.open { display: block; }
+    .settings-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+    .settings-close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; }
+    .settings-section { padding: 14px; border-radius: 14px; background: var(--surface-glass); border: 1px solid var(--rule); }
+    .settings-section-title { font-size: 0.78rem; font-weight: 600; color: var(--faint); margin-bottom: 10px; letter-spacing: 0.04em; }
+    .settings-input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--rule); background: rgba(0,0,0,0.2); color: var(--ink); font-size: 0.82rem; outline: none; font-family: inherit; box-sizing: border-box; }
+    .settings-input:focus { border-color: rgba(126,167,255,0.3); }
+    .settings-btn-row { display: flex; gap: 8px; margin-top: 8px; }
+    .settings-btn-row button { flex: 1; padding: 8px; border-radius: 8px; font-size: 0.78rem; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+    .settings-btn-save { border: 1px solid var(--blue); background: transparent; color: var(--blue); }
+    .settings-btn-save:hover { background: rgba(126,167,255,0.1); }
+    .settings-btn-clear { border: 1px solid rgba(248,113,113,0.3); background: transparent; color: #f87171; }
+    .settings-btn-clear:hover { background: rgba(248,113,113,0.1); }
+    .settings-status { font-size: 0.7rem; color: var(--faint); margin-top: 6px; }
+    .settings-safety-item { font-size: 0.8rem; color: var(--muted); padding: 6px 0; display: flex; align-items: center; gap: 8px; }
+    .settings-safety-item::before { content: "\2713"; color: var(--cyan); font-weight: 600; }
+
+    /* ══════════════════════════════════════════ 演示弹窗 ══════════════════════════════════════════ */
+    .demo-modal { position: fixed; inset: 0; z-index: 1000; display: none; align-items: center; justify-content: center; }
+    .demo-modal.open { display: flex; }
+    .demo-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); }
+    .demo-content { position: relative; width: 90%; max-width: 420px; background: var(--bg-elevated); border: 1px solid var(--rule); border-radius: 20px; overflow: hidden; }
+    .demo-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--rule); }
+    .demo-header h3 { margin: 0; font-size: 1.1rem; color: var(--ink); }
+    .demo-close { background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
+    .demo-screen { padding: 20px; min-height: 400px; }
+    .demo-phone { background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; }
+    .demo-phone-header { background: var(--surface); padding: 12px 16px; text-align: center; font-weight: 600; color: var(--ink); font-size: 0.9rem; border-bottom: 1px solid var(--rule); }
+    .demo-chat { padding: 16px; min-height: 320px; display: flex; flex-direction: column; gap: 12px; }
+    .demo-msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 0.85rem; line-height: 1.5; opacity: 0; transform: translateY(10px); animation: demoMsgIn 0.4s ease forwards; }
+    .demo-msg.user { align-self: flex-end; background: rgba(126,167,255,0.15); border: 1px solid rgba(126,167,255,0.2); color: var(--ink); border-bottom-right-radius: 4px; }
+    .demo-msg.ai { align-self: flex-start; background: var(--surface-glass); border: 1px solid var(--rule); color: var(--ink); border-bottom-left-radius: 4px; }
+    @keyframes demoMsgIn { to { opacity: 1; transform: translateY(0); } }
+    .demo-progress { height: 3px; background: var(--rule); }
+    .demo-progress-bar { height: 100%; width: 0%; background: var(--blue); transition: width 0.3s ease; }
+    .demo-controls { padding: 16px 20px; text-align: center; border-top: 1px solid var(--rule); }
+
+    /* ══════════════════════════════════════════ 确认弹窗 ══════════════════════════════════════════ */
+    .confirm-overlay { position: fixed; inset: 0; background: rgba(8,9,11,0.85); display: none; align-items: center; justify-content: center; z-index: 600; backdrop-filter: blur(10px); }
+    .confirm-overlay.show { display: flex; }
+    .confirm-box { background: var(--bg-elevated); border: 1px solid var(--rule); border-radius: var(--radius); padding: 32px; max-width: 400px; width: 90%; text-align: center; position: relative; }
+    .confirm-close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: var(--faint); font-size: 1.3rem; cursor: pointer; padding: 4px 8px; line-height: 1; transition: color 0.2s; }
+    .confirm-close:hover { color: var(--ink); }
+    .confirm-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; color: var(--ink); }
+    .confirm-text { font-size: 0.9rem; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+    .confirm-btns { display: flex; gap: 12px; justify-content: center; }
+
+    /* ══════════════════════════════════════════ 重试条 ══════════════════════════════════════════ */
+    .retry-bar { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 999; background: var(--surface-glass); backdrop-filter: blur(20px); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 20px; text-align: center; font-size: 0.85rem; display: none; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: retryIn 0.3s var(--ease); }
+    @keyframes retryIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    .retry-bar-btns { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+
+    /* 草稿恢复条 */
+    .draft-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: var(--surface-glass); backdrop-filter: blur(20px); border-bottom: 1px solid var(--rule); padding: 10px 16px; text-align: center; font-size: 0.85rem; display: none; align-items: center; justify-content: center; gap: 12px; animation: slideDown 0.3s var(--ease); }
+    @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    /* 写信界面 */
+    .letter-form { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+    .letter-form label { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+    .letter-form input, .letter-form textarea { width: 100%; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.3s var(--ease); }
+    .letter-form input:focus, .letter-form textarea:focus { border-color: rgba(126,167,255,0.3); }
+    .letter-form textarea { min-height: 120px; resize: vertical; line-height: 1.7; }
+    .letter-form input::placeholder, .letter-form textarea::placeholder { color: var(--faint); }
+
+    /* ══════════════════════════════════════════ 响应式 ══════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .cover { min-height: 100svh; }
+      .title-main { font-size: clamp(2.8rem,14vw,4rem); margin-bottom: 20px; }
+      .title-sub { font-size: 1rem; margin-bottom: 12px; }
+      .tagline { font-size: 0.8rem; margin-bottom: 32px; }
+      .cta-group { flex-direction: column; width: 100%; max-width: 280px; }
+      .btn { width: 100%; justify-content: center; padding: 14px 24px; }
+      .divider { margin-bottom: 32px; }
+      .safety-bar { gap: 16px; bottom: 20px; }
+      .safety-item { font-size: 0.68rem; }
+      .scroll-hint { display: none; }
+      .msg { max-width: 92%; }
+      .msg-card, .msg-mirror, .msg-insight, .msg-advice, .msg-followup { width: 96%; }
+      .chat-header { padding-top: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════ 封面视图 ══════════════════════════════════════════ -->
+  <div class="cover" id="coverView">
+    <div class="cover-bg"><img src="assets/mirror-cover-v7.png" alt="Mirror Cover" /></div>
+    <div class="shard-container" id="shardContainer"></div>
+    <div class="mirror-flash"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="cover-content">
+      <div class="eyebrow">AI Relationship Mirror</div>
+      <h1 class="title-main">Mirror</h1>
+      <p class="title-sub">你们不是不爱了，<br>只是再也听不懂彼此。</p>
+      <p class="tagline">让情侣不交换情绪，而交换理解</p>
+      <div class="divider"></div>
+      <div class="cta-group">
+        <button class="btn btn-primary" type="button" id="startBtn">与灵魂对话</button>
+        <button class="btn btn-secondary" type="button" id="demoBtn">&#9654; 观看演示</button>
+      </div>
+    </div>
+    <div class="skills-bar">
+      <div class="skill-item">
+        <span class="skill-icon">&#129518;</span>
+        <span class="skill-name">镜像翻译</span>
+        <span class="skill-desc">把攻击性表达翻译成需求表达</span>
+      </div>
+      <div class="skill-item">
+        <span class="skill-icon">&#128161;</span>
+        <span class="skill-name">5层追问</span>
+        <span class="skill-desc">从事实到行动的深度理解</span>
+      </div>
+      <div class="skill-item">
+        <span class="skill-icon">&#128221;</span>
+        <span class="skill-name">写信模式</span>
+        <span class="skill-desc">完成未竟的情感表达</span>
+      </div>
+      <div class="skill-item">
+        <span class="skill-icon">&#128737;</span>
+        <span class="skill-name">安全边界</span>
+        <span class="skill-desc">不站队、不诊断、不操控</span>
+      </div>
+    </div>
+    <div class="scroll-hint"><span>Scroll</span><div class="scroll-line"></div></div>
+    <div class="safety-bar">
+      <span class="safety-item">原文默认仅本人可见</span>
+      <span class="safety-item">不判断谁对谁错</span>
+      <span class="safety-item">不替代心理咨询</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ 模式选择视图 ══════════════════════════════════════════ -->
+  <div class="chat-view" id="modeSelectView" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <button class="chat-back-btn" id="modeBackBtn">&#8592; 返回</button>
+        <div>
+          <div class="chat-title">选择体验方式</div>
+          <div class="chat-subtitle">Mirror 提供两种模式</div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-thread" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; gap:24px; background:#08090B;">
+      <!-- 单人模式 -->
+      <div class="mode-card" id="modeSingle" style="cursor:pointer; width:100%; max-width:480px;">
+        <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#129489;</div>
+        <div class="mode-card-title">单人模式</div>
+        <div class="mode-card-desc">描述你的关系困扰，Mirror 帮你看见自己真正想表达什么</div>
+        <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn btn-primary mode-sub-btn" data-mode="single" data-type="chat" style="flex:1; min-width:140px;">对话分析</button>
+          <button class="btn btn-secondary mode-sub-btn" data-mode="single" data-type="letter" style="flex:1; min-width:140px;">写一封信</button>
+        </div>
+      </div>
+      <!-- 双人模式 -->
+      <div class="mode-card" id="modeCouple" style="cursor:pointer; width:100%; max-width:480px;">
+        <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#128107;</div>
+        <div class="mode-card-title">双人模式</div>
+        <div class="mode-card-desc">两人各自输入，Mirror 交叉翻译，让你们交换理解</div>
+        <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn btn-primary mode-sub-btn" data-mode="couple" data-type="chat" style="flex:1; min-width:140px;">对话分析</button>
+          <button class="btn btn-secondary mode-sub-btn" data-mode="couple" data-type="letter" style="flex:1; min-width:140px;">互写回信</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ 对话视图 ══════════════════════════════════════════ -->
+  <div class="chat-view" id="chatView">
+    <!-- 进度条 -->
+    <div class="chat-progress"><div class="chat-progress-fill" id="chatProgressFill"></div></div>
+    <div class="chat-progress-label" id="chatProgressLabel"></div>
+
+    <!-- 顶部栏 -->
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <button class="chat-back-btn" id="chatBackBtn">&#8592; 返回</button>
+        <div>
+          <div class="chat-title" id="chatTitle">Mirror</div>
+          <div class="chat-subtitle" id="chatSubtitle">关系理解与表达操作系统</div>
+        </div>
+      </div>
+      <div class="chat-header-right">
+        <button class="chat-settings-btn" id="chatSettingsBtn">设置</button>
+      </div>
+    </div>
+
+    <!-- 对话线程 -->
+    <div class="chat-thread" id="chatThread"></div>
+
+    <!-- 底部输入区 -->
+    <div class="input-area" id="inputArea"></div>
+
+    <!-- 免责声明 -->
+    <div class="disclaimer-bar" id="disclaimerBar">
+      <span class="disclaimer-icon">⚠️</span>
+      <span class="disclaimer-text">Mirror 不用于心理咨询或治疗，如遇心理危机请寻求专业帮助</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ 设置面板 ══════════════════════════════════════════ -->
+  <div class="settings-overlay" id="settingsOverlay"></div>
+  <div class="settings-panel" id="settingsPanel">
+    <button class="settings-close" id="settingsClose">&times;</button>
+    <div class="settings-title">设置</div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">安全原则</div>
+      <div class="settings-safety-item">默认本人可见</div>
+      <div class="settings-safety-item">不输出人格标签</div>
+      <div class="settings-safety-item">不做关系裁判</div>
+      <div class="settings-safety-item">高风险内容即时提示</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ 演示弹窗 ══════════════════════════════════════════ -->
+  <div class="demo-modal" id="demoModal">
+    <div class="demo-overlay" id="demoOverlay"></div>
+    <div class="demo-content">
+      <div class="demo-header">
+        <h3>Mirror 演示</h3>
+        <button class="demo-close" id="demoClose">&times;</button>
+      </div>
+      <div class="demo-screen">
+        <div class="demo-phone">
+          <div class="demo-phone-header">Mirror</div>
+          <div class="demo-chat" id="demoChat"></div>
+        </div>
+      </div>
+      <div class="demo-progress"><div class="demo-progress-bar" id="demoProgressBar"></div></div>
+      <div class="demo-controls">
+        <button class="btn btn-primary" id="demoStartBtn">亲自体验</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ 确认弹窗 ══════════════════════════════════════════ -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+      <button class="confirm-close" id="confirmClose">&times;</button>
+      <div class="confirm-title" id="confirmTitle">确认</div>
+      <div class="confirm-text" id="confirmText">确定要执行此操作吗？</div>
+      <div class="confirm-btns">
+        <button class="btn btn-primary btn-sm" id="confirmYes">确定</button>
+        <button class="btn-ghost btn-sm" id="confirmNo">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 核心数据
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    // 场景数据（本地模板）
+    var SCENARIOS = {
+      '消息回复慢': {
+        fact: '消息回复间隔明显拉长', emotion: '不安、被忽略和焦虑', need: '被回应和被确认',
+        misread: '把忙碌理解成冷淡', misreadType: '状态误读',
+        insight: '当对方回复变慢时，大脑会自动把"忙碌"解释为"不在乎"。这不是你的错，而是一种本能的保护反应。',
+        before: '你根本不在乎我', innerThought: '你是不是不爱我了……',
+        after: '当消息很久没有回复时，我会有些不安，希望你能告诉我你在忙什么。',
+        analyst: '你最难受的，不只是回复变慢了，而是"慢"会让你理解成"不在乎"。让我帮你看看，你真正需要的是什么。',
+        summary: '你真正想表达的，是希望被回应。', status: '回应频率差异引发的不安',
+        suggest: '用"我需要"代替"你为什么不"，直接表达对回应的期待',
+        aFact: '感到回复变慢，连接减少', aEmotion: '不安、委屈、想确认关系', aNeed: '稳定回应和被在乎的证据',
+        bFact: '压力变大时减少解释和回应', bEmotion: '疲惫、怕说错、怕冲突升级', bNeed: '被信任，也需要暂停空间',
+        commonNeed: '被理解', commonMisread: '双方都把沉默理解成冷淡',
+        aExpress: '等待回应，需要安全感', bExpress: '害怕争吵，不知如何表达'
+      },
+      '冷战': {
+        fact: '双方停止主动沟通，进入沉默对抗', emotion: '委屈、焦虑、被忽视', need: '重新建立连接，确认关系还在',
+        misread: '把沉默当成不在乎或放弃', misreadType: '行为误读',
+        insight: '沉默常常不是"没事"，而是"我不知道怎么面对"。但沉默会让另一方把"不知道怎么说"理解成"不想说"。',
+        before: '你为什么不理我？是不是根本不在乎这段关系了？', innerThought: '我们是不是完了……',
+        after: '沉默让我很难受，我想知道我们还能不能好好谈谈。',
+        analyst: '沉默让你最难受的，不是没有声音，而是你不知道这段关系还在不在。让我帮你看看，沉默背后可能藏着什么。',
+        summary: '你真正想表达的，是希望确认关系还在。', status: '沉默对抗中的安全感缺失',
+        suggest: '打破沉默不需要道歉，一句"我们聊聊好吗"就是开始',
+        aFact: '感到沟通中断，不知道关系状态', aEmotion: '焦虑、委屈、害怕失去', aNeed: '一个回应，一个态度',
+        bFact: '不知道怎么面对冲突', bEmotion: '疲惫、害怕说错话', bNeed: '暂停空间，不被逼迫',
+        commonNeed: '安全的沟通方式', commonMisread: '双方都把沉默理解成放弃',
+        aExpress: '需要确认关系还在', bExpress: '需要不被逼迫的安全感'
+      },
+      '经常争吵': {
+        fact: '冲突频繁升级，从小事演变成互相指责', emotion: '愤怒、疲惫和受伤', need: '被理解和被尊重',
+        misread: '把表达需求理解成指责', misreadType: '表达误读',
+        insight: '每次争吵后你都很累，不是因为你爱吵架，而是因为你的需求一直没有被听见。指责只是需求穿上了愤怒的外衣。',
+        before: '你每次都这样，从来不听我说，只顾着自己！', innerThought: '你到底有没有在乎过我……',
+        after: '每次争吵后我都很累，我不是想怪你，只是希望我们能换一种方式沟通，让彼此都被听见。',
+        analyst: '你说的"从来不听"背后，其实是"我希望被听见"。让我帮你把愤怒翻译成需求。',
+        summary: '你真正想表达的，是希望被听见和被理解。', status: '需求未被听见导致的沟通循环',
+        suggest: '争吵时先说"我希望"，让对方知道你的需求而非指责',
+        aFact: '感到每次冲突都在重复', aEmotion: '愤怒、疲惫、不被理解', aNeed: '被倾听、被尊重',
+        bFact: '感到被指责，不知道怎么回应', bEmotion: '防御、疲惫、害怕冲突', bNeed: '不被评判的安全空间',
+        commonNeed: '不被评判的沟通', commonMisread: '双方都把表达理解成攻击',
+        aExpress: '需要被倾听', bExpress: '需要不被评判'
+      },
+      '分手复盘': {
+        fact: '关系已经结束，但情绪未了', emotion: '遗憾、不甘和迷茫', need: '价值感修复与结束感',
+        misread: '把分开理解成自己不值得', misreadType: '自我投射',
+        insight: '分手后反复回想，不是因为放不下对方，而是放不下"我是不是不够好"这个疑问。分手触发了你对自我价值的怀疑。',
+        before: '你毁了我对爱情的全部信任，我再也不会相信任何人了！', innerThought: '是不是我不够好……',
+        after: '这段关系结束了，我有很多情绪还在消化。我不是要怪你，只是想让自己慢慢理解和接受。',
+        analyst: '你真正放不下的，可能不是这段关系，而是"我是不是不值得被爱"这个疑问。让我帮你把失去感和自我价值分开。',
+        summary: '你真正想表达的，是希望确认自己的价值。', status: '分手后的自我价值重建',
+        suggest: '把"是不是我不够好"换成"我值得被好好对待"，结束不是否定',
+        aFact: '失恋后持续等待和关注', aEmotion: '悲伤、执念、空落', aNeed: '价值感修复与结束感',
+        bFact: '已经决定结束关系', bEmotion: '无奈、疲惫、也有不舍', bNeed: '不被纠缠的空间',
+        commonNeed: '各自安好', commonMisread: '把结束等同于否定',
+        aExpress: '需要价值确认', bExpress: '需要空间和尊重'
+      },
+      '异地不安': {
+        fact: '距离增加，互动减少', emotion: '孤独、担心、失落', need: '陪伴感和连接感',
+        misread: '把少联系理解成不爱', misreadType: '状态误读',
+        insight: '你怕的不是距离本身，而是距离把连接感一点点稀释。但距离改变的是沟通方式，不一定是感情。',
+        before: '我们是不是变了？异地对你来说无所谓吧？', innerThought: '我们是不是越来越远了……',
+        after: '我害怕我们越来越远，我想要一种稳定的联系感，哪怕只是每天说一声"我在"。',
+        analyst: '异地让你最不安的，不是距离，而是"连接感在消失"的感觉。让我帮你看看，你们之间真正需要的是什么。',
+        summary: '你真正想表达的，是希望保持连接感。', status: '距离带来的连接感稀释',
+        suggest: '建立固定的联系仪式，比如每天一条"今天想你了"的消息',
+        aFact: '感到连接在变弱', aEmotion: '孤独、不安、害怕失去', aNeed: '稳定的联系和未来计划',
+        bFact: '异地让沟通变困难', bEmotion: '无力、也有思念', bNeed: '不被压力压垮的空间',
+        commonNeed: '可持续的连接方式', commonMisread: '双方都把距离当成感情变淡的证据',
+        aExpress: '需要稳定的联系感', bExpress: '需要不被压力压垮'
+      },
+      '对方回避': {
+        fact: '对方总说随便，回避表达和决定', emotion: '孤独、疲惫、失衡', need: '共同参与和分担',
+        misread: '把沉默理解成不在乎', misreadType: '行为误读',
+        insight: '让你难受的不是"随便"这两个字，而是"只有我在承担这段关系"。回避可能不是不在乎，而是不知道怎么参与。',
+        before: '你什么都无所谓，那我算什么？', innerThought: '这段关系是不是只有我一个人在努力……',
+        after: '我不想一个人做完所有决定，我希望你也参与进来，哪怕只是说一句"我想要这个"。',
+        analyst: '你说的"无所谓"背后，其实是"我不想一个人扛"。让我帮你把抱怨翻译成需求。',
+        summary: '你真正想表达的，是需要共同参与。', status: '关系中的参与度失衡',
+        suggest: '把"你什么都不管"换成"我希望你帮我一起决定"，给对方明确的参与入口',
+        aFact: '感到独自承担关系', aEmotion: '孤独、疲惫、失衡', aNeed: '共同参与和分担',
+        bFact: '不知道怎么表达和决定', bEmotion: '压力、回避、也有愧疚', bNeed: '不被批评的安全空间',
+        commonNeed: '平等的参与', commonMisread: '把回避当成不在乎，把主动当成卑微',
+        aExpress: '需要共同分担', bExpress: '需要不被批评'
+      },
+      '内在不安': {
+        fact: '关系稳定但内在不安持续', emotion: '害怕、自责、焦虑', need: '确定感和价值确认',
+        misread: '把自己的恐惧当成对方的问题', misreadType: '自我投射',
+        insight: '他其实很好，但你还是觉得不够。这不是他的问题，而是你内在的不安全感在说话。这种不安和对方无关。',
+        before: '我总是不满足，我也很讨厌自己这样。', innerThought: '我是不是太作了……',
+        after: '真正让我痛苦的，不是你做得不够，而是我很难相信自己值得被爱。这不是你的问题，是我需要面对的。',
+        analyst: '你说"讨厌自己这样"，说明你知道这是自己的问题。这不是缺点，而是你的内在在呼救。让我帮你看见它。',
+        summary: '你真正想表达的，是需要相信自己值得被爱。', status: '内在不安全感投射到关系中',
+        suggest: '区分"他的问题"和"我的恐惧"，先安抚自己再沟通',
+        aFact: '关系没有明显问题但持续不安', aEmotion: '害怕、自责、焦虑', aNeed: '自我价值确认',
+        bFact: '感到怎么做都不够', bEmotion: '无力、困惑、也有疲惫', bNeed: '被理解和不被苛求',
+        commonNeed: '安全感', commonMisread: '把内在恐惧当成关系问题',
+        aExpress: '需要价值确认', bExpress: '需要不被苛求'
+      },
+      '关系疏离': {
+        fact: '对话内容被事务化，失去情感温度', emotion: '疏离、失落、空', need: '亲密感和情感连接',
+        misread: '把忙碌理解成情感自然消失', misreadType: '状态误读',
+        insight: '当关系只剩"吃什么""几点回家"，说明情感连接正在被慢慢抽走。这不是突然发生的，而是日积月累的忽略。',
+        before: '我们之间还有什么？只剩吃饭和回家了。', innerThought: '我们是不是已经不爱了……',
+        after: '我不是在嫌你不忙，我是在想我们能不能重新有一点亲密感。哪怕只是聊几句心里话。',
+        analyst: '你说"只剩吃饭和回家"，说明你感受到的不是突然的冷漠，而是日积月累的情感缺失。让我帮你找回那些丢失的连接。',
+        summary: '你真正想表达的，是希望重新有亲密感。', status: '情感连接的日常流失',
+        suggest: '每天花10分钟聊一件今天开心的事，重建情感温度',
+        aFact: '感到对话只剩事务', aEmotion: '疏离、空、失落', aNeed: '情感连接和温度',
+        bFact: '忙于生活，忽略了情感维护', bEmotion: '也有疏忽感、但不知道怎么补', bNeed: '简单的情感连接方式',
+        commonNeed: '重新建立情感连接', commonMisread: '把忙碌当成不爱，把疏离当成必然',
+        aExpress: '需要亲密感', bExpress: '需要简单的连接方式'
+      },
+      '其他': {
+        fact: '关系中出现了一些让你困扰的情况', emotion: '困惑、不安、需要被理解', need: '被倾听和被理解',
+        misread: '把复杂的情况简单归因', misreadType: '归因偏差',
+        insight: '关系中的困扰往往不是因为某一件大事，而是很多小事积累后产生的情绪。你的感受是真实的，值得被认真对待。',
+        before: '你总是这样', innerThought: '为什么我总是遇到这些...',
+        after: '当这些事情发生时，我会感到困扰，希望能找到理解和支持。',
+        analyst: '你正在经历一段需要被理解的关系困扰。让我帮你梳理一下，你真正需要的是什么。',
+        summary: '你真正需要的，是被认真倾听。', status: '需要梳理的关系困扰',
+        suggest: '先表达自己的感受，而不是急于评判对错',
+        aFact: '感到困扰和不安', aEmotion: '困惑、委屈、渴望理解', aNeed: '被倾听和被尊重',
+        bFact: '可能没有意识到对方的感受', bEmotion: '可能也有自己的压力', bNeed: '被理解和被接纳',
+        commonNeed: '相互理解', commonMisread: '双方都觉得自己不被理解',
+        aExpress: '表达困扰，需要支持', bExpress: '可能有自己的难处'
+      }
+    };
+
+    // API 配置
+    var MIRROR_API_URL = 'https://apihub.agnes-ai.com/v1/chat/completions';
+    var MIRROR_MODEL = 'agnes-1.5-flash';
+
+    // System Prompt
+    var MIRROR_SYSTEM_PROMPT = `你是 Mirror，一个关系理解与表达操作系统。
+
+你不是裁判，不是心理治疗师，不是算命师，也不是操控顾问。你的目标不是替用户赢，而是帮助用户看清事实、看见情绪、翻译需求，并找到更不伤人的表达方式。
+
+默认原则：理解 > 修复，事实 > 猜测，追问 > 过早下结论，共情 > 评判，翻译 > 指责，安全 > 完美，真实 > 讨好。
+
+绝对限制：禁止心理诊断，禁止人格标签化结论，禁止判断谁对谁错，禁止站队，禁止模拟另一半替对方发言并编造事实，禁止 PUA、操控、冷暴力、断联套路、欲擒故纵、报复、跟踪、监视、拆散，禁止露骨色情内容，禁止把推测写成事实，禁止把不确定内容包装成高置信结论，禁止对离世亲人做超自然真实性宣称，禁止假装通灵，禁止替用户做决定。
+
+如果信息不足，必须明确表示不确定，并优先追问。
+
+如果用户出现家暴、自伤、自杀、威胁、跟踪、控制、强制隔离、极端控制、现实中的即时危险等高风险内容，立即停止常规分析，优先确认安全，建议联系可信赖的人、专业支持或当地紧急服务。不要建议"先谈谈看"，不要提供报复、逃避、对抗性技巧，不要继续深入复杂分析。
+
+Session Memory：只使用短期会话记忆，不做长期人格存档。允许记住：当前关系状态、冲突点、当前目标、已确认事实、追问进度。禁止记住：人格诊断、长期心理标签、未证实隐私、未来必然预测、超出当前上下文的确定性判断。
+
+默认工作模式：80% 追问，20% 轻度引导，最多 5 轮，每轮最多 3 个问题。风格 50% 理性分析 + 50% 温暖共情。如果用户想要更偏理性，就更清晰地拆解事实、误读和需求。如果用户情绪很重，就先承接感受，再给出方向。
+
+追问层级（从浅到深）：
+第一层·事实层：发生了什么？什么时候开始的？频率如何？说过哪些原话？做了哪些具体行为？
+第二层·情绪层：你当时最强烈的感受是什么？你最难受的点是什么？你最害怕的是什么？
+第三层·需求层：你真正想要什么？你最需要的是什么？你希望对方给你什么？
+第四层·意义层：这件事对你意味着什么？你把它理解成了什么？它触发了你怎样的旧感受？
+第五层·行动层：最小可行动作是什么？下一步最稳的做法是什么？是表达、观察、暂停还是设边界？
+
+追问风格：温和、不审讯、不说教、不绕圈、不复制用户原话再问一遍。如果用户说"不是这样"或"你理解错了"，应重新回到相应层级再问。
+
+Analyst Skill：分析时输出镜像层。先事实，后情绪，再需求。不猜事实，不把推测当结论，不用人格标签，不站队，不评判谁对谁错，不把关系问题病理化。可用的分析区分：事实 vs 推测、行为 vs 意图、表达 vs 需求、触发 vs 真实意义、焦虑 vs 证据。
+
+Mirror 的目标：不是解释一切，而是让用户突然看见——你不是只想赢，你是在要确认；你不是只想争吵，你是在找稳定；你不是太敏感，你是在害怕失去。
+
+Translator Skill：把攻击性、抱怨性、混乱表达翻译成安全、清晰、能被接住的话。翻译链路：攻击表达 → 内在想法 → 非暴力表达。禁止生成控制式、冷暴力式、断联套路、欲擒故纵、威胁式、情绪勒索式、PUA 式表达。
+
+Couple Skill（双人模式）：A/B 原文严格隔离，只有加工后的洞察可以共享。分别分析 A 和 B，分别提取事实、情绪、需求、误读，若双方同意再生成共同建议。共同报告必须包含：A 的核心需要、B 的核心需要、共同误读点、互动模式、共同卡住的地方、可执行的改善方向。禁止站队、批判、判输赢、编造对方没说的话、对一方做道德定罪。
+
+Timeline Skill：时间线只根据已确认信息生成，不可编造。结构：现在 → 之前 → 更早 → 触发点 → 累积效应。不确定就不要硬写，不能凭感觉补历史，时间点必须有依据，若信息不足优先追问。
+
+Thermometer Skill：温度计是观察指标，不是医学或心理诊断。维度：连接感、安全感、理解感、沟通质量、信任感。分数仅供观察使用，不要装作客观测量，信息不足时不要乱打高分，如果数据不够保持保守。
+
+Letter Skill（写信模式）：用于帮助用户说出没说完的话。先识别对象类型（爱人/伴侣/前任/暧昧对象/家人/父母/子女/兄弟姐妹/离世亲人/过去的自己/未来的自己），再识别写信意图（想念/感谢/道歉/和解/边界/告别/未说出口的话/哀伤/原谅/求助/爱）。
+
+单人写信模式：读信 → 抽取事实/情绪/需求 → 判断对象类型和意图 → Mirror 以合适口吻回信（承接情绪 + 轻度温柔引导 + 不油腻 + 不控制 + 不表演感过强）→ 给出最底层的情感救赎（Deep Rescue）→ 给出一个温和、具体的方向。
+
+双人写信模式：A 写信（原文仅供 A 自己使用）→ B 写信（原文仅供 B 自己使用）→ 分别生成 A 和 B 的分析报告（情绪/真实需求/误读点/没说出口的话）→ 只有双方同意后才输出共同建议（不站队/不判输赢/指出共同需求/指出共同误读/给出具体方向）。
+
+Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地选择。你真正想要的，不只是道歉，而是被认真对待。你真正想要的，不只是告别，而是允许自己继续想念。你真正需要的，不只是放下，而是把没有说完的话说完。
+
+写信模式风格：温暖、克制、真实、不空洞、不说教、不夸张、不煽情过度、不绝对化。
+
+写信模式禁止：操控关系、PUA、威胁、报复、情绪勒索、冷暴力、断联套路、欲擒故纵、假装超自然、替用户决定、把猜测写成事实。
+
+回答策略：
+- 信息不足 → 进入追问模式，不要急着下结论
+- 信息足够 → 输出完整分析、镜像层、翻译、时间线、温度计和建议
+- 用户说"不准确" → 回到对应层级重新追问，不要硬撑原结论
+- 用户说"帮我发一句话" → 进入翻译模式，输出安全表达（原始表达的风险点 + 翻译后的版本 + 发送前提醒）
+- 用户情绪很强 → 先稳定，再分析
+- 用户是双人模式 → 先隔离 A/B，再生成共同建议
+- 用户涉及离世亲人 → 使用纪念、告别、未寄出的信件逻辑，不要通灵化
+
+每次收到用户输入后，按以下顺序工作：
+1. Safety Gate：先检查是否有危机信号
+2. Mode Router：判断模式（单人分析/双人分析/消息草稿/写信模式/危机识别/时间线/温度计/镜像总结）
+3. Question：信息不足时先追问（事实层→情绪层→需求层→意义层→行动层）
+4. Analyst：分析并输出镜像层（Fact/Emotion/Need/Misread/Mirror）
+5. Translator：翻译攻击表达为非暴力表达
+6. Timeline：如信息足够，生成关系时间线
+7. Thermometer：如信息足够，生成关系温度计
+8. Output：输出严格 JSON
+
+默认输出必须是严格 JSON，不要输出 Markdown 代码块，不要输出额外说明文字。
+
+单人模式 JSON Schema：
+{"mode":"single","scenario":"","fact":"","emotion":"","need":"","misread":"","misreadType":"","mirror":"","insight":"","before":"","inner":"","after":"","summary":"","analyst":"","status":"","suggest":"","questions":[],"timeline":[],"temperature":{"connection":0,"safety":0,"understanding":0,"communication":0,"trust":0},"memory":{"relationshipState":"","currentConflict":"","currentGoal":"","knownFacts":[]},"risk":{"level":"low","signals":[]},"confidence":0.0}
+
+双人模式 JSON Schema：
+{"mode":"couple","a":{"fact":"","emotion":"","need":"","misread":"","mirror":""},"b":{"fact":"","emotion":"","need":"","misread":"","mirror":""},"shared":{"commonNeed":"","commonMisread":"","interactionPattern":"","mirrorLayer":"","suggest":""},"timeline":[],"temperature":{"connection":0,"safety":0,"understanding":0,"communication":0,"trust":0},"memory":{"shortTerm":[]},"risk":{"level":"low","signals":[]},"confidence":0.0}
+
+写信模式 JSON Schema：
+{"mode":"letter","recipientType":"爱人/家人/离世亲人/过去的自己/未来的自己","letterIntent":"想念/感谢/道歉/和解/告别/哀伤/原谅/求助/爱","emotion":"","need":"","mirror":"","empathy":"对用户情绪的承接与看见（200字以上，不要否定、不要评判，让用户感到被理解）","gentleGuide":"10%的温柔引导（不是说教，而是邀请用户看到另一种可能，50字以内）","deepRescue":"最底层的情感救赎（100字以内）","replyTone":"","reply":"","suggest":"","risk":{"level":"low","signals":[]},"confidence":0.0}
+
+永远记住：Mirror 不是裁判，Mirror 是让双方重新听懂彼此。`;
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 状态机与核心变量
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    var state = 'IDLE'; // IDLE | INPUT | ANALYZING | FOLLOWUP | DEEP | RESULT | LETTER | DONE
+    var userData = { q1: '', scenario: '', aiData: null };
+    var aiMessages = []; // AI 对话历史
+    var followupRound = 0;
+    var followupQuestions = [];
+    var followupAnswers = [];
+    var letterData = { original: '', empathy: '', guide: '', redemption: '' };
+    var lastActionFn = null; // 用于重试
+    var parallaxActive = true;
+
+    // 阶段名称映射
+    var STAGE_NAMES = {
+      'IDLE': '', 'INPUT': '描述困扰', 'ANALYZING': '分析中',
+      'FOLLOWUP': '追问了解', 'DEEP': '深入探索', 'RESULT': '查看结果',
+      'LETTER': '写信模式', 'DONE': '完成'
+    };
+    var STAGE_ORDER = ['INPUT', 'ANALYZING', 'FOLLOWUP', 'DEEP', 'RESULT'];
+
+    // ════════════════════════════════════════════════════════════════════════════════
+    // 标签体系数据
+    // ════════════════════════════════════════════════════════════════════════════════
+    var TAG_CATEGORIES = [
+      { name: '分手/结束', subs: [
+        { name: '刚分手', text: '分手后每天都在看手机，怕错过什么消息。明明知道不该等了，但还是会忍不住翻聊天记录' },
+        { name: '想复合', text: '分手很久了，但一直放不下。有时候想发消息又怕打扰，不知道该不该主动' },
+        { name: '前任纠缠', text: '已经分手了但对方还会突然出现，发消息、点赞、偶尔暧昧，让我很混乱不知道该怎么办' },
+        { name: '放不下', text: '分手后总觉得是自己的错，反复想如果当时怎样就好了，走不出来' }
+      ]},
+      { name: '异地/远距离', subs: [
+        { name: '联系变少', text: '异地以后聊天越来越少，从每天打电话变成几天才回一条消息，我很怕关系就这样淡掉了' },
+        { name: '见面难', text: '我们在不同的城市，每次见面都要计划很久，见不到面的日子里总觉得这段关系像在维持' },
+        { name: '未来不确定', text: '异地快一年了，但谁都没提过以后怎么办。我不知道这段关系有没有未来，也不敢问' },
+        { name: '安全感缺失', text: '异地恋让我每天都焦虑，对方出去玩不报备我就会胡思乱想，知道不应该但控制不住' }
+      ]},
+      { name: '暧昧/不确定', subs: [
+        { name: '忽冷忽热', text: '有时候对我特别热情，突然又变得很冷淡。我搞不懂到底是我哪里做错了，还是对方本来就这样' },
+        { name: '不确定心意', text: '我们的关系很模糊，有时候像情侣有时候又像朋友，我不知道对方到底怎么想的' },
+        { name: '表白犹豫', text: '喜欢了很久但一直不敢说出口，怕说了连朋友都做不了，不说又每天很难受' },
+        { name: '关系停滞', text: '认识好几个月了，一直停留在聊天阶段，对方不推进我也不好意思主动，感觉卡住了' }
+      ]},
+      { name: '沟通困难', subs: [
+        { name: '经常吵架', text: '我们经常为小事吵架，而且每次都是同样的内容翻来覆去，吵完又后悔但下次还是一样' },
+        { name: '冷战/沉默', text: '每次吵完都是我先低头，对方可以好几天不说话。这种沉默比吵架还让我难受' },
+        { name: '说不到一起', text: '感觉我们说的不是同一个东西，我表达的是感受，对方回应的是道理，永远对不上' },
+        { name: '翻旧账', text: '每次吵架对方都会把过去的事情翻出来，我已经道过歉的事又被拿出来说，感觉永远翻不了篇' }
+      ]},
+      { name: '信任危机', subs: [
+        { name: '怀疑出轨', text: '发现对方手机有异常，虽然没有什么确凿证据，但那种不安一直消不掉，又不敢直接问' },
+        { name: '隐瞒欺骗', text: '对方有些事情不跟我说实话，被我发现后又说是怕我担心，但信任已经裂了' },
+        { name: '查手机', text: '我开始忍不住翻对方手机，虽然知道这样不对，但不看就焦虑，看了又更焦虑' },
+        { name: '承诺不兑现', text: '对方总是答应的事情做不到，说好的改、说好的不再犯，但每次都让我失望' }
+      ]},
+      { name: '情绪困扰', subs: [
+        { name: '感到被忽视', text: '我说的话好像从来不被认真听，对方总是在看手机或者敷衍回应，感觉自己不重要' },
+        { name: '害怕失去', text: '越是在乎就越害怕失去，对方稍微冷淡一点我就会慌，觉得自己随时可能被丢掉' },
+        { name: '委屈压抑', text: '很多时候明明很委屈但说不出口，怕说了显得矫情，只能自己消化，越积越多' },
+        { name: '情绪失控', text: '有时候控制不住自己的情绪，明明不想发火的，但话到嘴边就变成了攻击，事后又很后悔' }
+      ]},
+      { name: '自我怀疑', subs: [
+        { name: '觉得不够好', text: '对方各方面都比我优秀，我总觉得自己配不上，害怕有一天对方会意识到这一点' },
+        { name: '太敏感', text: '别人都说我太敏感了，我也觉得自己反应过度，但那些事情确实让我很难受' },
+        { name: '配不上', text: '总觉得这段关系里我是弱势的一方，对方随时可以找到更好的，我必须一直小心翼翼' },
+        { name: '讨好型', text: '我好像一直在迁就对方，不敢表达真实想法，怕说了对方就不喜欢我了' }
+      ]}
+    ];
+
+    // ════════════════════════════════════════════════════════════════════════════════
+    // 工具函数
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    // 获取 API Key
+    function getApiKey() {
+      return localStorage.getItem('mirror_api_key') || 'sk-V8TF8BvvoFns5XycMnFgc0BSHXeEOoSU0EKUbJbYBOjI8X1i';
+    }
+
+    // 场景检测
+    function detectSc() {
+      var text = (userData.q1 || '').toLowerCase();
+      var keywords = {
+        '消息回复慢': ['不回', '回复慢', '消息', '已读', '不回消息', '消失', '不回信息', '秒回', '回消息'],
+        '冷战': ['冷战', '不理', '沉默', '不说话', '没联系', '断联', '僵持', '低头', '不主动'],
+        '经常争吵': ['吵', '吵架', '争执', '冲突', '骂', '闹', '矛盾', '翻旧账', '旧账'],
+        '分手复盘': ['分手', '前任', '复合', '挽回', '结束', '分开', '失恋', '提分手'],
+        '异地不安': ['异地', '远距离', '不在身边', '分隔', '两地', '见不到', '异地恋'],
+        '对方回避': ['随便', '无所谓', '不决定', '不参与', '逃避', '以后再说', '转移话题'],
+        '内在不安': ['不够', '不满足', '讨厌自己', '太敏感', '不值得', '不配', '怀疑自己'],
+        '关系疏离': ['室友', '吃饭', '回家', '功能性', '没话说', '没话题', '事务']
+      };
+      for (var scene in keywords) {
+        if (keywords[scene].some(function(w) { return text.includes(w); })) {
+          userData.scenario = scene; return;
+        }
+      }
+      userData.scenario = '其他';
+    }
+
+    // 获取分析数据（优先 AI，降级到本地模板）
+    function getAnalysisData() {
+      if (userData.aiData) return userData.aiData;
+      return SCENARIOS[userData.scenario] || SCENARIOS['其他'];
+    }
+
+    // AI 分析
+    async function aiAnalyze(userText, mode, history) {
+      var apiKey = getApiKey();
+      if (!apiKey) { console.warn('API Key 未设置，使用本地模板'); return null; }
+      try {
+        var messages = [{ role: 'system', content: MIRROR_SYSTEM_PROMPT }];
+        if (history && history.length > 0) messages = messages.concat(history);
+        var modeHint = mode === 'letter' ? '\n\n请以写信模式（mode:"letter"）输出 JSON。' : '\n\n请以单人模式（mode:"single"）输出 JSON。';
+        messages.push({ role: 'user', content: userText + modeHint });
+        var response = await fetch(MIRROR_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+          body: JSON.stringify({ model: MIRROR_MODEL, messages: messages, temperature: 0.7, max_tokens: 4000 })
+        });
+        if (!response.ok) throw new Error('API 错误: ' + response.status);
+        var data = await response.json();
+        var content = data.choices[0].message.content;
+        try { return JSON.parse(content); } catch (e) {
+          var m = content.match(/\{[\s\S]*\}/);
+          if (m) return JSON.parse(m[0]);
+          throw new Error('JSON 解析失败');
+        }
+      } catch (err) {
+        console.error('AI 分析失败:', err);
+        showRetryBar();
+        return null;
+      }
+    }
+
+    // 保存对话历史
+    function saveConversation(text, summary) {
+      var history = JSON.parse(localStorage.getItem('mirror_history') || '[]');
+      history.unshift({ time: Date.now(), text: text, summary: summary || text.substring(0, 50) + '...' });
+      if (history.length > 20) history = history.slice(0, 20);
+      localStorage.setItem('mirror_history', JSON.stringify(history));
+    }
+
+    // 草稿缓存
+    function saveDraft() {
+      localStorage.setItem('mirror_draft', JSON.stringify({
+        userText: userData.q1, followupRound: followupRound,
+        followupQuestions: followupQuestions, followupAnswers: followupAnswers,
+        timestamp: Date.now()
+      }));
+    }
+    function checkDraft() {
+      var raw = localStorage.getItem('mirror_draft');
+      if (!raw) return null;
+      try {
+        var d = JSON.parse(raw);
+        if (Date.now() - d.timestamp > 30 * 60 * 1000) { localStorage.removeItem('mirror_draft'); return null; }
+        return d;
+      } catch(e) { localStorage.removeItem('mirror_draft'); return null; }
+    }
+    function clearDraft() { localStorage.removeItem('mirror_draft'); }
+
+    // 显示重试条
+    function showRetryBar() {
+      var bar = document.getElementById('retryBar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'retryBar';
+        bar.className = 'retry-bar';
+        bar.innerHTML = '&#9888; 网络连接失败<div class="retry-bar-btns">' +
+          '<button class="btn btn-primary btn-sm" id="retryBtn">重新连接</button>' +
+          '<button class="btn-ghost btn-sm" id="localBtn">使用离线模板</button></div>';
+        document.body.appendChild(bar);
+        document.getElementById('retryBtn').onclick = function() { bar.style.display = 'none'; if (lastActionFn) lastActionFn(); };
+        document.getElementById('localBtn').onclick = function() { bar.style.display = 'none'; useLocalFallback(); };
+      }
+      bar.style.display = 'block';
+    }
+
+    // 离线降级
+    function useLocalFallback() {
+      detectSc();
+      userData.aiData = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
+      // 移除加载消息
+      var loading = document.querySelector('.msg-loading');
+      if (loading) loading.remove();
+      // 显示结果
+      showResults(userData.aiData);
+    }
+
+    // 确认弹窗
+    var confirmCallback = null;
+    function showConfirm(title, text, onYes) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmText').textContent = text;
+      confirmCallback = onYes;
+      document.getElementById('confirmOverlay').classList.add('show');
+    }
+
+    // 打字机效果
+    function typeText(el, text, callback) {
+      el.textContent = '';
+      el.style.cursor = 'pointer';
+      el.title = '点击跳过动画';
+      var idx = 0;
+      var timer = setInterval(function() {
+        if (idx < text.length) { el.textContent += text[idx]; idx++; }
+        else { clearInterval(timer); el.style.cursor = ''; el.title = ''; if (callback) callback(); }
+      }, 25);
+      el._typeTimer = timer;
+      el.onclick = function() {
+        clearInterval(timer); el.textContent = text;
+        el.style.cursor = ''; el.title = ''; el.onclick = null;
+        if (callback) callback();
+      };
+    }
+
+    // 自动滚动到底部
+    function scrollThread() {
+      var thread = document.getElementById('chatThread');
+      setTimeout(function() { thread.scrollTop = thread.scrollHeight; }, 50);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 消息渲染函数
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    function addMessage(type, content, options) {
+      var thread = document.getElementById('chatThread');
+      var el = document.createElement('div');
+      options = options || {};
+
+      switch (type) {
+        case 'user':
+          el.className = 'msg msg-user';
+          el.textContent = content;
+          break;
+
+        case 'ai':
+          el.className = 'msg msg-ai';
+          el.innerHTML = '<div class="msg-ai-avatar">M</div><div class="msg-ai-body"></div>';
+          var body = el.querySelector('.msg-ai-body');
+          if (options.typewriter) {
+            typeText(body, content, function() { scrollThread(); });
+          } else {
+            body.textContent = content;
+          }
+          break;
+
+        case 'system':
+          el.className = 'msg msg-system';
+          el.textContent = content;
+          break;
+
+        case 'loading':
+          el.className = 'msg msg-loading';
+          el.id = options.id || ('loading_' + Date.now());
+          el.innerHTML = '<div class="loading-spinner"></div>' +
+            '<div class="loading-text">' + (content || 'Mirror 正在理解你') + '<span class="loading-dots">...</span></div>' +
+            (options.sub ? '<div class="loading-sub">' + options.sub + '</div>' : '');
+          break;
+
+        case 'followup':
+          el.className = 'msg msg-followup';
+          var layerNames = { 'fact': '事实层', 'emotion': '情绪层', 'need': '需求层', 'meaning': '意义层', 'action': '行动层' };
+          var layer = options.layer || 'fact';
+          var round = options.round || 1;
+          el.innerHTML = '<div class="followup-fullscreen">' +
+            '<div class="followup-fs-label">' + (layerNames[layer] || '追问') + ' · 第 ' + round + ' 轮</div>' +
+            '<div id="followupQs"></div>' +
+            '<div class="followup-fs-actions">' +
+            '<button class="btn btn-primary btn-sm" id="followupSubmit">提交回答</button>' +
+            '<button class="btn-ghost btn-sm" id="followupSkip">跳过追问</button>' +
+            '</div></div>';
+          thread.appendChild(el);
+          scrollThread();
+          var qsEl = el.querySelector('#followupQs');
+          var questions = content;
+          questions.forEach(function(q, idx) {
+            var g = document.createElement('div');
+            g.style.cssText = 'margin-bottom:8px;';
+            g.innerHTML = '<div class="followup-fs-q">' + (idx + 1) + '. ' + q + '</div>' +
+              '<textarea class="followup-fs-input" id="fq_' + idx + '" placeholder="写下你的想法..." rows="2"></textarea>';
+            qsEl.appendChild(g);
+          });
+          el.querySelector('#followupSubmit').onclick = function() { submitFollowup(); };
+          el.querySelector('#followupSkip').onclick = function() { skipFollowup(); };
+          return el;
+
+        case 'card':
+          el.className = 'msg msg-card';
+          el.innerHTML = '<div class="card-title">' + (options.title || '分析结果') + '</div><div class="card-rows"></div>';
+          var rows = el.querySelector('.card-rows');
+          var items = content; // [{label, value}]
+          items.forEach(function(item) {
+            var row = document.createElement('div');
+            row.className = 'card-row';
+            row.innerHTML = '<div class="card-row-label">' + item.label + '</div><div class="card-row-value">' + item.value + '</div>';
+            rows.appendChild(row);
+          });
+          break;
+
+        case 'mirror':
+          el.className = 'msg msg-mirror';
+          el.innerHTML = '<div class="mirror-title">Mirror Layer · 表达翻译</div><div class="mirror-trans"></div>';
+          var trans = el.querySelector('.mirror-trans');
+          var transItems = content; // [{label, labelClass, text}]
+          transItems.forEach(function(item, idx) {
+            if (idx > 0) {
+              var arrow = document.createElement('div');
+              arrow.className = 'mirror-arrow';
+              arrow.innerHTML = '&#8595;';
+              trans.appendChild(arrow);
+            }
+            var ti = document.createElement('div');
+            ti.className = 'mirror-trans-item';
+            ti.style.animationDelay = (0.1 + idx * 0.2) + 's';
+            ti.innerHTML = '<div class="mirror-trans-label ' + item.labelClass + '">' + item.label + '</div>' +
+              '<div class="mirror-trans-text">' + item.text + '</div>';
+            trans.appendChild(ti);
+          });
+          break;
+
+        case 'insight':
+          el.className = 'msg msg-insight';
+          el.innerHTML = '<div class="insight-label">洞察</div><div class="insight-text">' + content + '</div>';
+          break;
+
+        case 'advice':
+          el.className = 'msg msg-advice';
+          el.innerHTML = '<div class="advice-label">建议</div><div class="advice-text">' + content + '</div>';
+          break;
+
+        case 'actions':
+          el.className = 'msg msg-actions';
+          var buttons = content; // [{text, className, onclick}]
+          buttons.forEach(function(btn) {
+            var b = document.createElement('button');
+            b.className = btn.className || 'btn btn-primary';
+            b.textContent = btn.text;
+            b.onclick = btn.onclick;
+            el.appendChild(b);
+          });
+          break;
+
+        case 'tags':
+          el.className = 'msg msg-tags';
+          // Step 1: 大板块标签
+          el.innerHTML =
+            '<div style="text-align:center;margin-bottom:16px;">' +
+            '<div style="font-size:0.92rem;color:var(--ink);font-weight:500;margin-bottom:4px;">你的情况属于哪一类？</div>' +
+            '<div style="font-size:0.78rem;color:var(--faint);">选择最接近的，或直接跳过</div>' +
+            '</div>' +
+            '<div class="tag-categories" id="tagCategories"></div>' +
+            '<div style="text-align:center;margin-top:12px;">' +
+            '<button class="btn-ghost btn-sm" id="tagSkipBtn" style="font-size:0.78rem;">跳过，直接输入 →</button>' +
+            '</div>';
+          thread.appendChild(el);
+          scrollThread();
+
+          var catContainer = el.querySelector('#tagCategories');
+
+          // 渲染大板块标签
+          TAG_CATEGORIES.forEach(function(cat, catIdx) {
+            var btn = document.createElement('button');
+            btn.className = 'tag-category';
+            btn.textContent = cat.name;
+            btn.onclick = function() {
+              // 隐藏大板块和跳过按钮
+              catContainer.style.display = 'none';
+              el.querySelector('#tagSkipBtn').style.display = 'none';
+              el.querySelector('div').style.display = 'none';
+              // 显示子标签
+              var subArea = document.createElement('div');
+              subArea.id = 'tagSubArea';
+              subArea.innerHTML =
+                '<div style="text-align:center;margin-bottom:16px;">' +
+                '<div style="font-size:0.92rem;color:var(--ink);font-weight:500;">' + cat.name + ' · 具体是什么情况？</div>' +
+                '</div>' +
+                '<div class="tag-sub-list active" id="tagSubList" style="display:flex;"></div>' +
+                '<div style="text-align:center;margin-top:12px;">' +
+                '<button class="btn-ghost btn-sm" id="tagBackBtn" style="font-size:0.78rem;">← 返回</button>' +
+                '</div>';
+              el.appendChild(subArea);
+              // 渲染子标签
+              var subList = subArea.querySelector('#tagSubList');
+              cat.subs.forEach(function(sub) {
+                var subBtn = document.createElement('button');
+                subBtn.className = 'tag-sub';
+                subBtn.textContent = sub.name;
+                subBtn.onclick = function() {
+                  // 隐藏子标签区域，保留归类提示
+                  subArea.innerHTML = '<div style="text-align:center;padding:8px 0;font-size:0.82rem;color:var(--faint);">已选择：' + cat.name + ' · ' + sub.name + '</div>';
+                  // 显示归类确认
+                  addMessage('ai', 'Mirror 听到了，现在详细说说发生了什么事情。', { typewriter: true });
+                  // 显示输入框
+                  setState('INPUT');
+                  renderInputArea('');
+                };
+                subList.appendChild(subBtn);
+              });
+              // 返回按钮
+              subArea.querySelector('#tagBackBtn').onclick = function() {
+                subArea.remove();
+                catContainer.style.display = 'flex';
+                el.querySelector('#tagSkipBtn').style.display = 'inline-block';
+                el.querySelector('div').style.display = 'block';
+              };
+            };
+            catContainer.appendChild(btn);
+          });
+
+          // 跳过按钮
+          el.querySelector('#tagSkipBtn').onclick = function() {
+            el.style.display = 'none';
+            addMessage('ai', '好的，直接告诉我你想说的。', { typewriter: true });
+            setState('INPUT');
+            renderInputArea('');
+          };
+          return el;
+
+        case 'letter-form':
+          el.className = 'msg msg-followup';
+          el.innerHTML = '<div class="followup-label">写信模式</div><div class="letter-form" id="letterForm"></div>';
+          thread.appendChild(el);
+          scrollThread();
+          var form = el.querySelector('#letterForm');
+          form.innerHTML =
+            '<label>收信人</label><input type="text" id="letterTo" placeholder="亲爱的..." />' +
+            '<label>信件内容</label><textarea id="letterContent" placeholder="我想对你说……" rows="6"></textarea>' +
+            '<div class="followup-actions">' +
+            '<button class="btn btn-primary btn-sm" id="letterSubmit">让 Mirror 读信</button>' +
+            '<button class="btn-ghost btn-sm" id="letterCancel">取消</button>' +
+            '</div>';
+          el.querySelector('#letterSubmit').onclick = function() { submitLetter(); };
+          el.querySelector('#letterCancel').onclick = function() { setState('RESULT'); renderBottomArea(); };
+          return el;
+
+        default:
+          el.className = 'msg msg-ai';
+          el.textContent = content;
+      }
+
+      thread.appendChild(el);
+      scrollThread();
+      return el;
+    }
+
+    // 渲染底部输入区域（带引导浮层）
+    function renderInputArea(prefillText) {
+      var inputArea = document.getElementById('inputArea');
+      inputArea.classList.add('active');
+      inputArea.innerHTML =
+        '<div style="position:relative;width:100%;">' +
+        '<div class="input-placeholder-overlay" id="inputPlaceholder">' +
+        '<span class="guide-line">你可以像倾诉一样说：</span>' +
+        '<span class="guide-example">"他回消息越来越慢，我一问他就说我想太多"</span>' +
+        '<br><br>' +
+        '<span class="guide-line">也可以像梳理一样说：</span>' +
+        '<span class="guide-example">"对方回复间隔变长，我感到不安，害怕失去"</span>' +
+        '<br><br>' +
+        '<span class="guide-line">或者两者相结合，说你想对我说的所有东西，我一直都在 →</span>' +
+        '</div>' +
+        '<textarea id="mainInput" placeholder="" rows="5" style="width:100%;min-height:140px;padding:12px 16px;border-radius:14px;border:1px solid var(--rule);background:rgba(0,0,0,0.2);color:var(--ink);font-size:0.88rem;line-height:1.6;resize:none;font-family:inherit;outline:none;transition:border-color 0.3s;"></textarea>' +
+        '</div>' +
+        '<button class="btn btn-primary" id="mainSendBtn" style="margin-top:8px;width:100%;">发送</button>';
+
+      var textarea = document.getElementById('mainInput');
+      var placeholder = document.getElementById('inputPlaceholder');
+
+      // 如果有预填文字
+      if (prefillText) {
+        textarea.value = prefillText;
+        placeholder.classList.add('hidden');
+      }
+
+      // 用户输入时隐藏引导浮层
+      textarea.addEventListener('input', function() {
+        if (this.value.length > 0) {
+          placeholder.classList.add('hidden');
+        } else {
+          placeholder.classList.remove('hidden');
+        }
+      });
+      textarea.addEventListener('focus', function() {
+        if (this.value.length > 0) {
+          placeholder.classList.add('hidden');
+        }
+      });
+
+      // 发送按钮
+      document.getElementById('mainSendBtn').onclick = function() {
+        var text = textarea.value.trim();
+        if (!text) return;
+        submitMainInput(text);
+      };
+
+      // 回车发送
+      textarea.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          var text = this.value.trim();
+          if (text) submitMainInput(text);
+        }
+      });
+
+      textarea.focus();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 状态管理与输入区渲染
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    function setState(newState) {
+      state = newState;
+      updateProgress();
+      renderBottomArea();
+    }
+
+    function updateProgress() {
+      var fill = document.getElementById('chatProgressFill');
+      var label = document.getElementById('chatProgressLabel');
+      var idx = STAGE_ORDER.indexOf(state);
+      if (idx >= 0) {
+        fill.style.width = ((idx + 1) / STAGE_ORDER.length * 100) + '%';
+        label.textContent = STAGE_NAMES[state] || '';
+      } else if (state === 'LETTER') {
+        fill.style.width = '100%';
+        label.textContent = '写信模式';
+      } else if (state === 'DONE') {
+        fill.style.width = '100%';
+        label.textContent = '完成';
+      } else {
+        fill.style.width = '0%';
+        label.textContent = '';
+      }
+    }
+
+    function renderBottomArea() {
+      var area = document.getElementById('inputArea');
+      area.innerHTML = '';
+      area.classList.remove('active');
+
+      switch (state) {
+        case 'INPUT':
+          renderInputArea('');
+          break;
+
+        case 'FOLLOWUP':
+        case 'DEEP':
+          // 追问表单已通过 addMessage('followup') 渲染
+          break;
+
+        case 'RESULT':
+          area.classList.add('active');
+          area.innerHTML =
+            '<div class="msg-actions" style="position:static;width:100%;max-width:none;padding:0;">' +
+            '<button class="btn btn-primary" id="resultLetter">写一封信</button>' +
+            '<button class="btn btn-secondary" id="resultExport">导出报告</button>' +
+            '<button class="btn-ghost" id="resultRestart">重新开始</button>' +
+            '</div>';
+          document.getElementById('resultLetter').onclick = function() { startLetterMode(); };
+          document.getElementById('resultExport').onclick = function() { exportReport(); };
+          document.getElementById('resultRestart').onclick = function() { restartExperience(); };
+          break;
+
+        case 'LETTER':
+          // 写信表单已通过 addMessage('letter-form') 渲染
+          break;
+
+        case 'DONE':
+          area.classList.add('active');
+          area.innerHTML =
+            '<div class="msg-actions" style="position:static;width:100%;max-width:none;padding:0;">' +
+            '<button class="btn btn-primary" id="doneExport">导出回信</button>' +
+            '<button class="btn-ghost" id="doneRestart">重新开始</button>' +
+            '</div>';
+          document.getElementById('doneExport').onclick = function() { exportLetterReply(); };
+          document.getElementById('doneRestart').onclick = function() { restartExperience(); };
+          break;
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 流程逻辑
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    // 提交主输入
+    function submitMainInput() {
+      var input = document.getElementById('mainInput');
+      var text = input.value.trim();
+      if (!text) return;
+
+      // 危机识别
+      var crisisKeywords = ['自杀', '自残', '自伤', '不想活', '去死', '杀', '伤害自己', '跳楼', '跳河', '割腕', '家暴', '被打', '被控制', '被跟踪'];
+      if (crisisKeywords.some(function(kw) { return text.includes(kw); })) {
+        addMessage('user', text);
+        addMessage('ai', 'Mirror 注意到你提到的内容涉及安全问题。你的安全是最重要的。\n\n如果你现在处于危险中，请立即联系：\n- 全国24小时心理危机热线：400-161-9995\n- 北京心理危机研究与干预中心：010-82951332\n- 紧急情况请拨打 110 或 120\n\n你不是一个人。请先确保安全，再考虑其他事情。');
+        return;
+      }
+
+      userData.q1 = text;
+      saveConversation(text);
+      saveDraft();
+      clearDraft(); // 输入已提交，清除旧草稿
+
+      addMessage('user', text);
+      setState('ANALYZING');
+
+      // 显示加载
+      var loadingMsg = addMessage('loading', 'Mirror 正在理解你', { sub: '分析情绪、识别需求、寻找误解', id: 'mainLoading' });
+
+      // 重置状态
+      aiMessages = [];
+      followupRound = 0;
+      followupQuestions = [];
+      followupAnswers = [];
+      userData.aiData = null;
+
+      // 调用 AI
+      var history = [{ role: 'user', content: text }];
+      lastActionFn = function() { submitMainInput(); }; // 重试用
+
+      // 让 AI 用5层分析（事实/情绪/需求/意义/行动）判断信息充足度
+      var analysisPrompt = '用户描述了一段关系困扰。请按5层分析（事实层/情绪层/需求层/意义层/行动层）评估信息充足度。\n\n用户输入："' + text + '"\n\n请判断：\n1. 5个层面分别是否充足\n2. 如果不充足，缺失了哪些层面，需要补充什么\n3. 如果充足，直接输出完整的分析结果\n\n如果信息不充足，输出：{"sufficient":false,"missing":["缺失的层面1","缺失的层面2"],"hints":["具体的追问提示1","具体的追问提示2","具体的追问提示3"]}\n\n如果信息充足，输出完整的单人模式 JSON（包含 fact/emotion/need/misread/misreadType/mirror/insight/before/inner/after/summary/analyst/status/suggest/questions 等所有字段），此时 sufficient 为 true。';
+
+      aiAnalyze(analysisPrompt, 'single', history).then(function(result) {
+        var ld = document.getElementById('mainLoading');
+        if (ld) ld.remove();
+
+        if (!result) {
+          // AI 调用失败，降级到本地模板
+          detectSc();
+          var localData = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
+          userData.aiData = localData;
+          showResults(localData);
+          return;
+        }
+
+        if (result.sufficient === false || !result.fact) {
+          // 信息不足 → AI 直接提问缺失的层面（不弹卡片）
+          var hints = result.hints || ['这种情况持续多久了？', '你最害怕的是什么？', '你最希望改变的是什么？'];
+          var missing = result.missing || [];
+          var missingText = missing.length > 0 ? '（缺少：' + missing.join('、') + '）' : '';
+          addMessage('ai', 'Mirror 还需要了解更多' + missingText, { typewriter: true });
+          setState('FOLLOWUP');
+          addMessage('followup', hints, { layer: '补充', round: 1 });
+        } else {
+          // 信息充足 → 弹出充足度卡片让用户选择
+          var missingHints = result.hints || [];
+          showSufficiencyCards(text, history, missingHints, result);
+        }
+      });
+    }
+
+    // 显示充足度判断卡片
+    function showSufficiencyCards(userText, history, missingHints, existingResult) {
+      var overlay = document.createElement('div');
+      overlay.className = 'sufficiency-overlay';
+      var hintsHtml = '';
+      if (missingHints.length > 0) {
+        hintsHtml = '<div class="sufficiency-card-hints">';
+        missingHints.forEach(function(h) {
+          hintsHtml += '<div class="sufficiency-card-hint">' + h + '</div>';
+        });
+        hintsHtml += '</div>';
+      }
+      overlay.innerHTML =
+        '<div class="sufficiency-cards">' +
+        '<div class="sufficiency-card" id="suffDirect">' +
+        '<div class="sufficiency-card-icon">✅</div>' +
+        '<div class="sufficiency-card-title">直接看报告</div>' +
+        '<div class="sufficiency-card-desc">你描述的事实、感受、所需要的、所做的以及意义都挺详细了</div>' +
+        '</div>' +
+        '<div class="sufficiency-card" id="suffSupplement">' +
+        '<div class="sufficiency-card-icon">✏️</div>' +
+        '<div class="sufficiency-card-title">补充细节</div>' +
+        '<div class="sufficiency-card-desc">还有什么关键的细节需要补充？</div>' +
+        hintsHtml +
+        '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      setTimeout(function() { overlay.classList.add('active'); }, 50);
+
+      document.getElementById('suffDirect').onclick = function() {
+        overlay.classList.remove('active');
+        setTimeout(function() { overlay.remove(); }, 400);
+        // 如果 AI 已经返回了完整分析结果，直接展示；否则重新调用
+        if (existingResult && existingResult.fact) {
+          userData.aiData = existingResult;
+          localStorage.setItem('mirror_aiData', JSON.stringify(existingResult));
+          clearDraft();
+          showResults(existingResult);
+        } else {
+          runFullAnalysis(userText, history);
+        }
+      };
+      document.getElementById('suffSupplement').onclick = function() {
+        overlay.classList.remove('active');
+        setTimeout(function() { overlay.remove(); }, 400);
+        // 显示追问输入
+        showDynamicFollowup(userText, history, missingHints);
+      };
+    }
+
+    // 动态追问
+    function showDynamicFollowup(userText, history, missingHints) {
+      var questions = missingHints.length > 0 ? missingHints : ['这种情况持续多久了？', '你最害怕的是什么？', '你最希望改变的是什么？'];
+      setState('FOLLOWUP');
+      addMessage('followup', questions, { layer: '补充', round: 1 });
+    }
+
+    // 执行完整分析
+    function runFullAnalysis(userText, history) {
+      setState('ANALYZING');
+      addMessage('loading', 'Mirror 正在分析', { sub: '理解情绪、识别需求、寻找误解', id: 'fullAnalysisLoading' });
+
+      aiAnalyze('请根据用户的描述，进行完整的单人模式分析。输出完整的 JSON，包含 fact、emotion、need、misread、misreadType、insight、before、inner、after、summary、analyst、status、suggest 等所有字段。', 'single', history).then(function(result) {
+        var ld = document.getElementById('fullAnalysisLoading');
+        if (ld) ld.remove();
+
+        if (result && result.fact) {
+          userData.aiData = result;
+          localStorage.setItem('mirror_aiData', JSON.stringify(result));
+          clearDraft();
+          showResults(result);
+        } else {
+          // 降级到本地模板
+          detectSc();
+          var localData = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
+          userData.aiData = localData;
+          addMessage('ai', '【网络异常，已使用本地分析】', { typewriter: false });
+          showResults(localData);
+        }
+      });
+    }
+
+    // 提交追问回答
+    function submitFollowup() {
+      var answers = [];
+      for (var i = 0; i < followupQuestions.length; i++) {
+        var el = document.getElementById('fq_' + i);
+        answers.push(el ? el.value.trim() : '');
+      }
+      followupAnswers = answers;
+      saveDraft();
+
+      // 显示用户的追问回答
+      var answerText = answers.filter(function(a) { return a; }).map(function(a, i) {
+        return (i + 1) + '. ' + a;
+      }).join('\n');
+      if (answerText) addMessage('user', answerText);
+
+      setState('ANALYZING');
+      var loadingMsg = addMessage('loading', 'Mirror 正在深入理解', { sub: '综合分析你的回答', id: 'followupLoading' });
+
+      // 构建历史
+      var history = [];
+      if (userData.q1) history.push({ role: 'user', content: userData.q1 });
+      for (var r = 0; r < followupAnswers.length; r++) {
+        history.push({ role: 'assistant', content: followupQuestions[r] });
+        history.push({ role: 'user', content: followupAnswers[r] || '（未回答）' });
+      }
+      aiMessages = history.slice();
+
+      followupRound++;
+      lastActionFn = function() { submitFollowup(); };
+
+      // 判断是否需要继续追问
+      if (followupRound >= 2) {
+        // 已追问2轮，进行最终分析
+        aiAnalyze('基于以上全部对话，请进行完整的单人模式分析并输出 JSON。', 'single', history).then(function(result) {
+          var ld = document.getElementById('followupLoading');
+          if (ld) ld.remove();
+          if (result) {
+            userData.aiData = result;
+            localStorage.setItem('mirror_aiData', JSON.stringify(result));
+            clearDraft();
+            showResults(result);
+          } else {
+            detectSc();
+            var d = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
+            userData.aiData = d;
+            showResults(d);
+          }
+        });
+      } else {
+        // 继续追问
+        var layerOrder = ['fact', 'emotion', 'need', 'meaning', 'action'];
+        var nextLayer = followupRound < layerOrder.length ? layerOrder[followupRound] : 'action';
+        aiAnalyze('基于以上对话，请继续从' + ({'fact':'事实层','emotion':'情绪层','need':'需求层','meaning':'意义层','action':'行动层'}[nextLayer] || '行动层') + '提出 3 个新的追问。不要重复之前的问题。输出 JSON：{"questions":["问题1","问题2","问题3"],"questionLayer":"' + nextLayer + '"}', 'single', history).then(function(result) {
+          var ld = document.getElementById('followupLoading');
+          if (ld) ld.remove();
+          if (result && result.questions && result.questions.length > 0) {
+            followupQuestions = result.questions;
+            setState('DEEP');
+            addMessage('followup', result.questions, { layer: result.questionLayer || nextLayer, round: followupRound + 1 });
+          } else {
+            // 无法继续追问，直接分析
+            aiAnalyze('基于以上全部对话，请进行完整的单人模式分析并输出 JSON。', 'single', history).then(function(finalResult) {
+              if (finalResult) {
+                userData.aiData = finalResult;
+                localStorage.setItem('mirror_aiData', JSON.stringify(finalResult));
+                clearDraft();
+                showResults(finalResult);
+              } else {
+                detectSc();
+                var d = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
+                userData.aiData = d;
+                showResults(d);
+              }
+            });
+          }
+        });
+      }
+    }
+
+    // 跳过追问
+    function skipFollowup() {
+      setState('ANALYZING');
+      var loadingMsg = addMessage('loading', 'Mirror 正在分析', { sub: '基于已有信息生成分析', id: 'skipLoading' });
+
+      var history = [];
+      if (userData.q1) history.push({ role: 'user', content: userData.q1 });
+
+      lastActionFn = function() { skipFollowup(); };
+
+      aiAnalyze(userData.q1, 'single', []).then(function(result) {
+        var ld = document.getElementById('skipLoading');
+        if (ld) ld.remove();
+        if (result) {
+          userData.aiData = result;
+          localStorage.setItem('mirror_aiData', JSON.stringify(result));
+          clearDraft();
+          showResults(result);
+        } else {
+          detectSc();
+          var d = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
+          userData.aiData = d;
+          showResults(d);
+        }
+      });
+    }
+
+    // 显示完整结果
+    function showResults(data) {
+      setState('RESULT');
+
+      // 隐藏输入区
+      document.getElementById('inputArea').classList.remove('active');
+      document.getElementById('inputArea').innerHTML = '';
+
+      // 定义4步内容
+      var steps = [
+        {
+          counter: 'Step 1/4',
+          title: 'Mirror 分析',
+          body: function() {
+            var html = '<div class="card-row"><div class="card-row-label">关系状态</div><div class="card-row-value">' + (data.status || '存在误解') + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">事实</div><div class="card-row-value">' + (data.fact || '—') + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">情绪</div><div class="card-row-value">' + (data.emotion || '—') + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">需求</div><div class="card-row-value">' + (data.need || '—') + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">误解</div><div class="card-row-value">' + (data.misread || '—') + (data.misreadType ? '（' + data.misreadType + '）' : '') + '</div></div>';
+            return html;
+          }
+        },
+        {
+          counter: 'Step 2/4',
+          title: 'Mirror Layer · 表达翻译',
+          body: function() {
+            return '<div class="step-mirror-item attack"><div class="step-mirror-label attack">你说的是</div><div class="step-mirror-text">"' + (data.before || '—') + '"</div></div>' +
+              '<div class="step-arrow">↓</div>' +
+              '<div class="step-mirror-item inner"><div class="step-mirror-label inner">你真正想说的是</div><div class="step-mirror-text">"' + (data.innerThought || data.inner || '—') + '"</div></div>' +
+              '<div class="step-arrow">↓</div>' +
+              '<div class="step-mirror-item mirror"><div class="step-mirror-label mirror">Mirror 帮你翻译成</div><div class="step-mirror-text">"' + (data.after || '—') + '"</div></div>';
+          }
+        },
+        {
+          counter: 'Step 3/4',
+          title: '洞察',
+          body: function() {
+            return '<p style="font-size:0.95rem;color:var(--ink);line-height:1.9;margin:0;">' + (data.insight || '—') + '</p>';
+          }
+        },
+        {
+          counter: 'Step 4/4',
+          title: '建议',
+          body: function() {
+            return '<p style="font-size:0.95rem;color:var(--ink);line-height:1.9;margin:0;">' + (data.suggest || '—') + '</p>';
+          }
+        }
+      ];
+
+      // 创建全屏遮罩
+      var overlay = document.createElement('div');
+      overlay.className = 'step-overlay';
+      document.body.appendChild(overlay);
+
+      var currentStep = 0;
+
+      function renderStep(idx) {
+        if (idx >= steps.length) {
+          // 所有步骤完成，显示分支选择
+          overlay.innerHTML = '';
+          overlay.classList.remove('active');
+          showResultActions(data);
+          return;
+        }
+        currentStep = idx;
+        var step = steps[idx];
+        overlay.innerHTML =
+          '<div class="step-card">' +
+          '<div class="step-header"><span class="step-counter">' + step.counter + '</span><button class="step-close" id="stepClose">&times;</button></div>' +
+          '<div class="step-title">' + step.title + '</div>' +
+          '<div class="step-body">' + step.body() + '</div>' +
+          '<div class="step-footer"><button class="step-next" id="stepNext">继续 →</button></div>' +
+          '</div>';
+        overlay.classList.add('active');
+        document.getElementById('stepClose').onclick = function() { overlay.classList.remove('active'); showResultActions(data); };
+        document.getElementById('stepNext').onclick = function() { renderStep(idx + 1); };
+      }
+
+      // 显示第一步
+      renderStep(0);
+      saveConversation(userData.q1, data.summary || data.status);
+    }
+
+    // 结果后的分支选择
+    function showResultActions(data) {
+      setState('RESULT');
+      addMessage('actions', [
+        { text: '✉️ 写一封信', className: 'btn btn-primary', onclick: function() { startLetterMode(); } },
+        { text: '📋 导出报告', className: 'btn btn-secondary', onclick: function() { exportReport(); } },
+        { text: '🔄 重新开始', className: 'btn-ghost', onclick: function() { restartExperience(); } }
+      ]);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 写信模式
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    function startLetterMode() {
+      setState('LETTER');
+      addMessage('system', '— 写信模式 —');
+      addMessage('ai', '写一封信给你在乎的人。不需要完美，真诚最重要。Mirror 会站在对方的角度，承接住你的情绪，并给你最底层的救赎。');
+      addMessage('letter-form');
+    }
+
+    function submitLetter() {
+      var to = document.getElementById('letterTo').value.trim() || '亲爱的';
+      var content = document.getElementById('letterContent').value.trim();
+      if (!content) return;
+
+      letterData.original = content;
+      addMessage('user', '致 ' + to + '：\n' + content);
+
+      setState('ANALYZING');
+      addMessage('loading', 'Mirror 正在读信', { sub: '理解情绪、感受爱意、准备回复', id: 'letterLoading' });
+
+      var prompt = '用户写了一封信，倾诉了内心的情感。你是 Mirror，一个关系理解与表达操作系统。\n\n请完成以下任务：\n' +
+        '1. 承接住用户的情绪（90%）：看见TA的感受，不要否定、不要评判、不要急于给建议。让用户感到"被理解了"。\n' +
+        '2. 温柔的引导（10%）：不是说教，而是像一束光一样，轻轻邀请用户看到另一种可能。\n' +
+        '3. 指出用户最底层的情感需求，给TA救赎感。\n' +
+        '4. 不要扮演收信人回信，你是 Mirror 在承接用户的情绪。\n' +
+        '5. 语气要温暖、真诚，像真正在乎TA的人。\n\n' +
+        '输出格式：{"empathy":"对用户情绪的承接与看见","gentleGuide":"10%的温柔引导","deepRescue":"最底层的情感救赎"}';
+      var history = [{ role: 'user', content: '以下是我写的信：\n\n' + content }];
+
+      lastActionFn = function() { submitLetter(); };
+
+      aiAnalyze(prompt, 'letter', history).then(function(result) {
+        var ld = document.getElementById('letterLoading');
+        if (ld) ld.remove();
+
+        if (result) {
+          letterData.empathy = result.empathy || '我看到了你的感受。你的情绪是真实的，你的需求是合理的。';
+          letterData.guide = result.gentleGuide || '也许可以试着对自己温柔一点。';
+          letterData.redemption = result.deepRescue || '你值得被理解，被温柔以待。';
+        } else {
+          letterData.empathy = '我看到了你的感受。虽然 Mirror 暂时无法生成完整的回复，但我想让你知道：你的感受是真实的，你的需求是合理的。你值得被理解，被温柔以待。';
+          letterData.guide = '也许可以试着对自己温柔一点。';
+          letterData.redemption = '你值得被理解，被温柔以待。';
+        }
+
+        // 显示承接情绪结果（全屏卡片）
+        var replyOverlay = document.createElement('div');
+        replyOverlay.className = 'step-overlay active';
+        replyOverlay.innerHTML =
+          '<div class="step-card">' +
+          '<div class="step-header"><span class="step-counter">Mirror 读完了你的信</span><button class="step-close" id="letterReplyClose">&times;</button></div>' +
+          '<div class="step-title">我看到了你的感受</div>' +
+          '<div class="step-body">' +
+          '<p style="font-size:0.95rem;color:var(--ink);line-height:1.9;margin-bottom:20px;">' + letterData.empathy + '</p>' +
+          '<div style="border-top:1px solid var(--rule);padding-top:20px;margin-top:8px;">' +
+          '<p style="font-size:0.78rem;color:var(--faint);margin-bottom:8px;">也许你可以试着</p>' +
+          '<p style="font-size:0.92rem;color:var(--blue);line-height:1.7;">' + letterData.guide + '</p>' +
+          '</div>' +
+          '<div style="border-top:1px solid var(--rule);padding-top:20px;margin-top:20px;">' +
+          '<p style="font-size:0.78rem;color:var(--faint);margin-bottom:8px;">最底层的情感救赎</p>' +
+          '<p style="font-size:0.9rem;color:var(--cyan);line-height:1.7;font-style:italic;">' + letterData.redemption + '</p>' +
+          '</div>' +
+          '</div>' +
+          '<div class="step-footer">' +
+          '<button class="btn btn-primary btn-sm" id="letterCopy" style="margin-right:8px;">复制内容</button>' +
+          '<button class="btn btn-secondary btn-sm" id="letterExport" style="margin-right:8px;">导出</button>' +
+          '<button class="btn-ghost btn-sm" id="letterBack">返回</button>' +
+          '</div>' +
+          '</div>';
+        document.body.appendChild(replyOverlay);
+
+        document.getElementById('letterReplyClose').onclick = function() { replyOverlay.remove(); setState('DONE'); };
+        document.getElementById('letterCopy').onclick = function() {
+          var text = letterData.empathy + '\n\n' + letterData.guide + '\n\n' + letterData.redemption;
+          navigator.clipboard.writeText(text).then(function() { addMessage('system', '已复制到剪贴板'); });
+        };
+        document.getElementById('letterExport').onclick = function() { exportReport(); };
+        document.getElementById('letterBack').onclick = function() { replyOverlay.remove(); setState('DONE'); };
+      });
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 导出功能
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    function exportReport() {
+      var thread = document.getElementById('chatThread');
+      html2canvas(thread, { backgroundColor: '#08090B', scale: 2 }).then(function(canvas) {
+        var link = document.createElement('a');
+        link.download = 'Mirror-Report-' + new Date().toISOString().slice(0, 10) + '.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      }).catch(function() { alert('导出失败，请重试'); });
+    }
+
+    function exportLetterReply() {
+      var text = letterData.reply;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function() { addMessage('system', '回信已复制到剪贴板'); });
+      } else {
+        alert('已复制到剪贴板');
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 重新开始
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    function restartExperience() {
+      showConfirm('重新体验', '确定要重新开始吗？当前的所有内容将会丢失。', function() {
+        document.getElementById('chatView').classList.remove('active');
+        // 返回模式选择页
+        var modeView = document.getElementById('modeSelectView');
+        modeView.style.display = 'flex';
+        modeView.classList.add('active');
+        // 重置状态
+        state = 'IDLE';
+        userData = { q1: '', scenario: '', aiData: null, mode: 'single', entryType: 'chat' };
+        aiMessages = [];
+        followupRound = 0;
+        followupQuestions = [];
+        followupAnswers = [];
+        letterData = { original: '', reply: '', redemption: '' };
+        document.getElementById('chatThread').innerHTML = '';
+        document.getElementById('chatProgressFill').style.width = '0%';
+        document.getElementById('chatProgressLabel').textContent = '';
+        document.getElementById('inputArea').classList.remove('active');
+        document.getElementById('inputArea').innerHTML = '';
+        clearDraft();
+      });
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 封面逻辑
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    // 碎片动画
+    (function() {
+      var c = document.getElementById('shardContainer');
+      if (!c) return;
+      for (var r = 0; r < 6; r++) for (var col = 0; col < 8; col++) {
+        var s = document.createElement('div'); s.className = 'shard';
+        s.style.left = (col * 12.5) + '%'; s.style.top = (r * 16.667) + '%';
+        s.style.width = '12.65%'; s.style.height = '16.817%';
+        s.style.backgroundSize = '800% 600%';
+        s.style.backgroundPosition = (-col * 100) + '% ' + (-r * 100) + '%';
+        var a = Math.atan2(r - 2.5, col - 3.5) + (Math.random() - 0.5) * 2;
+        var d = 180 + Math.random() * 400;
+        s.style.setProperty('--tx', Math.cos(a) * d + 'px');
+        s.style.setProperty('--ty', Math.sin(a) * d + 'px');
+        s.style.setProperty('--tr', (Math.random() - 0.5) * 120 + 'deg');
+        s.style.setProperty('--ts', 0.4 + Math.random() * 0.4);
+        var dc = Math.sqrt(Math.pow((col - 3.5) / 3.5, 2) + Math.pow((r - 2.5) / 2.5, 2));
+        s.style.setProperty('--delay', (0.15 + dc * 0.35 + Math.random() * 0.25) + 's');
+        s.style.setProperty('--dur', (1.2 + Math.random() * 0.8) + 's');
+        c.appendChild(s);
+      }
+      setTimeout(function() { c.classList.add('heal'); }, 2800);
+    })();
+
+    // 视差效果
+    var mx = 0, my = 0, cx = 0, cy = 0;
+    var cover = document.getElementById('coverView');
+    cover.addEventListener('mousemove', function(e) {
+      if (!parallaxActive) return;
+      var r = cover.getBoundingClientRect();
+      mx = (e.clientX - r.left) / r.width - 0.5;
+      my = (e.clientY - r.top) / r.height - 0.5;
+    });
+    !function anim() {
+      if (!parallaxActive) return;
+      cx += (mx - cx) * 0.05; cy += (my - cy) * 0.05;
+      var pLayer = document.getElementById('parallaxLayer');
+      if (pLayer) pLayer.style.transform = 'translate(' + (cx * -20) + 'px,' + (cy * -20) + 'px)';
+      requestAnimationFrame(anim);
+    }();
+
+    // 开始体验 → 进入模式选择
+    document.getElementById('startBtn').onclick = function() {
+      var btn = this;
+      btn.style.transform = 'scale(0.95)';
+      btn.textContent = '即将开启...';
+      setTimeout(function() {
+        parallaxActive = false;
+        cover.classList.add('fade-out');
+        setTimeout(function() {
+          cover.classList.add('hidden');
+          document.getElementById('modeSelectView').style.display = 'flex';
+          document.getElementById('modeSelectView').classList.add('active');
+        }, 800);
+      }, 600);
+    };
+
+    // 模式选择：返回封面
+    document.getElementById('modeBackBtn').onclick = function() {
+      document.getElementById('modeSelectView').classList.remove('active');
+      document.getElementById('modeSelectView').style.display = 'none';
+      cover.classList.remove('hidden', 'fade-out');
+      parallaxActive = true;
+    };
+
+    // 模式选择：子按钮点击
+    document.querySelectorAll('.mode-sub-btn').forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.stopPropagation();
+        var mode = this.getAttribute('data-mode'); // 'single' | 'couple'
+        var type = this.getAttribute('data-type'); // 'chat' | 'letter'
+        userData.mode = mode;
+        userData.entryType = type;
+        document.getElementById('modeSelectView').classList.remove('active');
+        document.getElementById('modeSelectView').style.display = 'none';
+        document.getElementById('chatView').classList.add('active');
+        initChat(mode, type);
+      };
+    });
+
+    // 初始化对话
+    function initChat(mode, type) {
+      mode = mode || userData.mode || 'single';
+      type = type || userData.entryType || 'chat';
+      userData.mode = mode;
+      userData.entryType = type;
+
+      // 更新标题
+      var titleEl = document.getElementById('chatTitle');
+      var subtitleEl = document.getElementById('chatSubtitle');
+      if (mode === 'couple') {
+        titleEl.textContent = 'Mirror · 双人模式';
+        subtitleEl.textContent = '两人各自输入，交换理解';
+      } else {
+        titleEl.textContent = 'Mirror';
+        subtitleEl.textContent = '关系理解与表达操作系统';
+      }
+
+      if (type === 'letter') {
+        // 直接进入写信模式
+        setState('LETTER');
+        addMessage('system', '— 写信模式 —');
+        addMessage('ai', '写一封信给你在乎的人。不需要完美，真诚最重要。Mirror 会站在对方的角度，承接住你的情绪，并给你最底层的救赎。');
+        addMessage('letter-form');
+      } else {
+        // 对话分析模式
+        setState('INPUT');
+        if (mode === 'couple') {
+          addMessage('ai', '欢迎来到 Mirror 双人模式。\n\n请两位轮流输入各自的想法和感受。Mirror 会交叉翻译，让你们看见彼此真正想表达的东西。\n\n先请 A 方输入：');
+        } else {
+          addMessage('ai', '你好，我是 Mirror。把你想说的都写下来，不用一次说完，我会帮你看见自己真正想表达什么。');
+          // 显示快捷标签
+          // 显示引导语和两级标签
+          addMessage('tags', null); // 触发 tags 类型渲染
+        }
+      }
+    }
+
+    function fillInput(text) {
+      var input = document.getElementById('mainInput');
+      if (input) {
+        input.value = text;
+        document.getElementById('mainCharCount').textContent = text.length + ' 字';
+        document.getElementById('mainSend').disabled = false;
+        input.focus();
+        scrollThread();
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 演示弹窗
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    var demoSteps = [
+      // ── 双人模式演示（优先） ──
+      { type: 'ai', text: '【双人模式演示】\nA 和 B 是一对情侣，最近经常吵架。' },
+      { type: 'user', text: '【A 方】他从来不主动找我，每次都是我先低头' },
+      { type: 'ai', text: 'Mirror 收到 A 的输入。现在请 B 方输入：' },
+      { type: 'user', text: '【B 方】她总是要求我主动，但我不知道该说什么' },
+      { type: 'ai', text: '【Mirror Layer - A 的表达翻译】\nA 说的是："你从来不主动找我"\nA 真正想说的是："我需要被在乎的感觉，主动联系让我觉得你心里有我。"' },
+      { type: 'ai', text: '【Mirror Layer - B 的表达翻译】\nB 说的是："我不知道该说什么"\nB 真正想说的是："我很笨拙，但我不是不在乎，我只是不知道怎么表达。"' },
+      { type: 'ai', text: '【交叉洞察】\nA 需要的是"被主动在乎的确认"，B 需要的是"被接纳笨拙的安全感"。两人都在用自己的方式爱对方，只是频道不同。' },
+      { type: 'ai', text: '【建议】\nA 可以说："你主动找我的时候，我会很开心。"\nB 可以说："我不太会主动，但我每天都在想你。"' },
+      // ── 单人模式演示 ──
+      { type: 'ai', text: '— 以下是单人模式演示 —' },
+      { type: 'user', text: '他回消息越来越慢，我一问他就说我想太多' },
+      { type: 'ai', text: 'Mirror 收到了。为了更准确地理解你，想先了解几个问题：\n1. 这种情况持续多久了？\n2. 他以前也会这样吗？\n3. 你最害怕的是什么？' },
+      { type: 'user', text: '大概两个月了。以前他都会主动找我。我最怕他不爱我了。' },
+      { type: 'ai', text: '【Mirror Layer - 表达翻译】\n你说的是："你怎么回这么慢？是不是不在乎我了？"\n你真正想说的是："我最近感到不安，因为联系变少了，我需要确认你还爱我。"' },
+      { type: 'ai', text: '【洞察】\n当对方回复变慢时，大脑会自动把"忙碌"解释为"不在乎"。这不是你的错，而是一种本能的保护反应。' },
+      { type: 'ai', text: '【建议】\n试着说："我最近感到有些不安，因为联系变少了。不是在怪你，只是想确认我们的关系还好吗？"' }
+    ];
+    var demoIndex = 0;
+    var demoTimer = null;
+
+    document.getElementById('demoBtn').onclick = function() {
+      document.getElementById('demoModal').classList.add('open');
+      document.getElementById('demoChat').innerHTML = '';
+      document.getElementById('demoProgressBar').style.width = '0%';
+      demoIndex = 0;
+      demoNextStep();
+    };
+    document.getElementById('demoClose').onclick = closeDemo;
+    document.getElementById('demoOverlay').onclick = closeDemo;
+    document.getElementById('demoStartBtn').onclick = function() {
+      closeDemo();
+      document.getElementById('startBtn').click();
+    };
+
+    function closeDemo() {
+      document.getElementById('demoModal').classList.remove('open');
+      if (demoTimer) clearTimeout(demoTimer);
+    }
+
+    function demoNextStep() {
+      if (demoIndex >= demoSteps.length) {
+        document.getElementById('demoProgressBar').style.width = '100%';
+        return;
+      }
+      var step = demoSteps[demoIndex];
+      var msg = document.createElement('div');
+      msg.className = 'demo-msg ' + step.type;
+      msg.textContent = step.text;
+      document.getElementById('demoChat').appendChild(msg);
+      document.getElementById('demoChat').scrollTop = document.getElementById('demoChat').scrollHeight;
+      document.getElementById('demoProgressBar').style.width = ((demoIndex + 1) / demoSteps.length * 100) + '%';
+      demoIndex++;
+      demoTimer = setTimeout(demoNextStep, step.type === 'user' ? 1500 : 2500);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 设置面板
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    document.getElementById('chatSettingsBtn').onclick = function() {
+      document.getElementById('settingsPanel').classList.add('open');
+      document.getElementById('settingsOverlay').classList.add('open');
+    };
+    document.getElementById('settingsClose').onclick = closeSettings;
+    document.getElementById('settingsOverlay').onclick = closeSettings;
+
+    function closeSettings() {
+      document.getElementById('settingsPanel').classList.remove('open');
+      document.getElementById('settingsOverlay').classList.remove('open');
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 确认弹窗
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    document.getElementById('confirmYes').onclick = function() {
+      document.getElementById('confirmOverlay').classList.remove('show');
+      if (confirmCallback) confirmCallback();
+      confirmCallback = null;
+    };
+    document.getElementById('confirmNo').onclick = function() {
+      document.getElementById('confirmOverlay').classList.remove('show');
+      confirmCallback = null;
+    };
+    document.getElementById('confirmClose').onclick = function() {
+      document.getElementById('confirmOverlay').classList.remove('show');
+      confirmCallback = null;
+    };
+    // 点击遮罩层也可关闭
+    document.getElementById('confirmOverlay').onclick = function(e) {
+      if (e.target === this) {
+        this.classList.remove('show');
+        confirmCallback = null;
+      }
+    };
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 返回按钮
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    document.getElementById('chatBackBtn').onclick = function() {
+      // 直接返回模式选择页，不弹确认框
+      document.getElementById('chatView').classList.remove('active');
+      var modeView = document.getElementById('modeSelectView');
+      modeView.style.display = 'flex';
+      modeView.classList.add('active');
+      // 清空对话
+      document.getElementById('chatThread').innerHTML = '';
+      state = 'IDLE';
+      userData = { q1: '', scenario: '', aiData: null, mode: 'single', entryType: 'chat' };
+      aiMessages = [];
+      followupRound = 0;
+      followupQuestions = [];
+      followupAnswers = [];
+      letterData = { original: '', reply: '', redemption: '' };
+      document.getElementById('chatProgressFill').style.width = '0%';
+      document.getElementById('chatProgressLabel').textContent = '';
+      document.getElementById('inputArea').classList.remove('active');
+      document.getElementById('inputArea').innerHTML = '';
+      clearDraft();
+    };
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 初始化：检查草稿
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    (function() {
+      var draft = checkDraft();
+      if (draft && draft.userText) {
+        var banner = document.createElement('div');
+        banner.className = 'draft-banner';
+        banner.innerHTML = '&#128203; 你有未完成的对话草稿（' + new Date(draft.timestamp).toLocaleTimeString() + '）' +
+          '<button class="btn btn-primary btn-sm" id="draftRestore">恢复</button>' +
+          '<button class="btn-ghost btn-sm" id="draftDiscard">放弃</button>';
+        document.body.appendChild(banner);
+        document.getElementById('draftRestore').onclick = function() {
+          banner.style.display = 'none';
+          userData.q1 = draft.userText;
+          // 直接进入对话
+          document.getElementById('startBtn').click();
+        };
+        document.getElementById('draftDiscard').onclick = function() {
+          clearDraft();
+          banner.style.display = 'none';
+        };
+      }
+    })();
+  </script>
+</body>
+</html>
