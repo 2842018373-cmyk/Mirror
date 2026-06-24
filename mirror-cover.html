@@ -517,7 +517,7 @@
         <div class="mode-card-title">加入房间</div>
         <div class="mode-card-desc">输入对方给你的房间码</div>
         <div style="margin-top:16px; display:flex; gap:8px;">
-          <input type="text" id="joinRoomInput" placeholder="输入4位房间码" maxlength="4" style="flex:1; padding:10px 14px; border-radius:12px; border:1px solid var(--rule); background:rgba(0,0,0,0.2); color:var(--ink); font-size:0.9rem; text-align:center; text-transform:uppercase;">
+          <input type="text" id="joinRoomInput" placeholder="输入6位房间码" maxlength="6" style="flex:1; padding:10px 14px; border-radius:12px; border:1px solid var(--rule); background:rgba(0,0,0,0.2); color:var(--ink); font-size:0.9rem; text-align:center; text-transform:uppercase;">
           <button class="btn btn-primary" id="joinRoomBtn">加入</button>
         </div>
       </div>
@@ -945,10 +945,7 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
     // 工具函数
     // ════════════════════════════════════════════════════════════════════════════════════════════
 
-    // 获取 API Key
-    function getApiKey() {
-      return localStorage.getItem('mirror_api_key') || 'sk-V8TF8BvvoFns5XycMnFgc0BSHXeEOoSU0EKUbJbYBOjI8X1i';
-    }
+    // API Key 已迁移到 Worker 后端，前端不再存储密钥
 
     // 场景检测
     function detectSc() {
@@ -977,46 +974,28 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
       return SCENARIOS[userData.scenario] || SCENARIOS['其他'];
     }
 
-    // AI 分析
+    // AI 分析（通过 Worker 代理，API Key 不暴露在前端）
     async function aiAnalyze(userText, mode, history) {
-      // 如果 Workers API 配置有效，优先调用 Workers 代理
-      if (typeof WORKER_API_BASE !== 'undefined' && WORKER_API_BASE && WORKER_API_BASE.indexOf('your-account') === -1) {
-        try {
-          var response = await fetch(WORKER_API_BASE + '/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userText: userText, mode: mode, history: history || [] })
-          });
-          if (!response.ok) throw new Error('Workers API 错误: ' + response.status);
-          var data = await response.json();
-          if (data.result) return data.result;
-          throw new Error('Workers 返回格式错误');
-        } catch (err) {
-          console.warn('Workers 调用失败，降级到 Agnes AI:', err);
-          // 降级到直接调用 Agnes AI
-        }
+      if (typeof WORKER_API_BASE === 'undefined' || !WORKER_API_BASE) {
+        console.warn('Worker API 未配置，使用本地模板');
+        return null;
       }
-
-      var apiKey = getApiKey();
-      if (!apiKey) { console.warn('API Key 未设置，使用本地模板'); return null; }
       try {
         var messages = [{ role: 'system', content: MIRROR_SYSTEM_PROMPT }];
         if (history && history.length > 0) messages = messages.concat(history);
         var modeHint = mode === 'letter' ? '\n\n请以写信模式（mode:"letter"）输出 JSON。' : '\n\n请以单人模式（mode:"single"）输出 JSON。';
         messages.push({ role: 'user', content: userText + modeHint });
-        var response = await fetch(MIRROR_API_URL, {
+
+        var response = await fetch(WORKER_API_BASE + '/api/analyze', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-          body: JSON.stringify({ model: MIRROR_MODEL, messages: messages, temperature: 0.7, max_tokens: 4000 })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: userText + modeHint, mode: mode || 'single', history: messages })
         });
         if (!response.ok) throw new Error('API 错误: ' + response.status);
         var data = await response.json();
-        var content = data.choices[0].message.content;
-        try { return JSON.parse(content); } catch (e) {
-          var m = content.match(/\{[\s\S]*\}/);
-          if (m) return JSON.parse(m[0]);
-          throw new Error('JSON 解析失败');
-        }
+        if (data.error) throw new Error(data.error);
+        if (data.raw) { try { return JSON.parse(data.raw); } catch(e) {} }
+        return data;
       } catch (err) {
         console.error('AI 分析失败:', err);
         showRetryBar();
@@ -2129,8 +2108,8 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
       // 加入房间
       document.getElementById('joinRoomBtn').onclick = function() {
         var code = document.getElementById('joinRoomInput').value.trim().toUpperCase();
-        if (code.length !== 4) {
-          alert('请输入4位房间码');
+        if (code.length !== 6) {
+          alert('请输入6位房间码');
           return;
         }
         joinRoom(code);
