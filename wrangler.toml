@@ -1,0 +1,9 @@
+name = "mirror-api"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mirror-db"
+database_id = "bb5c21b3-615f-4d8b-821c-f36ddfa4bf9d"
+

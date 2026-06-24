@@ -493,6 +493,112 @@
     </div>
   </div>
 
+  <!-- 双人模式：创建/加入房间 -->
+  <div class="chat-view" id="coupleRoomView" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <button class="chat-back-btn" id="coupleRoomBackBtn">&#8592; 返回</button>
+        <div>
+          <div class="chat-title">双人模式</div>
+          <div class="chat-subtitle">两个人，一起看见</div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-thread" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; gap:24px; background:#08090B;">
+      <!-- 创建房间 -->
+      <div class="mode-card" id="createRoomCard" style="cursor:pointer; width:100%; max-width:480px;">
+        <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#127968;</div>
+        <div class="mode-card-title">创建房间</div>
+        <div class="mode-card-desc">创建一个新房间，邀请对方加入</div>
+      </div>
+      <!-- 加入房间 -->
+      <div class="mode-card" style="width:100%; max-width:480px;">
+        <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#128273;</div>
+        <div class="mode-card-title">加入房间</div>
+        <div class="mode-card-desc">输入对方给你的房间码</div>
+        <div style="margin-top:16px; display:flex; gap:8px;">
+          <input type="text" id="joinRoomInput" placeholder="输入4位房间码" maxlength="4" style="flex:1; padding:10px 14px; border-radius:12px; border:1px solid var(--rule); background:rgba(0,0,0,0.2); color:var(--ink); font-size:0.9rem; text-align:center; text-transform:uppercase;">
+          <button class="btn btn-primary" id="joinRoomBtn">加入</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 双人模式：等待页面 -->
+  <div class="chat-view" id="coupleWaitView" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <button class="chat-back-btn" id="coupleWaitBackBtn">&#8592; 返回</button>
+        <div>
+          <div class="chat-title">等待对方</div>
+          <div class="chat-subtitle">房间码已生成</div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-thread" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; gap:24px; background:#08090B;">
+      <div class="mode-card" style="width:100%; max-width:480px; text-align:center;">
+        <div style="font-size:0.85rem; color:var(--faint); margin-bottom:12px;">你的房间码</div>
+        <div id="roomCodeDisplay" style="font-size:3rem; font-weight:700; letter-spacing:8px; color:var(--blue); margin-bottom:16px;">----</div>
+        <div style="font-size:0.82rem; color:var(--muted); margin-bottom:20px;">把房间码发给对方，对方输入后即可开始</div>
+        <button class="btn btn-secondary" id="copyRoomCodeBtn" style="margin-bottom:12px;">复制房间码</button>
+        <div id="waitStatus" style="font-size:0.78rem; color:var(--faint);">等待对方加入...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 双人模式：输入页面 -->
+  <div class="chat-view" id="coupleInputView" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-title" id="coupleInputTitle">输入你的描述</div>
+        <div class="chat-subtitle">只有 Mirror 能看到你的原文</div>
+      </div>
+    </div>
+    <div class="chat-thread" style="padding:20px 16px; background:#08090B;">
+      <div class="msg msg-ai" style="margin-bottom:16px;">
+        <div>请描述你在这段关系中的困扰、感受或想表达的内容。你的原文只有 Mirror 能看到，对方只能看到分析后的洞察。</div>
+      </div>
+      <textarea id="coupleInput" rows="6" style="width:100%; padding:12px 16px; border-radius:14px; border:1px solid var(--rule); background:rgba(0,0,0,0.2); color:var(--ink); font-size:0.9rem; line-height:1.6; resize:none; font-family:inherit; outline:none; margin-bottom:12px;"></textarea>
+      <button class="btn btn-primary" id="coupleSubmitBtn" style="width:100%;">提交</button>
+    </div>
+  </div>
+
+  <!-- 双人模式：查看洞察页面 -->
+  <div class="chat-view" id="coupleInsightView" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-title">对方的洞察</div>
+        <div class="chat-subtitle">这是 Mirror 从对方描述中提取的</div>
+      </div>
+    </div>
+    <div class="chat-thread" style="padding:20px 16px; background:#08090B;">
+      <div id="coupleInsightContent"></div>
+      <div style="margin-top:24px; padding:16px; border-radius:16px; background:rgba(126,167,255,0.06); border:1px solid rgba(126,167,255,0.12);">
+        <div style="font-size:0.85rem; color:var(--muted); margin-bottom:12px;">查看对方的洞察后，你是否同意生成共同报告？</div>
+        <div style="display:flex; gap:12px;">
+          <button class="btn btn-primary" id="consentYesBtn" style="flex:1;">同意生成</button>
+          <button class="btn btn-secondary" id="consentNoBtn" style="flex:1;">暂不同意</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 双人模式：共同报告页面 -->
+  <div class="chat-view" id="coupleReportView" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-title">共同报告</div>
+        <div class="chat-subtitle">Mirror 为你们生成的理解</div>
+      </div>
+    </div>
+    <div class="chat-thread" style="padding:20px 16px; background:#08090B;">
+      <div id="coupleReportContent"></div>
+      <div style="margin-top:24px; text-align:center;">
+        <button class="btn btn-primary" id="coupleRestartBtn">完成，返回首页</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══════════════════════════════════════════ 设置面板 ══════════════════════════════════════════ -->
   <div class="settings-overlay" id="settingsOverlay"></div>
   <div class="settings-panel" id="settingsPanel">
@@ -681,6 +787,7 @@
     // API 配置
     var MIRROR_API_URL = 'https://apihub.agnes-ai.com/v1/chat/completions';
     var MIRROR_MODEL = 'agnes-1.5-flash';
+    var WORKER_API_BASE = 'https://mirror-api.2842018373.workers.dev';
 
     // System Prompt
     var MIRROR_SYSTEM_PROMPT = `你是 Mirror，一个关系理解与表达操作系统。
@@ -872,6 +979,24 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
 
     // AI 分析
     async function aiAnalyze(userText, mode, history) {
+      // 如果 Workers API 配置有效，优先调用 Workers 代理
+      if (typeof WORKER_API_BASE !== 'undefined' && WORKER_API_BASE && WORKER_API_BASE.indexOf('your-account') === -1) {
+        try {
+          var response = await fetch(WORKER_API_BASE + '/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userText: userText, mode: mode, history: history || [] })
+          });
+          if (!response.ok) throw new Error('Workers API 错误: ' + response.status);
+          var data = await response.json();
+          if (data.result) return data.result;
+          throw new Error('Workers 返回格式错误');
+        } catch (err) {
+          console.warn('Workers 调用失败，降级到 Agnes AI:', err);
+          // 降级到直接调用 Agnes AI
+        }
+      }
+
       var apiKey = getApiKey();
       if (!apiKey) { console.warn('API Key 未设置，使用本地模板'); return null; }
       try {
@@ -1814,6 +1939,25 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
     function restartExperience() {
       showConfirm('重新体验', '确定要重新开始吗？当前的所有内容将会丢失。', function() {
         document.getElementById('chatView').classList.remove('active');
+        // 隐藏所有双人模式视图
+        document.getElementById('coupleRoomView').style.display = 'none';
+        document.getElementById('coupleWaitView').style.display = 'none';
+        document.getElementById('coupleInputView').style.display = 'none';
+        document.getElementById('coupleInsightView').style.display = 'none';
+        document.getElementById('coupleReportView').style.display = 'none';
+        // 停止轮询并清空房间
+        stopPolling();
+        currentRoom = null;
+        // 重置输入按钮状态
+        var submitBtn = document.getElementById('coupleSubmitBtn');
+        if (submitBtn) {
+          submitBtn.textContent = '提交';
+          submitBtn.disabled = false;
+        }
+        var joinInput = document.getElementById('joinRoomInput');
+        if (joinInput) joinInput.value = '';
+        var coupleInput = document.getElementById('coupleInput');
+        if (coupleInput) coupleInput.value = '';
         // 返回模式选择页
         var modeView = document.getElementById('modeSelectView');
         modeView.style.display = 'flex';
@@ -1914,8 +2058,18 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
         userData.entryType = type;
         document.getElementById('modeSelectView').classList.remove('active');
         document.getElementById('modeSelectView').style.display = 'none';
-        document.getElementById('chatView').classList.add('active');
-        initChat(mode, type);
+        if (mode === 'couple') {
+          if (type === 'chat') {
+            initCoupleMode();
+          } else if (type === 'letter') {
+            // 双人写信模式，暂时用单人写信代替
+            document.getElementById('chatView').classList.add('active');
+            initChat('single', 'letter');
+          }
+        } else {
+          document.getElementById('chatView').classList.add('active');
+          initChat(mode, type);
+        }
       };
     });
 
@@ -1955,6 +2109,269 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
           addMessage('tags', null); // 触发 tags 类型渲染
         }
       }
+    }
+
+    // ══════════════════════════════════════════ 双人模式 ══════════════════════════════════════════
+
+    var currentRoom = null; // { code, role, status }
+    var pollInterval = null;
+
+    // 初始化双人模式
+    function initCoupleMode() {
+      // 显示创建/加入房间页
+      showCoupleRoomView();
+
+      // 创建房间
+      document.getElementById('createRoomCard').onclick = function() {
+        createRoom();
+      };
+
+      // 加入房间
+      document.getElementById('joinRoomBtn').onclick = function() {
+        var code = document.getElementById('joinRoomInput').value.trim().toUpperCase();
+        if (code.length !== 4) {
+          alert('请输入4位房间码');
+          return;
+        }
+        joinRoom(code);
+      };
+
+      // 返回按钮
+      document.getElementById('coupleRoomBackBtn').onclick = function() {
+        document.getElementById('coupleRoomView').style.display = 'none';
+        document.getElementById('modeSelectView').style.display = 'flex';
+      };
+
+      document.getElementById('coupleWaitBackBtn').onclick = function() {
+        stopPolling();
+        document.getElementById('coupleWaitView').style.display = 'none';
+        document.getElementById('coupleRoomView').style.display = 'flex';
+      };
+
+      // 复制房间码
+      document.getElementById('copyRoomCodeBtn').onclick = function() {
+        if (currentRoom) {
+          navigator.clipboard.writeText(currentRoom.code);
+          this.textContent = '已复制';
+          setTimeout(function() { document.getElementById('copyRoomCodeBtn').textContent = '复制房间码'; }, 2000);
+        }
+      };
+
+      // 提交输入
+      document.getElementById('coupleSubmitBtn').onclick = submitCoupleInput;
+
+      // 同意/不同意
+      document.getElementById('consentYesBtn').onclick = function() { giveConsent(true); };
+      document.getElementById('consentNoBtn').onclick = function() { giveConsent(false); };
+
+      // 完成返回
+      document.getElementById('coupleRestartBtn').onclick = restartExperience;
+    }
+
+    // 显示创建/加入房间页
+    function showCoupleRoomView() {
+      hideAllViews();
+      document.getElementById('coupleRoomView').style.display = 'flex';
+    }
+
+    // 创建房间
+    async function createRoom() {
+      try {
+        var response = await fetch(WORKER_API_BASE + '/api/room', { method: 'POST' });
+        var data = await response.json();
+        if (data.code) {
+          currentRoom = { code: data.code, role: 'a', status: 'waiting' };
+          showWaitView(data.code);
+          startPolling();
+        }
+      } catch (err) {
+        alert('创建房间失败：' + err.message);
+      }
+    }
+
+    // 加入房间
+    async function joinRoom(code) {
+      try {
+        var response = await fetch(WORKER_API_BASE + '/api/room/' + code + '/join', { method: 'POST' });
+        var data = await response.json();
+        if (data.code) {
+          currentRoom = { code: code, role: 'b', status: 'ready' };
+          showCoupleInputView();
+        } else {
+          alert(data.error || '加入房间失败');
+        }
+      } catch (err) {
+        alert('加入房间失败：' + err.message);
+      }
+    }
+
+    // 显示等待页面
+    function showWaitView(code) {
+      hideAllViews();
+      document.getElementById('coupleWaitView').style.display = 'flex';
+      document.getElementById('roomCodeDisplay').textContent = code;
+    }
+
+    // 显示输入页面
+    function showCoupleInputView() {
+      hideAllViews();
+      document.getElementById('coupleInputView').style.display = 'flex';
+      var title = currentRoom.role === 'a' ? '你是 A，输入你的描述' : '你是 B，输入你的描述';
+      document.getElementById('coupleInputTitle').textContent = title;
+    }
+
+    // 提交输入
+    async function submitCoupleInput() {
+      var text = document.getElementById('coupleInput').value.trim();
+      if (!text) {
+        alert('请输入内容');
+        return;
+      }
+
+      try {
+        var response = await fetch(WORKER_API_BASE + '/api/room/' + currentRoom.code + '/input', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: currentRoom.role, text: text })
+        });
+        var data = await response.json();
+        if (data.success) {
+          // 提交成功，开始轮询等待对方
+          document.getElementById('coupleSubmitBtn').textContent = '已提交，等待对方...';
+          document.getElementById('coupleSubmitBtn').disabled = true;
+          startPolling();
+        }
+      } catch (err) {
+        alert('提交失败：' + err.message);
+      }
+    }
+
+    // 轮询房间状态
+    function startPolling() {
+      stopPolling();
+      pollInterval = setInterval(async function() {
+        if (!currentRoom) return;
+        try {
+          var response = await fetch(WORKER_API_BASE + '/api/room/' + currentRoom.code);
+          var data = await response.json();
+
+          // 等待页：对方已加入
+          if (currentRoom.role === 'a' && data.status === 'ready' && document.getElementById('coupleWaitView').style.display === 'flex') {
+            stopPolling();
+            showCoupleInputView();
+          }
+
+          // 输入页：双方都已输入，分析完成
+          if (data.status === 'analyzed') {
+            stopPolling();
+            showCoupleInsightView();
+          }
+
+          // 洞察页：双方都同意，报告已生成
+          if (data.status === 'completed') {
+            stopPolling();
+            showCoupleReportView();
+          }
+        } catch (err) {
+          console.error('轮询失败', err);
+        }
+      }, 3000);
+    }
+
+    function stopPolling() {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }
+
+    // 显示洞察页面
+    async function showCoupleInsightView() {
+      hideAllViews();
+      document.getElementById('coupleInsightView').style.display = 'flex';
+
+      try {
+        var response = await fetch(WORKER_API_BASE + '/api/room/' + currentRoom.code + '/insight?role=' + currentRoom.role);
+        var data = await response.json();
+        if (data.insight) {
+          var insight = JSON.parse(data.insight);
+          var html = '<div style="margin-bottom:16px;">';
+          html += '<div style="font-size:1rem; font-weight:600; margin-bottom:8px;">对方的核心需求</div>';
+          html += '<div style="color:var(--muted); margin-bottom:16px;">' + (insight.need || '暂无') + '</div>';
+          html += '<div style="font-size:1rem; font-weight:600; margin-bottom:8px;">对方的误读</div>';
+          html += '<div style="color:var(--muted); margin-bottom:16px;">' + (insight.misread || '暂无') + '</div>';
+          html += '<div style="font-size:1rem; font-weight:600; margin-bottom:8px;">对方的情绪</div>';
+          html += '<div style="color:var(--muted);">' + (insight.emotion || '暂无') + '</div>';
+          html += '</div>';
+          document.getElementById('coupleInsightContent').innerHTML = html;
+        }
+      } catch (err) {
+        document.getElementById('coupleInsightContent').innerHTML = '<div style="color:var(--faint);">加载洞察失败</div>';
+      }
+    }
+
+    // 同意生成报告
+    async function giveConsent(agree) {
+      if (!agree) {
+        alert('你选择了暂不同意。可以在准备好后再次查看。');
+        return;
+      }
+
+      try {
+        var response = await fetch(WORKER_API_BASE + '/api/room/' + currentRoom.code + '/consent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: currentRoom.role })
+        });
+        var data = await response.json();
+        if (data.bothConsented) {
+          showCoupleReportView();
+        } else {
+          alert('已同意，等待对方也同意...');
+          startPolling();
+        }
+      } catch (err) {
+        alert('提交失败：' + err.message);
+      }
+    }
+
+    // 显示共同报告
+    async function showCoupleReportView() {
+      hideAllViews();
+      document.getElementById('coupleReportView').style.display = 'flex';
+
+      try {
+        var response = await fetch(WORKER_API_BASE + '/api/room/' + currentRoom.code + '/report');
+        var data = await response.json();
+        if (data.report) {
+          var report = JSON.parse(data.report);
+          var html = '<div style="margin-bottom:16px;">';
+          html += '<div style="font-size:1.1rem; font-weight:600; margin-bottom:12px; color:var(--blue);">共同需求</div>';
+          html += '<div style="color:var(--muted); margin-bottom:20px; padding:12px; background:rgba(126,167,255,0.06); border-radius:12px;">' + (report.commonNeed || '暂无') + '</div>';
+          html += '<div style="font-size:1.1rem; font-weight:600; margin-bottom:12px; color:var(--blue);">共同误读点</div>';
+          html += '<div style="color:var(--muted); margin-bottom:20px; padding:12px; background:rgba(126,167,255,0.06); border-radius:12px;">' + (report.commonMisread || '暂无') + '</div>';
+          html += '<div style="font-size:1.1rem; font-weight:600; margin-bottom:12px; color:var(--blue);">互动模式</div>';
+          html += '<div style="color:var(--muted); margin-bottom:20px; padding:12px; background:rgba(126,167,255,0.06); border-radius:12px;">' + (report.interactionPattern || '暂无') + '</div>';
+          html += '<div style="font-size:1.1rem; font-weight:600; margin-bottom:12px; color:var(--blue);">改善方向</div>';
+          html += '<div style="color:var(--muted); padding:12px; background:rgba(126,167,255,0.06); border-radius:12px;">' + (report.suggest || '暂无') + '</div>';
+          html += '</div>';
+          document.getElementById('coupleReportContent').innerHTML = html;
+        }
+      } catch (err) {
+        document.getElementById('coupleReportContent').innerHTML = '<div style="color:var(--faint);">加载报告失败</div>';
+      }
+    }
+
+    // 隐藏所有视图
+    function hideAllViews() {
+      document.getElementById('coverView').classList.add('hidden');
+      document.getElementById('modeSelectView').style.display = 'none';
+      document.getElementById('chatView').style.display = 'none';
+      document.getElementById('coupleRoomView').style.display = 'none';
+      document.getElementById('coupleWaitView').style.display = 'none';
+      document.getElementById('coupleInputView').style.display = 'none';
+      document.getElementById('coupleInsightView').style.display = 'none';
+      document.getElementById('coupleReportView').style.display = 'none';
     }
 
     function fillInput(text) {
