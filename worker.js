@@ -301,7 +301,7 @@ export default {
 // 调用 Agnes AI（带超时和错误处理）
 async function callAI(env, prompt, mode, history) {
   const systemPrompts = {
-    single: '你是 Mirror，一个关系理解与表达操作系统。你擅长通过5层深度提问（事实→情绪→需求→意义→行动）来理解用户的情感关系状态。请以JSON格式回复，包含字段：fact(事实摘要)、emotion(情绪识别)、need(核心需求)、misread(可能误读)、status(关系状态评估)。',
+    single: '你是 Mirror，一个关系理解与表达操作系统。你擅长通过5层深度提问（事实→情绪→需求→意义→行动）来理解用户的情感关系状态。请以JSON格式回复，包含字段：fact(事实摘要)、emotion(情绪识别)、need(核心需求)、misread(可能误读)、status(关系状态评估)、miraType(MIRA关系原型代码，如ST/BO/DI等，根据表达方式×关注方向判断，D=暗影内敛/S=柔光温和/B=明光积极/R=辉光强烈 × O=向外/T=朝向/I=倾向/N=向内)。',
     couple: '你是 Mirror 的双人分析模块。请基于两个人的洞察摘要，生成共同报告JSON，包含：commonNeed(共同需求)、commonMisread(共同误读点)、interactionPattern(互动模式)、suggest(改善建议)。',
     letter: '你是 Mirror 的写信模块。你帮助用户以温柔、有同理心的方式表达难以说出口的情感。请以JSON格式回复，包含：empathy(共情回应)、suggestion(表达建议)、draft(信件草稿)。',
   };
@@ -390,6 +390,7 @@ async function analyzeCouple(env, code) {
       need: aResult.need || '',
       misread: aResult.misread || '',
       status: aResult.status || '',
+      miraType: aResult.miraType || '',
     });
 
     const bInsight = JSON.stringify({
@@ -398,6 +399,7 @@ async function analyzeCouple(env, code) {
       need: bResult.need || '',
       misread: bResult.misread || '',
       status: bResult.status || '',
+      miraType: bResult.miraType || '',
     });
 
     await env.DB.prepare(
@@ -423,18 +425,21 @@ async function generateSharedReport(env, code) {
 A的核心需求：${aInsight.need || '未知'}
 A的误读：${aInsight.misread || '未知'}
 A的情绪：${aInsight.emotion || '未知'}
+A的MIRA类型：${aInsight.miraType || 'ST'}
 
 B的核心需求：${bInsight.need || '未知'}
 B的误读：${bInsight.misread || '未知'}
 B的情绪：${bInsight.emotion || '未知'}
+B的MIRA类型：${bInsight.miraType || 'BO'}
 
 请生成共同报告，包含：
 1. 共同需求
 2. 共同误读点
 3. 互动模式
 4. 可执行的改善方向
+5. 将A和B的MIRA类型原样透传（aMiraType和bMiraType字段）
 
-输出 JSON：{"commonNeed":"","commonMisread":"","interactionPattern":"","suggest":""}`;
+输出 JSON：{"commonNeed":"","commonMisread":"","interactionPattern":"","suggest":"","aMiraType":"${aInsight.miraType || 'ST'}","bMiraType":"${bInsight.miraType || 'BO'}"}`;
 
     const result = await callAI(env, prompt, 'couple', []);
 

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIRA 关系光谱 · Mirror</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@200;300;400;500;600&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: #08090B;
+    color: #E8EAED;
+    font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 40px 20px 80px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    margin-bottom: 60px;
+    position: relative;
+  }
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 200;
+    letter-spacing: 12px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #A8B2D1 0%, #D4AF37 50%, #6495ED 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero .subtitle {
+    color: #5A6270;
+    font-size: 0.85rem;
+    letter-spacing: 3px;
+    font-weight: 300;
+  }
+  .hero .desc {
+    color: #6A7280;
+    font-size: 0.78rem;
+    margin-top: 16px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.8;
+  }
+
+  /* Dimension Labels */
+  .dimension-labels {
+    max-width: 1400px;
+    margin: 0 auto 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 0 4px;
+  }
+  .dim-label {
+    text-align: center;
+    font-size: 0.7rem;
+    letter-spacing: 4px;
+    color: #4A5260;
+    font-weight: 300;
+    text-transform: uppercase;
+  }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 1200px) {
+    .grid { grid-template-columns: repeat(3, 1fr); }
+    .dimension-labels { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .dimension-labels { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 520px) {
+    .grid { grid-template-columns: 1fr; }
+    .dimension-labels { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* Card */
+  .card {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s ease;
+    background: #0D0E12;
+    border: 1px solid rgba(255,255,255,0.06);
+    aspect-ratio: 3 / 4;
+    display: flex;
+    flex-direction: column;
+  }
+  .card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(212,175,55,0.08);
+    border-color: rgba(212,175,55,0.2);
+  }
+
+  /* Image Area */
+  .card-image {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    overflow: hidden;
+  }
+  .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s cubic-bezier(0.22,1,0.36,1), filter 0.4s ease;
+  }
+  .card:hover .card-image img {
+    transform: scale(1.06);
+    filter: brightness(1.1);
+  }
+
+  /* Gradient overlay on image */
+  .card-image::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60%;
+    background: linear-gradient(to top, #0D0E12 0%, rgba(13,14,18,0.6) 50%, transparent 100%);
+    pointer-events: none;
+  }
+
+  /* Code badge */
+  .code-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 6px 12px;
+    z-index: 2;
+  }
+  .code-badge span {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #D4AF37, #F0D080);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Info Area */
+  .card-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    z-index: 2;
+  }
+  .card-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #F0EDE6;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+  }
+  .card-desc {
+    font-size: 0.72rem;
+    line-height: 1.7;
+    color: #8A92A0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Expanded card overlay */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+  }
+  .overlay.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .overlay-card {
+    background: #0D0E12;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    max-width: 480px;
+    width: 100%;
+    overflow: hidden;
+    animation: slideUp 0.35s cubic-bezier(0.22,1,0.36,1);
+    position: relative;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .overlay-image {
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+  }
+  .overlay-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .overlay-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    color: #E8EAED;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: background 0.2s;
+  }
+  .overlay-close:hover { background: rgba(255,255,255,0.15); }
+
+  .overlay-info {
+    padding: 28px;
+  }
+  .overlay-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .overlay-code {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, #D4AF37, #F0D080);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .overlay-name {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #F0EDE6;
+  }
+  .overlay-divider {
+    width: 50px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(212,175,55,0.5), transparent);
+    margin-bottom: 16px;
+  }
+  .overlay-desc {
+    font-size: 0.88rem;
+    line-height: 1.9;
+    color: #A0A8B4;
+  }
+
+  /* Spectrum position indicator */
+  .overlay-spectrum {
+    margin-top: 20px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .spectrum-bar {
+    display: flex;
+    gap: 3px;
+  }
+  .spectrum-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .spectrum-dot.active {
+    background: linear-gradient(135deg, #D4AF37, #6495ED);
+    border-color: rgba(212,175,55,0.4);
+    box-shadow: 0 0 8px rgba(212,175,55,0.3);
+  }
+  .spectrum-label {
+    font-size: 0.65rem;
+    color: #5A6270;
+    letter-spacing: 2px;
+    margin-left: 8px;
+  }
+
+  /* Save button */
+  .overlay-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 12px;
+  }
+  .btn-save {
+    flex: 1;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(100,149,237,0.1));
+    border: 1px solid rgba(212,175,55,0.25);
+    border-radius: 12px;
+    color: #D4AF37;
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn-save:hover {
+    background: linear-gradient(135deg, rgba(212,175,55,0.25), rgba(100,149,237,0.15));
+    border-color: rgba(212,175,55,0.4);
+  }
+  .btn-share {
+    flex: 1;
+    padding: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: #8A92A0;
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn-share:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.2);
+    color: #B0B8C4;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 60px;
+    color: #3A4250;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>M I R A</h1>
+  <p class="subtitle">Mirror Identity Reflection Archetype · 关系光谱</p>
+  <p class="desc">每个人的关系模式都是一面独特的镜子。MIRA 通过光的维度——暗影(D)、柔光(S)、明光(B)、辉光(R)——与投射方向——向外(O)、朝向(T)、倾向(I)、向内(N)——映射出你在关系中呈现的 16 种可能。</p>
+</div>
+
+<div class="dimension-labels">
+  <div class="dim-label">暗影 Dim</div>
+  <div class="dim-label">柔光 Soft</div>
+  <div class="dim-label">明光 Bright</div>
+  <div class="dim-label">辉光 Radiant</div>
+</div>
+
+<div class="grid" id="cardGrid"></div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-card" id="overlayCard">
+    <button class="overlay-close" id="overlayClose">✕</button>
+    <div class="overlay-image">
+      <img id="overlayImg" src="" alt="">
+    </div>
+    <div class="overlay-info">
+      <div class="overlay-header">
+        <span class="overlay-code" id="overlayCode"></span>
+        <span class="overlay-name" id="overlayName"></span>
+      </div>
+      <div class="overlay-divider"></div>
+      <p class="overlay-desc" id="overlayDesc"></p>
+      <div class="overlay-spectrum" id="overlaySpectrum"></div>
+      <div class="overlay-actions">
+        <button class="btn-save" id="btnSave">保存图片</button>
+        <button class="btn-share" id="btnShare">分享</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">MIRROR · MIRA SYSTEM v1.0</div>
+
+<script>
+const types = [
+  { code: 'DO', name: '无声的守望者', desc: '你几乎不说出自己的感受，所有的关注都倾注在对方身上。你通过细微的观察来理解对方的需要，用沉默的方式守护着这段关系。', dim: 'D', dir: 'O' },
+  { code: 'DT', name: '静默的共鸣者', desc: '你不善言辞，但你总是在场。对方开心时你默默陪着，对方低落时你安静守候。你不会主动说出"我懂你"，但你用沉默传达了比语言更深的东西。', dim: 'D', dir: 'T' },
+  { code: 'DI', name: '沉思的独行者', desc: '你习惯把一切藏在心里反复咀嚼。关系中的风吹草动，你都会独自思考很久。你很清楚自己的感受，但你不确定是否要说出来。', dim: 'D', dir: 'I' },
+  { code: 'DN', name: '封存的深海者', desc: '你像一个密封的深海——表面平静，深处有巨大的暗涌。你几乎不表达，也几乎不向外关注。不是不在乎，而是你已经习惯了一个人处理所有的事。', dim: 'D', dir: 'N' },
+
+  { code: 'SO', name: '温柔的聆听者', desc: '你是天生的倾听者。对方说的每一句话你都会认真对待，对方的每一个情绪你都能感知到。你偶尔会回应，但更多时候你选择听。', dim: 'S', dir: 'O' },
+  { code: 'ST', name: '灵动的镜映者', desc: '你在关系中像一面灵动的镜子——既照见对方的喜怒哀乐，也映出自己内心的波澜。你能感知对方的需求，同时也在默默照顾自己的感受。', dim: 'S', dir: 'T' },
+  { code: 'SI', name: '自知的探索者', desc: '你是一个善于反思的人。关系中的每一次摩擦，你都会回头审视自己的内心。你倾听对方，但更在意从这段关系中认识自己。', dim: 'S', dir: 'I' },
+  { code: 'SN', name: '内敛的感知者', desc: '你对外界的刺激很敏感，但你选择把所有的感知都内化。你不主动表达，但你对自己有着极其清晰的认知。你的沉默不是空的，里面装满了一个人的宇宙。', dim: 'S', dir: 'N' },
+
+  { code: 'BO', name: '热忱的守护者', desc: '你会主动说出关心，会用行动表达爱意，会把对方放在第一位。你的热情是真挚的，你的付出是不求回报的。但有时候你也需要停下来问问自己：在守护对方的同时，谁在守护你？', dim: 'B', dir: 'O' },
+  { code: 'BT', name: '坦诚的对话者', desc: '你相信沟通的力量。你愿意说出自己的想法，也愿意倾听对方的声音。你追求的是一种平等、开放的对话关系。你不害怕冲突，因为你觉得坦诚比和谐更重要。', dim: 'B', dir: 'T' },
+  { code: 'BI', name: '清晰的边界者', desc: '你知道自己的底线在哪里，也敢于说出来。你不会为了取悦对方而委屈自己，你相信好的关系不需要牺牲自我。你的直接有时会让人觉得"太理性了"，但这恰恰是你对关系最真诚的尊重。', dim: 'B', dir: 'I' },
+  { code: 'BN', name: '果敢的宣言者', desc: '你清楚自己要什么，而且你敢说出来。在关系中，你是一个不会被忽视的存在。你的表达力很强，但你可能需要偶尔放慢脚步，留一点空间给沉默。', dim: 'B', dir: 'N' },
+
+  { code: 'RO', name: '炽热的追随者', desc: '你对感情毫无保留。你会大声说出爱意，会直接追问对方的想法，会把所有的注意力都给到对方。你的热烈是珍贵的，但有时候你的直接可能会让对方感到压力。', dim: 'R', dir: 'O' },
+  { code: 'RT', name: '敏锐的洞察者', desc: '你一眼就能看出关系中存在的问题，而且你会直言不讳地指出来。你不是为了批评，而是因为你相信面对真相比回避更好。你的洞察力是天赋，但有时候真相太锋利，需要包裹一层温柔。', dim: 'R', dir: 'T' },
+  { code: 'RI', name: '坚定的自我者', desc: '你是一个非常有主见的人。你知道自己值不值得，也知道自己该不该继续。你不会为了关系而改变自己，因为你觉得——好的关系不需要你变成另一个人。', dim: 'R', dir: 'I' },
+  { code: 'RN', name: '璀璨的独白者', desc: '你在关系中更像是和自己在对话。你会直接表达自己的感受和想法，但你不太在意对方是否理解。你的世界有完整的光谱，你就是自己最好的听众。', dim: 'R', dir: 'N' },
+];
+
+const dimNames = { D: '暗影', S: '柔光', B: '明光', R: '辉光' };
+const dirNames = { O: '向外', T: '朝向', I: '倾向', N: '向内' };
+
+const grid = document.getElementById('cardGrid');
+const overlay = document.getElementById('overlay');
+const overlayClose = document.getElementById('overlayClose');
+
+types.forEach(t => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="card-image">
+      <img src="mira-images/${t.code}.jpg" alt="${t.name}" loading="lazy">
+      <div class="code-badge"><span>${t.code}</span></div>
+    </div>
+    <div class="card-info">
+      <div class="card-name">${t.name}</div>
+      <div class="card-desc">${t.desc}</div>
+    </div>
+  `;
+  card.addEventListener('click', () => openOverlay(t));
+  grid.appendChild(card);
+});
+
+function openOverlay(t) {
+  document.getElementById('overlayImg').src = `mira-images/${t.code}.jpg`;
+  document.getElementById('overlayCode').textContent = t.code;
+  document.getElementById('overlayName').textContent = t.name;
+  document.getElementById('overlayDesc').textContent = t.desc;
+
+  // Spectrum indicator
+  const dimIndex = 'DSBR'.indexOf(t.dim);
+  const dirIndex = 'OTIN'.indexOf(t.dir);
+  const specHtml = `
+    <div class="spectrum-bar">
+      ${[0,1,2,3].map(i => `<div class="spectrum-dot${i === dirIndex ? ' active' : ''}"></div>`).join('')}
+    </div>
+    <span class="spectrum-label">${dimNames[t.dim]} · ${dirNames[t.dir]}</span>
+  `;
+  document.getElementById('overlaySpectrum').innerHTML = specHtml;
+
+  // Save button
+  document.getElementById('btnSave').onclick = (e) => {
+    e.stopPropagation();
+    const link = document.createElement('a');
+    link.href = `mira-images/${t.code}.jpg`;
+    link.download = `MIRA-${t.code}-${t.name}.jpg`;
+    link.click();
+  };
+
+  // Share button
+  document.getElementById('btnShare').onclick = (e) => {
+    e.stopPropagation();
+    if (navigator.share) {
+      navigator.share({
+        title: `MIRA ${t.code} · ${t.name}`,
+        text: t.desc,
+        url: window.location.href
+      }).catch(() => {});
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(`MIRA ${t.code} · ${t.name}\n${t.desc}`).then(() => {
+        const btn = document.getElementById('btnShare');
+        btn.textContent = '已复制';
+        setTimeout(() => btn.textContent = '分享', 2000);
+      });
+    }
+  };
+
+  overlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeOverlay() {
+  overlay.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+overlayClose.addEventListener('click', closeOverlay);
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay) closeOverlay();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeOverlay();
+});
+</script>
+
+</body>
+</html>

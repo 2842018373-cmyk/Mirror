@@ -223,6 +223,14 @@
     .step-mirror-label.mirror { color: var(--blue); }
     .step-mirror-text { font-size: 0.92rem; color: var(--ink); line-height: 1.7; }
     .step-arrow { text-align: center; color: var(--faint); font-size: 1.2rem; margin: 8px 0; }
+    /* MIRA 结果卡片 */
+    .mira-result-card { background: #0D0E12; border: 1px solid rgba(212,175,55,0.2); border-radius: 20px; padding: 20px; max-width: 360px; margin: 0 auto; overflow: hidden; }
+    .mira-result-img-wrap { width: 100%; aspect-ratio: 1; border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+    .mira-result-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .mira-result-code { font-size: 1.6rem; font-weight: 700; letter-spacing:4px; background: linear-gradient(135deg,#D4AF37,#F0D080); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom: 4px; }
+    .mira-result-name { font-size: 1.1rem; font-weight: 500; color: #F0EDE6; margin-bottom: 6px; letter-spacing: 1px; }
+    .mira-result-dims { font-size: 0.7rem; color: var(--faint); letter-spacing: 2px; margin-bottom: 12px; }
+    .mira-result-desc { font-size: 0.82rem; line-height: 1.8; color: var(--muted); text-align: left; }
     /* 追问全屏卡片 */
     .followup-fullscreen { background: var(--bg-elevated); border: 1px solid var(--rule); border-radius: 24px; padding: 36px 32px; max-width: 520px; width: 92%; }
     .followup-fs-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; color: var(--blue); text-transform: uppercase; margin-bottom: 20px; }
@@ -416,6 +424,11 @@
         <span class="skill-name">安全边界</span>
         <span class="skill-desc">不站队、不诊断、不操控</span>
       </div>
+      <div class="skill-item" style="cursor:pointer;" onclick="openMira()">
+        <span class="skill-icon">&#127912;</span>
+        <span class="skill-name">关系光谱</span>
+        <span class="skill-desc">MIRA · 16种关系原型</span>
+      </div>
     </div>
     <div class="scroll-hint"><span>Scroll</span><div class="scroll-line"></div></div>
     <div class="safety-bar">
@@ -437,6 +450,12 @@
       </div>
     </div>
     <div class="chat-thread" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; gap:24px; background:#08090B;">
+      <!-- MIRA 关系光谱 -->
+      <div class="mode-card" style="cursor:pointer; width:100%; max-width:480px; border:1px solid rgba(212,175,55,0.15);" onclick="openMira()">
+        <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#127912;</div>
+        <div class="mode-card-title" style="background:linear-gradient(135deg,#D4AF37,#F0D080); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">MIRA 关系光谱</div>
+        <div class="mode-card-desc">Mirror Identity Reflection Archetype — 发现你的关系原型</div>
+      </div>
       <!-- 单人模式 -->
       <div class="mode-card" id="modeSingle" style="cursor:pointer; width:100%; max-width:480px;">
         <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#129489;</div>
@@ -644,6 +663,55 @@
       <div class="confirm-btns">
         <button class="btn btn-primary btn-sm" id="confirmYes">确定</button>
         <button class="btn-ghost btn-sm" id="confirmNo">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ MIRA 关系光谱视图 ══════════════════════════════════════════ -->
+  <div class="chat-view" id="miraView" style="display:none; overflow-y:auto;">
+    <div class="chat-header" style="position:sticky; top:0; z-index:50; background:rgba(8,9,11,0.9); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);">
+      <div class="chat-header-left">
+        <button class="chat-back-btn" onclick="closeMiraView()">&#8592; 返回</button>
+        <div>
+          <div class="chat-title" style="background:linear-gradient(135deg,#D4AF37,#F0D080); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">MIRA 关系光谱</div>
+          <div class="chat-subtitle">Mirror Identity Reflection Archetype</div>
+        </div>
+      </div>
+    </div>
+    <div id="miraContent" style="padding:20px 16px 60px; max-width:1400px; margin:0 auto;">
+      <div style="text-align:center; margin-bottom:40px;">
+        <div style="font-size:2rem; font-weight:200; letter-spacing:12px; margin-bottom:8px; background:linear-gradient(135deg,#A8B2D1,#D4AF37,#6495ED); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">M I R A</div>
+        <div style="color:#5A6270; font-size:0.85rem; letter-spacing:3px;">Mirror Identity Reflection Archetype</div>
+        <div style="color:#6A7280; font-size:0.78rem; margin-top:16px; max-width:480px; margin-left:auto; margin-right:auto; line-height:1.8;">每个人的关系模式都是一面独特的镜子。MIRA 通过光的维度与投射方向，映射出你在关系中呈现的 16 种可能。</div>
+      </div>
+      <!-- Dimension Labels -->
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
+        <div style="text-align:center; font-size:0.7rem; letter-spacing:4px; color:#4A5260; font-weight:300;">暗影 DIM</div>
+        <div style="text-align:center; font-size:0.7rem; letter-spacing:4px; color:#4A5260; font-weight:300;">柔光 SOFT</div>
+        <div style="text-align:center; font-size:0.7rem; letter-spacing:4px; color:#4A5260; font-weight:300;">明光 BRIGHT</div>
+        <div style="text-align:center; font-size:0.7rem; letter-spacing:4px; color:#4A5260; font-weight:300;">辉光 RADIANT</div>
+      </div>
+      <!-- Cards Grid -->
+      <div id="miraGrid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;"></div>
+    </div>
+  </div>
+  <!-- MIRA Overlay -->
+  <div id="miraOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); z-index:1000; align-items:center; justify-content:center; padding:20px;">
+    <div id="miraOverlayCard" style="background:#0D0E12; border:1px solid rgba(255,255,255,0.08); border-radius:24px; max-width:480px; width:100%; overflow:hidden; position:relative;">
+      <button onclick="closeMiraOverlay()" style="position:absolute; top:16px; right:16px; width:36px; height:36px; background:rgba(0,0,0,0.5); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); border-radius:50%; color:#E8EAED; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10;">&#10005;</button>
+      <div style="width:100%; aspect-ratio:1; overflow:hidden;"><img id="miraOverlayImg" src="" style="width:100%; height:100%; object-fit:cover;"></div>
+      <div style="padding:28px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+          <span id="miraOverlayCode" style="font-size:1.4rem; font-weight:600; letter-spacing:3px; background:linear-gradient(135deg,#D4AF37,#F0D080); -webkit-background-clip:text; -webkit-text-fill-color:transparent;"></span>
+          <span id="miraOverlayName" style="font-size:1.2rem; font-weight:500; color:#F0EDE6;"></span>
+        </div>
+        <div style="width:50px; height:1px; background:linear-gradient(90deg,rgba(212,175,55,0.5),transparent); margin-bottom:16px;"></div>
+        <p id="miraOverlayDesc" style="font-size:0.88rem; line-height:1.9; color:#A0A8B4;"></p>
+        <div id="miraOverlaySpectrum" style="margin-top:20px; display:flex; gap:4px; align-items:center;"></div>
+        <div style="margin-top:20px; display:flex; gap:12px;">
+          <button id="miraSaveBtn" class="btn btn-primary" style="flex:1; padding:12px; border-radius:12px; font-size:0.82rem;">保存图片</button>
+          <button id="miraShareBtn" class="btn btn-secondary" style="flex:1; padding:12px; border-radius:12px; font-size:0.82rem;">分享</button>
+        </div>
       </div>
     </div>
   </div>
@@ -861,13 +929,38 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
 默认输出必须是严格 JSON，不要输出 Markdown 代码块，不要输出额外说明文字。
 
 单人模式 JSON Schema：
-{"mode":"single","scenario":"","fact":"","emotion":"","need":"","misread":"","misreadType":"","mirror":"","insight":"","before":"","inner":"","after":"","summary":"","analyst":"","status":"","suggest":"","questions":[],"timeline":[],"temperature":{"connection":0,"safety":0,"understanding":0,"communication":0,"trust":0},"memory":{"relationshipState":"","currentConflict":"","currentGoal":"","knownFacts":[]},"risk":{"level":"low","signals":[]},"confidence":0.0}
+{"mode":"single","scenario":"","fact":"","emotion":"","need":"","misread":"","misreadType":"","mirror":"","insight":"","before":"","inner":"","after":"","summary":"","analyst":"","status":"","suggest":"","questions":[],"timeline":[],"temperature":{"connection":0,"safety":0,"understanding":0,"communication":0,"trust":0},"memory":{"relationshipState":"","currentConflict":"","currentGoal":"","knownFacts":[]},"risk":{"level":"low","signals":[]},"confidence":0.0,"miraType":"ST"}
 
 双人模式 JSON Schema：
-{"mode":"couple","a":{"fact":"","emotion":"","need":"","misread":"","mirror":""},"b":{"fact":"","emotion":"","need":"","misread":"","mirror":""},"shared":{"commonNeed":"","commonMisread":"","interactionPattern":"","mirrorLayer":"","suggest":""},"timeline":[],"temperature":{"connection":0,"safety":0,"understanding":0,"communication":0,"trust":0},"memory":{"shortTerm":[]},"risk":{"level":"low","signals":[]},"confidence":0.0}
+{"mode":"couple","a":{"fact":"","emotion":"","need":"","misread":"","mirror":"","miraType":"ST"},"b":{"fact":"","emotion":"","need":"","misread":"","mirror":"","miraType":"BO"},"shared":{"commonNeed":"","commonMisread":"","interactionPattern":"","mirrorLayer":"","suggest":""},"timeline":[],"temperature":{"connection":0,"safety":0,"understanding":0,"communication":0,"trust":0},"memory":{"shortTerm":[]},"risk":{"level":"low","signals":[]},"confidence":0.0}
 
 写信模式 JSON Schema：
 {"mode":"letter","recipientType":"爱人/家人/离世亲人/过去的自己/未来的自己","letterIntent":"想念/感谢/道歉/和解/告别/哀伤/原谅/求助/爱","emotion":"","need":"","mirror":"","empathy":"对用户情绪的承接与看见（200字以上，不要否定、不要评判，让用户感到被理解）","gentleGuide":"10%的温柔引导（不是说教，而是邀请用户看到另一种可能，50字以内）","deepRescue":"最底层的情感救赎（100字以内）","replyTone":"","reply":"","suggest":"","risk":{"level":"low","signals":[]},"confidence":0.0}
+
+MIRA 分类（Mirror Identity Reflection Archetype）：
+在单人模式和双人模式中，根据用户的关系行为模式，从以下16种类型中选择最匹配的一个。
+维度：D(暗影-内敛) / S(柔光-温和) / B(明光-积极) / R(辉光-强烈) × O(向外关注) / T(朝向对方) / I(倾向自我) / N(向内聚焦)
+
+16种类型：
+- DO: 无声的守望者 — 沉默守护，关注对方，不表达自己
+- DT: 静默的共鸣者 — 在场陪伴，不擅长言语但有共情
+- DI: 沉思的独行者 — 反复内心咀嚼，清楚感受但不说
+- DN: 封存的深海者 — 表面平静，几乎不表达也不关注
+- SO: 温柔的聆听者 — 天生倾听者，感知对方情绪
+- ST: 灵动的镜映者 — 照见对方也映出自己，感知+自察
+- SI: 自知的探索者 — 善于反思，更在意从关系中认识自己
+- SN: 内敛的感知者 — 敏感但内化，对自己有清晰认知
+- BO: 热忱的守护者 — 主动表达关心，把对方放第一
+- BT: 坦诚的对话者 — 相信沟通，追求平等开放的对话
+- BI: 清晰的边界者 — 知道底线，不委屈自己，直接
+- BN: 果敢的宣言者 — 清楚要什么敢说，表达力强
+- RO: 炽热的追随者 — 毫无保留，直接表达爱意
+- RT: 敏锐的洞察者 — 直言问题，相信面对真相比回避好
+- RI: 坚定的自我者 — 有主见，不因关系改变自己
+- RN: 璀璨的独白者 — 更像和自己对话，表达但不求理解
+
+判断依据：用户的表达方式（沉默/温和/直接/强烈）× 关注方向（向对方/向关系/向自己/向内心）。
+单人模式输出 miraType 字段（如"ST"），双人模式为 A 和 B 各输出 miraType。
 
 永远记住：Mirror 不是裁判，Mirror 是让双方重新听懂彼此。`;
 
@@ -1713,6 +1806,28 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
     }
 
     // 显示完整结果
+    function getMiraInfo(code) {
+      var map = {
+        DO:{name:'无声的守望者',dim:'暗影',dir:'向外',desc:'你几乎不说出自己的感受，所有的关注都倾注在对方身上。你通过细微的观察来理解对方的需要，用沉默的方式守护着这段关系。'},
+        DT:{name:'静默的共鸣者',dim:'暗影',dir:'朝向',desc:'你不善言辞，但你总是在场。对方开心时你默默陪着，对方低落时你安静守候。你不会主动说出"我懂你"，但你用沉默传达了比语言更深的东西。'},
+        DI:{name:'沉思的独行者',dim:'暗影',dir:'倾向',desc:'你习惯把一切藏在心里反复咀嚼。关系中的风吹草动，你都会独自思考很久。你很清楚自己的感受，但你不确定是否要说出来。'},
+        DN:{name:'封存的深海者',dim:'暗影',dir:'向内',desc:'你像一个密封的深海——表面平静，深处有巨大的暗涌。你几乎不表达，也几乎不向外关注。不是不在乎，而是你已经习惯了一个人处理所有的事。'},
+        SO:{name:'温柔的聆听者',dim:'柔光',dir:'向外',desc:'你是天生的倾听者。对方说的每一句话你都会认真对待，对方的每一个情绪你都能感知到。你偶尔会回应，但更多时候你选择听。'},
+        ST:{name:'灵动的镜映者',dim:'柔光',dir:'朝向',desc:'你在关系中像一面灵动的镜子——既照见对方的喜怒哀乐，也映出自己内心的波澜。你能感知对方的需求，同时也在默默照顾自己的感受。'},
+        SI:{name:'自知的探索者',dim:'柔光',dir:'倾向',desc:'你是一个善于反思的人。关系中的每一次摩擦，你都会回头审视自己的内心。你倾听对方，但更在意从这段关系中认识自己。'},
+        SN:{name:'内敛的感知者',dim:'柔光',dir:'向内',desc:'你对外界的刺激很敏感，但你选择把所有的感知都内化。你不主动表达，但你对自己有着极其清晰的认知。你的沉默不是空的，里面装满了一个人的宇宙。'},
+        BO:{name:'热忱的守护者',dim:'明光',dir:'向外',desc:'你会主动说出关心，会用行动表达爱意，会把对方放在第一位。你的热情是真挚的，你的付出是不求回报的。但有时候你也需要停下来问问自己：在守护对方的同时，谁在守护你？'},
+        BT:{name:'坦诚的对话者',dim:'明光',dir:'朝向',desc:'你相信沟通的力量。你愿意说出自己的想法，也愿意倾听对方的声音。你追求的是一种平等、开放的对话关系。你不害怕冲突，因为你觉得坦诚比和谐更重要。'},
+        BI:{name:'清晰的边界者',dim:'明光',dir:'倾向',desc:'你知道自己的底线在哪里，也敢于说出来。你不会为了取悦对方而委屈自己，你相信好的关系不需要牺牲自我。你的直接有时会让人觉得"太理性了"，但这恰恰是你对关系最真诚的尊重。'},
+        BN:{name:'果敢的宣言者',dim:'明光',dir:'向内',desc:'你清楚自己要什么，而且你敢说出来。在关系中，你是一个不会被忽视的存在。你的表达力很强，但你可能需要偶尔放慢脚步，留一点空间给沉默。'},
+        RO:{name:'炽热的追随者',dim:'辉光',dir:'向外',desc:'你对感情毫无保留。你会大声说出爱意，会直接追问对方的想法，会把所有的注意力都给到对方。你的热烈是珍贵的，但有时候你的直接可能会让对方感到压力。'},
+        RT:{name:'敏锐的洞察者',dim:'辉光',dir:'朝向',desc:'你一眼就能看出关系中存在的问题，而且你会直言不讳地指出来。你不是为了批评，而是因为你相信面对真相比回避更好。你的洞察力是天赋，但有时候真相太锋利，需要包裹一层温柔。'},
+        RI:{name:'坚定的自我者',dim:'辉光',dir:'倾向',desc:'你是一个非常有主见的人。你知道自己值不值得，也知道自己该不该继续。你不会为了关系而改变自己，因为你觉得——好的关系不需要你变成另一个人。'},
+        RN:{name:'璀璨的独白者',dim:'辉光',dir:'向内',desc:'你在关系中更像是和自己在对话。你会直接表达自己的感受和想法，但你不太在意对方是否理解。你的世界有完整的光谱，你就是自己最好的听众。'}
+      };
+      return map[code] || map['ST'];
+    }
+
     function showResults(data) {
       setState('RESULT');
 
@@ -1720,10 +1835,12 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
       document.getElementById('inputArea').classList.remove('active');
       document.getElementById('inputArea').innerHTML = '';
 
-      // 定义4步内容
+      // 定义5步内容
+      var miraType = data.miraType || 'ST';
+      var miraInfo = getMiraInfo(miraType);
       var steps = [
         {
-          counter: 'Step 1/4',
+          counter: 'Step 1/5',
           title: 'Mirror 分析',
           body: function() {
             var html = '<div class="card-row"><div class="card-row-label">关系状态</div><div class="card-row-value">' + (data.status || '存在误解') + '</div></div>' +
@@ -1735,7 +1852,7 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
           }
         },
         {
-          counter: 'Step 2/4',
+          counter: 'Step 2/5',
           title: 'Mirror Layer · 表达翻译',
           body: function() {
             return '<div class="step-mirror-item attack"><div class="step-mirror-label attack">你说的是</div><div class="step-mirror-text">"' + (data.before || '—') + '"</div></div>' +
@@ -1746,17 +1863,36 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
           }
         },
         {
-          counter: 'Step 3/4',
+          counter: 'Step 3/5',
           title: '洞察',
           body: function() {
             return '<p style="font-size:0.95rem;color:var(--ink);line-height:1.9;margin:0;">' + (data.insight || '—') + '</p>';
           }
         },
         {
-          counter: 'Step 4/4',
+          counter: 'Step 4/5',
           title: '建议',
           body: function() {
             return '<p style="font-size:0.95rem;color:var(--ink);line-height:1.9;margin:0;">' + (data.suggest || '—') + '</p>';
+          }
+        },
+        {
+          counter: 'Step 5/5',
+          title: '你的 MIRA 关系原型',
+          body: function() {
+            return '<div style="text-align:center;">' +
+              '<div style="font-size:0.75rem;color:var(--faint);letter-spacing:2px;margin-bottom:12px;">Mirror Identity Reflection Archetype</div>' +
+              '<div class="mira-result-card">' +
+                '<div class="mira-result-img-wrap">' +
+                  '<img src="mira-images/' + miraType + '.jpg" alt="' + miraInfo.name + '">' +
+                '</div>' +
+                '<div class="mira-result-code">' + miraType + '</div>' +
+                '<div class="mira-result-name">' + miraInfo.name + '</div>' +
+                '<div class="mira-result-dims">' + miraInfo.dim + ' · ' + miraInfo.dir + '</div>' +
+                '<div class="mira-result-desc">' + miraInfo.desc + '</div>' +
+              '</div>' +
+              '<div style="margin-top:16px;font-size:0.75rem;color:var(--faint);letter-spacing:1px;">点击保存图片，或前往「关系光谱」查看全部 16 种原型</div>' +
+            '</div>';
           }
         }
       ];
@@ -2274,13 +2410,24 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
         var data = await response.json();
         if (data.insight) {
           var insight = JSON.parse(data.insight);
+          var miraCode = insight.miraType || 'ST';
+          var mira = getMiraInfo(miraCode);
           var html = '<div style="margin-bottom:16px;">';
           html += '<div style="font-size:1rem; font-weight:600; margin-bottom:8px;">对方的核心需求</div>';
           html += '<div style="color:var(--muted); margin-bottom:16px;">' + (insight.need || '暂无') + '</div>';
           html += '<div style="font-size:1rem; font-weight:600; margin-bottom:8px;">对方的误读</div>';
           html += '<div style="color:var(--muted); margin-bottom:16px;">' + (insight.misread || '暂无') + '</div>';
           html += '<div style="font-size:1rem; font-weight:600; margin-bottom:8px;">对方的情绪</div>';
-          html += '<div style="color:var(--muted);">' + (insight.emotion || '暂无') + '</div>';
+          html += '<div style="color:var(--muted); margin-bottom:20px;">' + (insight.emotion || '暂无') + '</div>';
+          // MIRA 类型卡片
+          html += '<div style="font-size:1rem; font-weight:600; margin-bottom:12px; color:#D4AF37;">对方的关系原型</div>';
+          html += '<div class="mira-result-card" style="max-width:280px;">';
+          html += '<div class="mira-result-img-wrap"><img src="mira-images/' + miraCode + '.jpg" alt="' + mira.name + '"></div>';
+          html += '<div class="mira-result-code">' + miraCode + '</div>';
+          html += '<div class="mira-result-name">' + mira.name + '</div>';
+          html += '<div class="mira-result-dims">' + mira.dim + ' · ' + mira.dir + '</div>';
+          html += '<div class="mira-result-desc">' + mira.desc + '</div>';
+          html += '</div>';
           html += '</div>';
           document.getElementById('coupleInsightContent').innerHTML = html;
         }
@@ -2332,7 +2479,33 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
           html += '<div style="font-size:1.1rem; font-weight:600; margin-bottom:12px; color:var(--blue);">互动模式</div>';
           html += '<div style="color:var(--muted); margin-bottom:20px; padding:12px; background:rgba(126,167,255,0.06); border-radius:12px;">' + (report.interactionPattern || '暂无') + '</div>';
           html += '<div style="font-size:1.1rem; font-weight:600; margin-bottom:12px; color:var(--blue);">改善方向</div>';
-          html += '<div style="color:var(--muted); padding:12px; background:rgba(126,167,255,0.06); border-radius:12px;">' + (report.suggest || '暂无') + '</div>';
+          html += '<div style="color:var(--muted); margin-bottom:28px; padding:12px; background:rgba(126,167,255,0.06); border-radius:12px;">' + (report.suggest || '暂无') + '</div>';
+          // MIRA 双方类型展示
+          var aMiraCode = report.aMiraType || (report.a && report.a.miraType) || 'ST';
+          var bMiraCode = report.bMiraType || (report.b && report.b.miraType) || 'BO';
+          var aMira = getMiraInfo(aMiraCode);
+          var bMira = getMiraInfo(bMiraCode);
+          html += '<div style="font-size:1.1rem; font-weight:600; margin-bottom:16px; color:#D4AF37;">你们的关系原型</div>';
+          html += '<div style="display:flex; gap:16px; flex-wrap:wrap;">';
+          // A 的 MIRA 卡片
+          html += '<div style="flex:1; min-width:200px;">';
+          html += '<div style="font-size:0.8rem; color:var(--faint); margin-bottom:8px; letter-spacing:1px;">A 的原型</div>';
+          html += '<div class="mira-result-card">';
+          html += '<div class="mira-result-img-wrap"><img src="mira-images/' + aMiraCode + '.jpg" alt="' + aMira.name + '"></div>';
+          html += '<div class="mira-result-code">' + aMiraCode + '</div>';
+          html += '<div class="mira-result-name">' + aMira.name + '</div>';
+          html += '<div class="mira-result-dims">' + aMira.dim + ' · ' + aMira.dir + '</div>';
+          html += '</div></div>';
+          // B 的 MIRA 卡片
+          html += '<div style="flex:1; min-width:200px;">';
+          html += '<div style="font-size:0.8rem; color:var(--faint); margin-bottom:8px; letter-spacing:1px;">B 的原型</div>';
+          html += '<div class="mira-result-card">';
+          html += '<div class="mira-result-img-wrap"><img src="mira-images/' + bMiraCode + '.jpg" alt="' + bMira.name + '"></div>';
+          html += '<div class="mira-result-code">' + bMiraCode + '</div>';
+          html += '<div class="mira-result-name">' + bMira.name + '</div>';
+          html += '<div class="mira-result-dims">' + bMira.dim + ' · ' + bMira.dir + '</div>';
+          html += '</div></div>';
+          html += '</div>';
           html += '</div>';
           document.getElementById('coupleReportContent').innerHTML = html;
         }
@@ -2517,6 +2690,130 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
         };
       }
     })();
+  </script>
+
+  <script>
+  // ══════════════════════════════════════════ MIRA 关系光谱 ══════════════════════════════════════════
+  (function() {
+    var miraTypes = [
+      { code:'DO', name:'无声的守望者', desc:'你几乎不说出自己的感受，所有的关注都倾注在对方身上。你通过细微的观察来理解对方的需要，用沉默的方式守护着这段关系。', dim:'D', dir:'O' },
+      { code:'DT', name:'静默的共鸣者', desc:'你不善言辞，但你总是在场。对方开心时你默默陪着，对方低落时你安静守候。你不会主动说出"我懂你"，但你用沉默传达了比语言更深的东西。', dim:'D', dir:'T' },
+      { code:'DI', name:'沉思的独行者', desc:'你习惯把一切藏在心里反复咀嚼。关系中的风吹草动，你都会独自思考很久。你很清楚自己的感受，但你不确定是否要说出来。', dim:'D', dir:'I' },
+      { code:'DN', name:'封存的深海者', desc:'你像一个密封的深海——表面平静，深处有巨大的暗涌。你几乎不表达，也几乎不向外关注。不是不在乎，而是你已经习惯了一个人处理所有的事。', dim:'D', dir:'N' },
+      { code:'SO', name:'温柔的聆听者', desc:'你是天生的倾听者。对方说的每一句话你都会认真对待，对方的每一个情绪你都能感知到。你偶尔会回应，但更多时候你选择听。', dim:'S', dir:'O' },
+      { code:'ST', name:'灵动的镜映者', desc:'你在关系中像一面灵动的镜子——既照见对方的喜怒哀乐，也映出自己内心的波澜。你能感知对方的需求，同时也在默默照顾自己的感受。', dim:'S', dir:'T' },
+      { code:'SI', name:'自知的探索者', desc:'你是一个善于反思的人。关系中的每一次摩擦，你都会回头审视自己的内心。你倾听对方，但更在意从这段关系中认识自己。', dim:'S', dir:'I' },
+      { code:'SN', name:'内敛的感知者', desc:'你对外界的刺激很敏感，但你选择把所有的感知都内化。你不主动表达，但你对自己有着极其清晰的认知。你的沉默不是空的，里面装满了一个人的宇宙。', dim:'S', dir:'N' },
+      { code:'BO', name:'热忱的守护者', desc:'你会主动说出关心，会用行动表达爱意，会把对方放在第一位。你的热情是真挚的，你的付出是不求回报的。但有时候你也需要停下来问问自己：在守护对方的同时，谁在守护你？', dim:'B', dir:'O' },
+      { code:'BT', name:'坦诚的对话者', desc:'你相信沟通的力量。你愿意说出自己的想法，也愿意倾听对方的声音。你追求的是一种平等、开放的对话关系。你不害怕冲突，因为你觉得坦诚比和谐更重要。', dim:'B', dir:'T' },
+      { code:'BI', name:'清晰的边界者', desc:'你知道自己的底线在哪里，也敢于说出来。你不会为了取悦对方而委屈自己，你相信好的关系不需要牺牲自我。你的直接有时会让人觉得"太理性了"，但这恰恰是你对关系最真诚的尊重。', dim:'B', dir:'I' },
+      { code:'BN', name:'果敢的宣言者', desc:'你清楚自己要什么，而且你敢说出来。在关系中，你是一个不会被忽视的存在。你的表达力很强，但你可能需要偶尔放慢脚步，留一点空间给沉默。', dim:'B', dir:'N' },
+      { code:'RO', name:'炽热的追随者', desc:'你对感情毫无保留。你会大声说出爱意，会直接追问对方的想法，会把所有的注意力都给到对方。你的热烈是珍贵的，但有时候你的直接可能会让对方感到压力。', dim:'R', dir:'O' },
+      { code:'RT', name:'敏锐的洞察者', desc:'你一眼就能看出关系中存在的问题，而且你会直言不讳地指出来。你不是为了批评，而是因为你相信面对真相比回避更好。你的洞察力是天赋，但有时候真相太锋利，需要包裹一层温柔。', dim:'R', dir:'T' },
+      { code:'RI', name:'坚定的自我者', desc:'你是一个非常有主见的人。你知道自己值不值得，也知道自己该不该继续。你不会为了关系而改变自己，因为你觉得——好的关系不需要你变成另一个人。', dim:'R', dir:'I' },
+      { code:'RN', name:'璀璨的独白者', desc:'你在关系中更像是和自己在对话。你会直接表达自己的感受和想法，但你不太在意对方是否理解。你的世界有完整的光谱，你就是自己最好的听众。', dim:'R', dir:'N' },
+    ];
+    var dimNames = { D:'暗影', S:'柔光', B:'明光', R:'辉光' };
+    var dirNames = { O:'向外', T:'朝向', I:'倾向', N:'向内' };
+
+    function buildGrid() {
+      var grid = document.getElementById('miraGrid');
+      if (!grid || grid.children.length > 0) return;
+      grid.style.cssText = 'display:grid; grid-template-columns:repeat(4,1fr); gap:16px;';
+      miraTypes.forEach(function(t) {
+        var card = document.createElement('div');
+        card.style.cssText = 'position:relative; border-radius:20px; overflow:hidden; cursor:pointer; transition:transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s ease; background:#0D0E12; border:1px solid rgba(255,255,255,0.06); aspect-ratio:3/4; display:flex; flex-direction:column;';
+        card.onmouseover = function() { card.style.transform='translateY(-6px) scale(1.02)'; card.style.boxShadow='0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(212,175,55,0.08)'; card.style.borderColor='rgba(212,175,55,0.2)'; };
+        card.onmouseout = function() { card.style.transform=''; card.style.boxShadow=''; card.style.borderColor='rgba(255,255,255,0.06)'; };
+        card.innerHTML =
+          '<div style="position:relative; width:100%; flex:1; overflow:hidden;">' +
+            '<img src="mira-images/' + t.code + '.jpg" alt="' + t.name + '" loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.6s cubic-bezier(0.22,1,0.36,1), filter 0.4s ease;">' +
+            '<div style="position:absolute; bottom:0; left:0; right:0; height:60%; background:linear-gradient(to top, #0D0E12 0%, rgba(13,14,18,0.6) 50%, transparent 100%); pointer-events:none;"></div>' +
+            '<div style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.55); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:6px 12px; z-index:2;">' +
+              '<span style="font-size:0.85rem; font-weight:600; letter-spacing:2px; background:linear-gradient(135deg,#D4AF37,#F0D080); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">' + t.code + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div style="position:absolute; bottom:0; left:0; right:0; padding:20px; z-index:2;">' +
+            '<div style="font-size:1rem; font-weight:500; color:#F0EDE6; margin-bottom:6px; letter-spacing:1px;">' + t.name + '</div>' +
+            '<div style="font-size:0.72rem; line-height:1.7; color:#8A92A0; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">' + t.desc + '</div>' +
+          '</div>';
+        card.onclick = function() { openMiraOverlay(t); };
+        grid.appendChild(card);
+      });
+    }
+
+    function openMiraOverlay(t) {
+      var overlay = document.getElementById('miraOverlay');
+      document.getElementById('miraOverlayImg').src = 'mira-images/' + t.code + '.jpg';
+      document.getElementById('miraOverlayCode').textContent = t.code;
+      document.getElementById('miraOverlayName').textContent = t.name;
+      document.getElementById('miraOverlayDesc').textContent = t.desc;
+      var dirIndex = 'OTIN'.indexOf(t.dir);
+      var dots = '';
+      for (var i = 0; i < 4; i++) {
+        dots += '<div style="width:8px; height:8px; border-radius:50%; background:' + (i === dirIndex ? 'linear-gradient(135deg,#D4AF37,#6495ED)' : 'rgba(255,255,255,0.06)') + '; border:1px solid ' + (i === dirIndex ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)') + ';"></div>';
+      }
+      document.getElementById('miraOverlaySpectrum').innerHTML =
+        '<div style="display:flex; gap:3px;">' + dots + '</div>' +
+        '<span style="font-size:0.65rem; color:#5A6270; letter-spacing:2px; margin-left:8px;">' + dimNames[t.dim] + ' · ' + dirNames[t.dir] + '</span>';
+      document.getElementById('miraSaveBtn').onclick = function(e) {
+        e.stopPropagation();
+        var link = document.createElement('a');
+        link.href = 'mira-images/' + t.code + '.jpg';
+        link.download = 'MIRA-' + t.code + '-' + t.name + '.jpg';
+        link.click();
+      };
+      document.getElementById('miraShareBtn').onclick = function(e) {
+        e.stopPropagation();
+        if (navigator.share) {
+          navigator.share({ title:'MIRA ' + t.code + ' · ' + t.name, text:t.desc, url:window.location.href }).catch(function(){});
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText('MIRA ' + t.code + ' · ' + t.name + '\n' + t.desc).then(function(){
+            document.getElementById('miraShareBtn').textContent = '已复制';
+            setTimeout(function(){ document.getElementById('miraShareBtn').textContent = '分享'; }, 2000);
+          });
+        }
+      };
+      overlay.style.display = 'flex';
+    }
+
+    window.openMira = function() {
+      buildGrid();
+      var miraView = document.getElementById('miraView');
+      miraView.style.display = 'flex';
+      // Responsive grid
+      function updateGridCols() {
+        var grid = document.getElementById('miraGrid');
+        var w = window.innerWidth;
+        if (w <= 520) grid.style.gridTemplateColumns = '1fr';
+        else if (w <= 800) grid.style.gridTemplateColumns = 'repeat(2,1fr)';
+        else if (w <= 1200) grid.style.gridTemplateColumns = 'repeat(3,1fr)';
+        else grid.style.gridTemplateColumns = 'repeat(4,1fr)';
+      }
+      updateGridCols();
+      window.addEventListener('resize', updateGridCols);
+    };
+
+    window.closeMiraView = function() {
+      document.getElementById('miraView').style.display = 'none';
+    };
+
+    window.closeMiraOverlay = function() {
+      document.getElementById('miraOverlay').style.display = 'none';
+    };
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeMiraOverlay();
+        closeMiraView();
+      }
+    });
+
+    // Click outside overlay to close
+    document.getElementById('miraOverlay').addEventListener('click', function(e) {
+      if (e.target === this) closeMiraOverlay();
+    });
+  })();
   </script>
 </body>
 </html>
