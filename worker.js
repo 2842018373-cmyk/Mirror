@@ -4,6 +4,7 @@
 
 // CORS 白名单
 const ALLOWED_ORIGINS = [
+  'https://mirror-15a.pages.dev',
   'https://mirror.2842018373-cmyk.pages.dev',
   'http://localhost:5500',
   'http://localhost:3000',
