@@ -330,7 +330,7 @@ async function callAI(env, prompt, mode, history) {
       body: JSON.stringify({
         model: 'agnes-1.5-flash',
         messages,
-        temperature: 0.7,
+        temperature: 0.15,
         max_tokens: 2000,
       }),
     });
