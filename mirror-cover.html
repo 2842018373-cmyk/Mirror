@@ -1510,15 +1510,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
         case 'RESULT':
           area.classList.add('active');
-          area.innerHTML =
-            '<div class="msg-actions" style="position:static;width:100%;max-width:none;padding:0;">' +
-            '<button class="btn btn-primary" id="resultLetter">写一封信</button>' +
-            '<button class="btn btn-secondary" id="resultExport">导出报告</button>' +
-            '<button class="btn-ghost" id="resultRestart">重新开始</button>' +
-            '</div>';
-          document.getElementById('resultLetter').onclick = function() { startLetterMode(); };
-          document.getElementById('resultExport').onclick = function() { exportReport(); };
-          document.getElementById('resultRestart').onclick = function() { restartExperience(); };
+          // 按钮由 showResultActions() 通过 addMessage 创建，此处不重复渲染
           break;
 
         case 'LETTER':
