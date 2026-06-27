@@ -2017,6 +2017,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     function exportReport() {
       var d = userData.aiData;
       if (!d || !d.fact) { alert('暂无分析数据可导出'); return; }
+      if (typeof html2canvas === 'undefined') { alert('报告组件加载中，请稍后再试'); return; }
       var miraType = d.miraType || 'ST';
       var miraInfo = getMiraInfo(miraType);
       var dateStr = new Date().toISOString().slice(0, 10);
@@ -2062,15 +2063,49 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
       document.body.appendChild(report);
 
-      html2canvas(report, { backgroundColor: '#08090B', scale: 2 }).then(function(canvas) {
-        var link = document.createElement('a');
-        link.download = 'Mirror-Report-' + dateStr + '.png';
-        link.href = canvas.toDataURL();
-        link.click();
+      addMessage('system', '正在生成报告图片…');
+
+      html2canvas(report, { backgroundColor: '#08090B', scale: 2, useCORS: true, allowTaint: true }).then(function(canvas) {
+        canvas.toBlob(function(blob) {
+          document.body.removeChild(report);
+          if (!blob) { addMessage('system', '导出失败，请重试'); return; }
+          var url = URL.createObjectURL(blob);
+          // 移动端兼容：iOS/Android 用新窗口打开图片，用户可长按保存
+          if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            var win = window.open(url, '_blank');
+            if (win) {
+              addMessage('system', '报告已生成，请长按图片保存到相册');
+            } else {
+              // 弹窗被拦截时，改为直接在当前页显示
+              var img = document.createElement('img');
+              img.src = url;
+              img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
+              var preview = document.createElement('div');
+              preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;padding:20px;';
+              preview.innerHTML = '<div style="color:#7EA7FF;font-size:13px;margin-bottom:12px;text-align:center">长按图片保存到相册</div>';
+              preview.appendChild(img);
+              var closeBtn = document.createElement('div');
+              closeBtn.textContent = '关闭';
+              closeBtn.style.cssText = 'margin-top:16px;padding:10px 32px;border:1px solid #7EA7FF;color:#7EA7FF;border-radius:8px;cursor:pointer;font-size:14px;';
+              closeBtn.onclick = function() { document.body.removeChild(preview); URL.revokeObjectURL(url); };
+              preview.appendChild(closeBtn);
+              preview.onclick = function(e) { if (e.target === preview) { document.body.removeChild(preview); URL.revokeObjectURL(url); } };
+              document.body.appendChild(preview);
+            }
+          } else {
+            // 桌面端：直接下载
+            var link = document.createElement('a');
+            link.download = 'Mirror-Report-' + dateStr + '.png';
+            link.href = url;
+            link.click();
+            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+            addMessage('system', '报告已保存');
+          }
+        }, 'image/png');
+      }).catch(function(err) {
         document.body.removeChild(report);
-      }).catch(function() {
-        document.body.removeChild(report);
-        alert('导出失败，请重试');
+        addMessage('system', '导出失败，请重试');
+        console.error('exportReport error:', err);
       });
     }
 
