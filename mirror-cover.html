@@ -450,12 +450,6 @@
       </div>
     </div>
     <div class="chat-thread" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; gap:24px; background:#08090B;">
-      <!-- MIRA 关系光谱 -->
-      <div class="mode-card" style="cursor:pointer; width:100%; max-width:480px; border:1px solid rgba(212,175,55,0.15);" onclick="openMira()">
-        <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#127912;</div>
-        <div class="mode-card-title" style="background:linear-gradient(135deg,#D4AF37,#F0D080); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">MIRA 关系光谱</div>
-        <div class="mode-card-desc">Mirror Identity Reflection Archetype — 发现你的关系原型</div>
-      </div>
       <!-- 单人模式 -->
       <div class="mode-card" id="modeSingle" style="cursor:pointer; width:100%; max-width:480px;">
         <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#129489;</div>
@@ -855,7 +849,7 @@
     // API 配置
     var MIRROR_API_URL = 'https://apihub.agnes-ai.com/v1/chat/completions';
     var MIRROR_MODEL = 'agnes-1.5-flash';
-    var WORKER_API_BASE = 'https://mirror-api.2842018373.workers.dev';
+    var WORKER_API_BASE = 'https://api.mirrorsoul.top';
 
     // System Prompt
     var MIRROR_SYSTEM_PROMPT = `你是 Mirror，一个关系理解与表达操作系统。
@@ -2029,13 +2023,74 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // ════════════════════════════════════════════════════════════════════════════════════════════
 
     function exportReport() {
-      var thread = document.getElementById('chatThread');
-      html2canvas(thread, { backgroundColor: '#08090B', scale: 2 }).then(function(canvas) {
+      var d = userData.aiData;
+      if (!d || !d.fact) { alert('暂无分析数据可导出'); return; }
+      var miraType = d.miraType || 'ST';
+      var miraInfo = getMiraInfo(miraType);
+      var dateStr = new Date().toISOString().slice(0, 10);
+
+      // 创建临时报告容器
+      var report = document.createElement('div');
+      report.id = '_exportReport';
+      report.style.cssText = 'position:fixed;left:-9999px;top:0;width:420px;padding:32px 24px;background:#08090B;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;font-size:14px;line-height:1.8;box-sizing:border-box;';
+      report.innerHTML =
+        '<div style="text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid rgba(126,167,255,0.15)">' +
+          '<div style="font-size:1.6rem;letter-spacing:4px;margin-bottom:4px">MIRROR</div>' +
+          '<div style="font-size:0.75rem;color:#7EA7FF;letter-spacing:2px">关系镜像分析报告</div>' +
+          '<div style="font-size:0.7rem;color:#5A6472;margin-top:4px">' + dateStr + '</div></div>' +
+        // Step 1
+        '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 1 / 5 &mdash; MIRROR 分析</div>' +
+          '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px">' +
+            _rRow('关系状态', d.status) + _rRow('事实', d.fact) + _rRow('情绪', d.emotion) + _rRow('需求', d.need) + _rRow('误解', d.misread) +
+          '</div></div>' +
+        // Step 2
+        '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 2 / 5 &mdash; MIRROR LAYER</div>' +
+          _rBlock('attack', '你说的是', d.before || d.insight || '—') +
+          '<div style="text-align:center;color:#5A6472;margin:8px 0">&darr;</div>' +
+          _rBlock('inner', '你真正想说的是', d.innerThought || d.inner || '—') +
+          '<div style="text-align:center;color:#5A6472;margin:8px 0">&darr;</div>' +
+          _rBlock('mirror', 'Mirror 帮你翻译成', d.after || '—') +
+        '</div>' +
+        // Step 3
+        '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 3 / 5 &mdash; 洞察</div>' +
+          '<div style="font-size:14px;color:#C8D0DC">' + (d.insight || '—') + '</div></div>' +
+        // Step 4
+        '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 4 / 5 &mdash; 建议</div>' +
+          '<div style="font-size:14px;color:#C8D0DC">' + (d.suggest || '—') + '</div></div>' +
+        // Step 5
+        '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 5 / 5 &mdash; MIRA 关系原型</div>' +
+          '<div style="text-align:center;padding:24px;background:rgba(126,167,255,0.04);border:1px solid rgba(126,167,255,0.1);border-radius:12px">' +
+            '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:2px;margin-bottom:12px">MIRROR IDENTITY REFLECTION ARCHETYPE</div>' +
+            '<div style="font-size:1.6rem;font-weight:700;color:#7EA7FF;letter-spacing:4px;margin-bottom:4px">' + miraType + '</div>' +
+            '<div style="font-size:1rem;font-weight:500;margin-bottom:4px">' + miraInfo.name + '</div>' +
+            '<div style="font-size:0.7rem;color:#8892A0;margin-bottom:6px">' + miraInfo.dim + ' · ' + miraInfo.dir + '</div>' +
+            '<div style="font-size:0.75rem;color:#5A6472">' + miraInfo.desc + '</div>' +
+          '</div></div>' +
+        '<div style="text-align:center;margin-top:32px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.04);font-size:0.65rem;color:#5A6472;letter-spacing:1px">Generated by Mirror</div>';
+
+      document.body.appendChild(report);
+
+      html2canvas(report, { backgroundColor: '#08090B', scale: 2 }).then(function(canvas) {
         var link = document.createElement('a');
-        link.download = 'Mirror-Report-' + new Date().toISOString().slice(0, 10) + '.png';
+        link.download = 'Mirror-Report-' + dateStr + '.png';
         link.href = canvas.toDataURL();
         link.click();
-      }).catch(function() { alert('导出失败，请重试'); });
+        document.body.removeChild(report);
+      }).catch(function() {
+        document.body.removeChild(report);
+        alert('导出失败，请重试');
+      });
+    }
+
+    function _rRow(label, value) {
+      return '<div style="display:flex;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)"><div style="width:64px;flex-shrink:0;font-size:0.7rem;color:#5A6472">' + label + '</div><div style="flex:1;font-size:0.85rem;color:#C8D0DC">' + (value || '—') + '</div></div>';
+    }
+    function _rBlock(type, label, text) {
+      var colors = { attack: ['#FF8A8A','rgba(255,100,100,0.06)','rgba(255,100,100,0.3)'], inner: ['#FFB888','rgba(255,180,100,0.06)','rgba(255,180,100,0.3)'], mirror: ['#7EA7FF','rgba(126,167,255,0.06)','rgba(126,167,255,0.3)'] };
+      var c = colors[type] || colors.mirror;
+      return '<div style="margin:12px 0;border-radius:10px;padding:14px 18px;background:' + c[1] + ';border-left:3px solid ' + c[2] + '">' +
+        '<div style="font-size:0.65rem;letter-spacing:1px;color:' + c[0] + ';margin-bottom:4px;font-weight:500">' + label + '</div>' +
+        '<div style="font-size:0.85rem;color:#C8D0DC;font-style:italic">\u201C' + text + '\u201D</div></div>';
     }
 
     function exportLetterReply() {

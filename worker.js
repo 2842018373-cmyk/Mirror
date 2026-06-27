@@ -4,6 +4,10 @@
 
 // CORS 白名单
 const ALLOWED_ORIGINS = [
+  'https://mirrorsoul.top',
+  'https://www.mirrorsoul.top',
+  'https://api.mirrorsoul.top',
+  'https://6a3552b7d62c5c239e40dcfc.vercel.app',
   'https://mirror-15a.pages.dev',
   'https://mirror.2842018373-cmyk.pages.dev',
   'http://localhost:5500',
