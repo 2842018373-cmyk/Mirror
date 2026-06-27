@@ -2070,28 +2070,22 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           document.body.removeChild(report);
           if (!blob) { addMessage('system', '导出失败，请重试'); return; }
           var url = URL.createObjectURL(blob);
-          // 移动端兼容：iOS/Android 用新窗口打开图片，用户可长按保存
+          // 移动端兼容：直接在当前页弹出全屏预览，用户长按图片保存
           if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            var win = window.open(url, '_blank');
-            if (win) {
-              addMessage('system', '报告已生成，请长按图片保存到相册');
-            } else {
-              // 弹窗被拦截时，改为直接在当前页显示
-              var img = document.createElement('img');
-              img.src = url;
-              img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
-              var preview = document.createElement('div');
-              preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;padding:20px;';
-              preview.innerHTML = '<div style="color:#7EA7FF;font-size:13px;margin-bottom:12px;text-align:center">长按图片保存到相册</div>';
-              preview.appendChild(img);
-              var closeBtn = document.createElement('div');
-              closeBtn.textContent = '关闭';
-              closeBtn.style.cssText = 'margin-top:16px;padding:10px 32px;border:1px solid #7EA7FF;color:#7EA7FF;border-radius:8px;cursor:pointer;font-size:14px;';
-              closeBtn.onclick = function() { document.body.removeChild(preview); URL.revokeObjectURL(url); };
-              preview.appendChild(closeBtn);
-              preview.onclick = function(e) { if (e.target === preview) { document.body.removeChild(preview); URL.revokeObjectURL(url); } };
-              document.body.appendChild(preview);
-            }
+            var img = document.createElement('img');
+            img.src = url;
+            img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
+            var preview = document.createElement('div');
+            preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;padding:20px;';
+            preview.innerHTML = '<div style="color:#7EA7FF;font-size:13px;margin-bottom:12px;text-align:center">长按图片保存到相册</div>';
+            preview.appendChild(img);
+            var closeBtn = document.createElement('div');
+            closeBtn.textContent = '关闭';
+            closeBtn.style.cssText = 'margin-top:16px;padding:10px 32px;border:1px solid #7EA7FF;color:#7EA7FF;border-radius:8px;cursor:pointer;font-size:14px;';
+            closeBtn.onclick = function() { document.body.removeChild(preview); URL.revokeObjectURL(url); };
+            preview.appendChild(closeBtn);
+            preview.onclick = function(e) { if (e.target === preview) { document.body.removeChild(preview); URL.revokeObjectURL(url); } };
+            document.body.appendChild(preview);
           } else {
             // 桌面端：直接下载
             var link = document.createElement('a');
