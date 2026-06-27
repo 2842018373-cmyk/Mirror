@@ -2076,8 +2076,11 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
             img.src = url;
             img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
             var preview = document.createElement('div');
-            preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;padding:20px;';
-            preview.innerHTML = '<div style="color:#7EA7FF;font-size:13px;margin-bottom:12px;text-align:center">长按图片保存到相册</div>';
+            preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 12px;';
+            var tipBar = document.createElement('div');
+            tipBar.style.cssText = 'color:#7EA7FF;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;max-width:420px;flex-shrink:0;';
+            tipBar.textContent = '长按图片保存到相册';
+            preview.appendChild(tipBar);
             preview.appendChild(img);
             var closeBtn = document.createElement('div');
             closeBtn.textContent = '关闭';
