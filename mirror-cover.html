@@ -94,10 +94,10 @@
     /* ══════════════════════════════════════════ 对话视图 ══════════════════════════════════════════ */
     .chat-view { position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column; }
     .chat-view.active { display: flex; }
-    .mode-card { background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 20px; padding: 32px 28px; text-align: center; transition: all 0.3s var(--ease); }
+    .mode-card { background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 20px; padding: 24px 24px; text-align: center; transition: all 0.3s var(--ease); }
     .mode-card:hover { border-color: rgba(126,167,255,0.3); transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
-    .mode-card-title { font-size: 1.3rem; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
-    .mode-card-desc { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+    .mode-card-title { font-size: 1.2rem; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+    .mode-card-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
 
     /* 顶部进度条 */
     .chat-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(126,167,255,0.1); z-index: 10; }
@@ -365,6 +365,57 @@
     .letter-form textarea { min-height: 120px; resize: vertical; line-height: 1.7; }
     .letter-form input::placeholder, .letter-form textarea::placeholder { color: var(--faint); }
 
+    /* ══════════════════════════════════════════ MIRA 答题 Overlay ══════════════════════════════════════════ */
+    .quiz-overlay { position: fixed; inset: 0; z-index: 500; background: var(--bg); display: none; flex-direction: column; }
+    .quiz-overlay.active { display: flex; }
+    .quiz-container { flex: 1; display: flex; flex-direction: column; max-width: 640px; margin: 0 auto; width: 100%; }
+    .quiz-header { display: flex; align-items: center; gap: 12px; padding: 16px; padding-top: 32px; background: rgba(8,9,11,0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--rule); flex-shrink: 0; }
+    .quiz-back-btn { padding: 6px 12px; border-radius: 999px; background: var(--surface-glass); border: 1px solid var(--rule); color: var(--muted); font-size: 0.78rem; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
+    .quiz-back-btn:hover { border-color: var(--blue); color: var(--ink); }
+    .quiz-progress-bar { flex: 1; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+    .quiz-progress-fill { height: 100%; background: linear-gradient(90deg, var(--blue), var(--cyan)); transition: width 0.4s var(--ease); width: 0%; }
+    .quiz-progress-text { font-size: 0.75rem; color: var(--muted); min-width: 48px; text-align: right; }
+    .quiz-body { flex: 1; overflow-y: auto; padding: 32px 24px; display: flex; flex-direction: column; gap: 24px; }
+    .quiz-question { font-size: 1.15rem; font-weight: 600; color: var(--ink); line-height: 1.6; text-align: center; }
+    .quiz-options { display: flex; flex-direction: column; gap: 12px; }
+    .quiz-option { padding: 16px 20px; border-radius: 16px; background: var(--surface-glass); border: 1px solid var(--rule); color: var(--ink); font-size: 0.92rem; cursor: pointer; transition: all 0.25s var(--ease); text-align: left; line-height: 1.6; }
+    .quiz-option:hover { border-color: rgba(126,167,255,0.35); background: rgba(126,167,255,0.06); transform: translateX(4px); }
+    .quiz-option.selected { border-color: var(--blue); background: rgba(126,167,255,0.12); }
+    .quiz-loading { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; color: var(--muted); }
+    .quiz-spinner { width: 40px; height: 40px; border: 3px solid var(--surface); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══════════════════════════════════════════ MIRA 人格画像弹层 ══════════════════════════════════════════ */
+    .profile-overlay { position: fixed; inset: 0; z-index: 600; background: rgba(8,9,11,0.92); backdrop-filter: blur(20px); display: none; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.4s var(--ease); }
+    .profile-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+    .profile-container { background: var(--bg-elevated); border: 1px solid var(--rule); border-radius: 24px; width: 92%; max-width: 520px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; transform: translateY(20px) scale(0.96); transition: transform 0.4s var(--ease); }
+    .profile-overlay.active .profile-container { transform: translateY(0) scale(1); }
+    .profile-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--rule); flex-shrink: 0; }
+    .profile-title { font-size: 1.1rem; font-weight: 600; color: var(--ink); }
+    .profile-close-btn { background: none; border: none; color: var(--faint); font-size: 1.3rem; cursor: pointer; padding: 4px; transition: color 0.2s; }
+    .profile-close-btn:hover { color: var(--ink); }
+    .profile-content { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; -webkit-overflow-scrolling: touch; }
+    .profile-section { background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 16px; padding: 20px; }
+    .profile-section-title { font-size: 0.85rem; font-weight: 600; color: var(--blue); margin-bottom: 10px; letter-spacing: 0.02em; }
+    .profile-section-body { font-size: 0.9rem; color: var(--ink); line-height: 1.7; }
+    .profile-mira-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 999px; background: linear-gradient(135deg, rgba(126,167,255,0.15), rgba(200,184,160,0.1)); border: 1px solid rgba(126,167,255,0.2); font-size: 1.1rem; font-weight: 700; color: var(--ink); margin: 0 auto; }
+    .profile-actions { display: flex; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--rule); flex-shrink: 0; flex-wrap: wrap; }
+    .profile-actions .btn { flex: 1; justify-content: center; min-width: 120px; }
+
+    .profile-cta { padding: 0 24px 20px; text-align: center; flex-shrink: 0; }
+    .profile-cta-btn { background: linear-gradient(135deg, rgba(126,167,255,0.12), rgba(200,184,160,0.08)); border: 1px solid rgba(126,167,255,0.35); color: var(--blue); font-size: 0.82rem; padding: 10px 24px; border-radius: 999px; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; font-weight: 500; display: inline-block; }
+    .report-cta-btn { background: linear-gradient(135deg, rgba(126,167,255,0.12), rgba(200,184,160,0.08)); border: 1px solid rgba(126,167,255,0.35); color: var(--blue); font-size: 0.82rem; padding: 10px 24px; border-radius: 999px; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; font-weight: 500; display: inline-block; }
+    .report-cta-btn:hover { border-color: var(--blue); color: var(--ink); background: linear-gradient(135deg, rgba(126,167,255,0.2), rgba(200,184,160,0.12)); }
+    .profile-cta-btn:hover { border-color: var(--blue); color: var(--ink); background: linear-gradient(135deg, rgba(126,167,255,0.2), rgba(200,184,160,0.12)); }
+    .profile-cta-btn.active { border-color: var(--blue); color: var(--ink); }
+    .profile-cta-wrap { padding: 0 24px 20px; text-align: center; flex-shrink: 0; }
+    .profile-cta-detail { max-height: 0; overflow: hidden; transition: all 0.4s var(--ease); opacity: 0; }
+    .profile-cta-detail.show { max-height: 120px; opacity: 1; margin-top: 14px; }
+    .profile-cta-line { width: 32px; height: 1px; background: var(--rule); margin: 0 auto 12px; }
+    .profile-cta-hint { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; }
+    .profile-cta-id { font-size: 1.15rem; font-weight: 700; color: var(--ink); letter-spacing: 0.08em; font-family: 'Courier New', monospace; cursor: pointer; user-select: all; }
+    .profile-cta-tip { font-size: 0.68rem; color: var(--faint); margin-top: 6px; }
+
     /* ══════════════════════════════════════════ 响应式 ══════════════════════════════════════════ */
     @media (max-width: 640px) {
       .cover { min-height: 100svh; }
@@ -380,6 +431,8 @@
       .msg { max-width: 92%; }
       .msg-card, .msg-mirror, .msg-insight, .msg-advice, .msg-followup { width: 96%; }
       .chat-header { padding-top: 28px; }
+      .quiz-body { padding: 24px 16px; }
+      .profile-container { width: 96%; max-height: 92vh; border-radius: 20px; }
     }
   </style>
 </head>
@@ -449,7 +502,7 @@
         </div>
       </div>
     </div>
-    <div class="chat-thread" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; gap:24px; background:#08090B;">
+    <div class="chat-thread" style="display:flex; flex-direction:column; align-items:center; padding:32px 24px; gap:20px; background:#08090B; overflow-y:auto; flex:1;">
       <!-- 单人模式 -->
       <div class="mode-card" id="modeSingle" style="cursor:pointer; width:100%; max-width:480px;">
         <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#129489;</div>
@@ -468,6 +521,15 @@
         <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
           <button class="btn btn-primary mode-sub-btn" data-mode="couple" data-type="chat" style="flex:1; min-width:140px;">对话分析</button>
           <button class="btn btn-secondary mode-sub-btn" data-mode="couple" data-type="letter" style="flex:1; min-width:140px;">互写回信</button>
+        </div>
+      </div>
+      <!-- MIRA 人格测试 -->
+      <div class="mode-card" id="modeQuiz" style="cursor:pointer; width:100%; max-width:480px; border-color:rgba(200,184,160,0.2);">
+        <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#127912;</div>
+        <div class="mode-card-title">测测你的 MIRA</div>
+        <div class="mode-card-desc">30 道精选问题，AI 分析你在亲密关系中的真实站位</div>
+        <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="quizStartBtn" style="flex:1; min-width:140px; background:linear-gradient(135deg,#C8B8A0,#A09070);">开始测试</button>
         </div>
       </div>
     </div>
@@ -1178,9 +1240,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       setTimeout(function() { thread.scrollTop = thread.scrollHeight; }, 50);
     }
 
-    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════════════
     // 消息渲染函数
-    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════════════
 
     function addMessage(type, content, options) {
       var thread = document.getElementById('chatThread');
@@ -1921,12 +1983,47 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     function showResultActions(data) {
       setState('RESULT');
       addMessage('actions', [
-        { text: '✉️ 写一封信', className: 'btn btn-primary', onclick: function() { startLetterMode(); } },
+        { text: '🔍 查看完整人格画像', className: 'btn btn-primary', onclick: function() { openProfileOverlay(data); } },
         { text: '📤 分享人格', className: 'btn btn-primary', onclick: function() { generateShareCard(); } },
-        { text: '📋 导出报告', className: 'btn btn-secondary', onclick: function() { exportReport(); } },
-        { text: '🔄 重新开始', className: 'btn-ghost', onclick: function() { restartExperience(); } }
+        { text: '📋 导出报告', className: 'btn btn-secondary', onclick: function() { exportReport(); } }
       ]);
+      // 导流入口
+      appendCtaToThread();
     }
+
+    // 统一的报告底部导流
+    function appendCtaToThread() {
+      var thread = document.getElementById('chatThread');
+      if (!thread) return;
+      var el = document.createElement('div');
+      el.className = 'msg';
+      el.style.cssText = 'text-align:center;margin-top:8px;margin-left:auto;margin-right:auto;max-width:100%;';
+      el.innerHTML = '<button class="report-cta-btn" onclick="toggleReportCta(this)">保存分析报告，添加专属顾问一对一解读</button>' +
+        '<div class="report-cta-detail" style="max-height:0;overflow:hidden;transition:all 0.4s var(--ease);opacity:0;">' +
+        '<div style="width:32px;height:1px;background:var(--rule);margin:12px auto;"></div>' +
+        '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">添加 Mirror 伙伴</div>' +
+        '<div style="font-size:1.15rem;font-weight:700;color:var(--ink);letter-spacing:0.08em;font-family:Courier New,monospace;cursor:pointer;user-select:all;">S420S421</div>' +
+        '<div style="font-size:0.68rem;color:var(--faint);margin-top:6px;">长按复制</div>' +
+        '</div>';
+      thread.appendChild(el);
+      scrollThread();
+    }
+
+    window.toggleReportCta = function(btn) {
+      var detail = btn.nextElementSibling;
+      var isOpen = detail.style.maxHeight !== '0px' && detail.style.maxHeight !== '';
+      if (isOpen) {
+        detail.style.maxHeight = '0px';
+        detail.style.opacity = '0';
+        detail.style.marginTop = '0';
+        btn.textContent = '保存分析报告，添加专属顾问一对一解读';
+      } else {
+        detail.style.maxHeight = '120px';
+        detail.style.opacity = '1';
+        detail.style.marginTop = '8px';
+        btn.textContent = '收起';
+      }
+    };
 
     // ════════════════════════════════════════════════════════════════════════════════════════════
     // 写信模式
@@ -2128,56 +2225,91 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var dim = miraType[0];
       var dir = miraType[1];
 
-      var dimTagMap = {
-        D: ['内敛深沉', '沉默寡言', '习惯独处'],
-        S: ['温柔细腻', '善于倾听', '感知敏锐'],
-        B: ['主动坦诚', '热情真挚', '表达清晰'],
-        R: ['炽热锐利', '坚定果敢', '毫无保留']
-      };
-      var dirTagMap = {
-        O: ['关注对方', '付出型', '守护型'],
-        T: ['双向互动', '追求平衡', '注重沟通'],
-        I: ['自我反思', '独立思考', '内在探索'],
-        N: ['内省自知', '沉静内敛', '自我对话']
-      };
+      // 维度得分条（从AI数据或默认值）
+      var exprScores = d._scores || { D: dim==='D'?12:3, S: dim==='S'?12:3, B: dim==='B'?12:3, R: dim==='R'?12:3 };
+      var focusScores = d._focusScores || { O: dir==='O'?12:3, T: dir==='T'?12:3, I: dir==='I'?12:3, N: dir==='N'?12:3 };
+
+      function barHtml(label, score, color) {
+        var pct = Math.min(100, Math.max(15, score / 15 * 100));
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+          '<div style="width:28px;font-size:0.6rem;color:#5A6472;text-align:right;">' + label + '</div>' +
+          '<div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">' +
+            '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px;"></div>' +
+          '</div>' +
+          '<div style="width:20px;font-size:0.6rem;color:#8892A0;">' + score + '</div>' +
+        '</div>';
+      }
+
       var tags = [
-        dimTagMap[dim] ? dimTagMap[dim][0] : '独特',
-        dirTagMap[dir] ? dirTagMap[dir][0] : '个性',
-        dimTagMap[dim] ? dimTagMap[dim][1] : '深邃'
+        miraInfo.dim, miraInfo.dir,
+        dim === 'D' ? '内敛深沉' : dim === 'S' ? '温柔细腻' : dim === 'B' ? '主动坦诚' : '炽热锐利'
       ];
 
-      var quote = d.summary || (miraInfo.desc ? miraInfo.desc.split('。')[0] + '。' : '每一种表达，都值得被理解。');
+      var insight = d.insight || miraInfo.desc;
+      var suggest = d.suggest || '尝试在关系中更直接地表达你的真实感受，让对方了解你的内心世界。';
+      var feeling = d.emotion || '在这段关系中，你可能正在经历一种复杂的情绪状态。';
 
       var card = document.createElement('div');
       card.id = '_shareCard';
       card.style.cssText = 'position:fixed;left:-9999px;top:0;width:375px;background:#08090B;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;box-sizing:border-box;overflow:hidden;';
       card.innerHTML =
         '<div style="height:3px;background:linear-gradient(90deg,#D4AF37,#F0D080,#D4AF37);"></div>' +
-        '<div style="padding:32px 28px 8px;text-align:center;">' +
+        // Header
+        '<div style="padding:28px 24px 4px;text-align:center;">' +
           '<div style="font-size:0.65rem;letter-spacing:5px;color:#7EA7FF;margin-bottom:4px;">M I R R O R</div>' +
           '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:1px;">我的 MIRA 关系人格</div>' +
         '</div>' +
-        '<div style="text-align:center;padding:16px 0 16px;">' +
-          '<div style="font-size:4.2rem;font-weight:800;letter-spacing:6px;background:linear-gradient(180deg,#F0D080,#D4AF37,#B8962E);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;display:inline-block;">' + miraType + '</div>' +
+        // MIRA Image
+        '<div style="text-align:center;padding:12px 0;">' +
+          '<img src="mira-images/' + miraType + '.jpg" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid rgba(212,175,55,0.3);box-shadow:0 4px 20px rgba(0,0,0,0.5);" onerror="this.style.display=\'none\'">' +
         '</div>' +
+        // Type
         '<div style="text-align:center;padding:0 24px 4px;">' +
-          '<div style="font-size:1.25rem;font-weight:600;color:#F0EDE6;letter-spacing:3px;">' + miraInfo.name + '</div>' +
-          '<div style="margin-top:10px;display:flex;justify-content:center;gap:8px;">' +
-            '<span style="font-size:0.65rem;color:#7EA7FF;background:rgba(126,167,255,0.08);padding:3px 10px;border-radius:10px;">' + miraInfo.dim + '</span>' +
-            '<span style="font-size:0.65rem;color:#7EA7FF;background:rgba(126,167,255,0.08);padding:3px 10px;border-radius:10px;">' + miraInfo.dir + '</span>' +
+          '<div style="font-size:3.2rem;font-weight:800;letter-spacing:6px;background:linear-gradient(180deg,#F0D080,#D4AF37,#B8962E);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;display:inline-block;">' + miraType + '</div>' +
+          '<div style="font-size:1.1rem;font-weight:600;color:#F0EDE6;letter-spacing:2px;margin-top:4px;">' + miraInfo.name + '</div>' +
+          '<div style="margin-top:8px;display:flex;justify-content:center;gap:6px;">' +
+            '<span style="font-size:0.6rem;color:#7EA7FF;background:rgba(126,167,255,0.08);padding:3px 10px;border-radius:10px;">' + miraInfo.dim + '</span>' +
+            '<span style="font-size:0.6rem;color:#7EA7FF;background:rgba(126,167,255,0.08);padding:3px 10px;border-radius:10px;">' + miraInfo.dir + '</span>' +
           '</div>' +
         '</div>' +
-        '<div style="width:40px;height:1px;background:rgba(212,175,55,0.3);margin:22px auto;"></div>' +
-        '<div style="padding:0 28px 14px;text-align:center;">' +
-          '<div style="font-size:0.9rem;color:#C8D0DC;line-height:1.8;font-style:italic;">\u201C' + quote + '\u201D</div>' +
+        '<div style="width:40px;height:1px;background:rgba(212,175,55,0.3);margin:16px auto;"></div>' +
+        // Dimension bars
+        '<div style="padding:0 28px 10px;">' +
+          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:10px;font-weight:600;">表达方式维度</div>' +
+          barHtml('D', exprScores.D || 3, '#7EA7FF') +
+          barHtml('S', exprScores.S || 3, '#7EA7FF') +
+          barHtml('B', exprScores.B || 3, '#D4AF37') +
+          barHtml('R', exprScores.R || 3, '#D4AF37') +
         '</div>' +
+        '<div style="padding:0 28px 14px;">' +
+          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:10px;font-weight:600;">关注方向维度</div>' +
+          barHtml('O', focusScores.O || 3, '#7EA7FF') +
+          barHtml('T', focusScores.T || 3, '#7EA7FF') +
+          barHtml('I', focusScores.I || 3, '#D4AF37') +
+          barHtml('N', focusScores.N || 3, '#D4AF37') +
+        '</div>' +
+        // Insight
+        '<div style="width:40px;height:1px;background:rgba(212,175,55,0.3);margin:14px auto;"></div>' +
+        '<div style="padding:0 28px 12px;text-align:center;">' +
+          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">在这段感情中的位置</div>' +
+          '<div style="font-size:0.8rem;color:#C8D0DC;line-height:1.8;">' + insight + '</div>' +
+        '</div>' +
+        // Feeling
+        '<div style="padding:0 28px 12px;text-align:center;">' +
+          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">你的真实感受</div>' +
+          '<div style="font-size:0.8rem;color:#C8D0DC;line-height:1.8;font-style:italic;">\u201C' + feeling + '\u201D</div>' +
+        '</div>' +
+        // Suggest
         '<div style="padding:0 28px 18px;text-align:center;">' +
-          '<div style="font-size:0.75rem;color:#8892A0;line-height:1.9;">' + miraInfo.desc + '</div>' +
+          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">给这段关系的建议</div>' +
+          '<div style="font-size:0.8rem;color:#C8D0DC;line-height:1.8;">' + suggest + '</div>' +
         '</div>' +
-        '<div style="padding:0 24px 28px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">' +
+        // Tags
+        '<div style="padding:0 24px 24px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">' +
           tags.map(function(t) { return '<span style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);color:#D4AF37;padding:5px 12px;border-radius:20px;font-size:0.7rem;letter-spacing:0.5px;">' + t + '</span>'; }).join('') +
         '</div>' +
-        '<div style="padding:20px 24px 28px;text-align:center;border-top:1px solid rgba(255,255,255,0.04);">' +
+        // Footer
+        '<div style="padding:18px 24px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.04);">' +
           '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:1px;">Generated by Mirror · mirrorsoul.top</div>' +
           '<div style="font-size:0.55rem;color:#3A4149;margin-top:6px;">测测你的 MIRA 关系人格</div>' +
         '</div>';
@@ -2281,8 +2413,504 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     }
 
     // ════════════════════════════════════════════════════════════════════════════════════════════
-    // 封面逻辑
+    // MIRA 答题 & 人格画像
     // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    var quizData = { questions: [], current: 0, answers: [], selectedQuestions: [], allQuestions: [] };
+    var quizOverlay = document.getElementById('quizOverlay');
+    var quizBody = document.getElementById('quizBody');
+    var quizLoading = document.getElementById('quizLoading');
+    var quizProgressFill = document.getElementById('quizProgressFill');
+    var quizProgressText = document.getElementById('quizProgressText');
+
+    // 加载题库
+    function loadQuizBank() {
+      return fetch('mira-quiz.json')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          quizData.allQuestions = data.questions;
+          return data.questions;
+        })
+        .catch(function(e) {
+          console.error('加载题库失败:', e);
+          alert('题库加载失败，请刷新重试');
+          return [];
+        });
+    }
+
+    // 随机抽取题目：保证表达/关注各半，且覆盖多个场景
+    function selectQuestions(all, count) {
+      var expr = all.filter(function(q) { return q.type === 'expression'; });
+      var focus = all.filter(function(q) { return q.type === 'focus'; });
+      var half = Math.floor(count / 2);
+      function shuffle(arr) {
+        var a = arr.slice();
+        for (var i = a.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+        return a;
+      }
+      var se = shuffle(expr).slice(0, half);
+      var sf = shuffle(focus).slice(0, count - half);
+      return shuffle(se.concat(sf));
+    }
+
+    // 启动答题
+    function startQuiz() {
+      loadQuizBank().then(function(all) {
+        if (!all.length) return;
+        quizData.selectedQuestions = selectQuestions(all, 30);
+        quizData.current = 0;
+        quizData.answers = [];
+        quizOverlay.classList.add('active');
+        renderQuizQuestion();
+      });
+    }
+
+    // 渲染当前题目
+    function renderQuizQuestion() {
+      var q = quizData.selectedQuestions[quizData.current];
+      var total = quizData.selectedQuestions.length;
+      var pct = ((quizData.current + 1) / total) * 100;
+      quizProgressFill.style.width = pct + '%';
+      quizProgressText.textContent = (quizData.current + 1) + ' / ' + total;
+      quizBody.style.display = 'flex';
+      quizLoading.style.display = 'none';
+
+      var typeLabel = q.type === 'expression' ? '表达方式' : '关注方向';
+      document.getElementById('quizQuestion').innerHTML =
+        '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">' + typeLabel + '</div>' +
+        '<div>' + q.text + '</div>';
+
+      var optsHtml = '';
+      for (var i = 0; i < q.options.length; i++) {
+        var opt = q.options[i];
+        optsHtml += '<button class="quiz-option" data-idx="' + i + '" onclick="selectQuizOption(' + i + ')">' + opt.text + '</button>';
+      }
+      document.getElementById('quizOptions').innerHTML = optsHtml;
+    }
+
+    // 选择选项
+    window.selectQuizOption = function(idx) {
+      var q = quizData.selectedQuestions[quizData.current];
+      quizData.answers.push({ questionId: q.id, optionIndex: idx, type: q.type });
+      var btns = document.querySelectorAll('.quiz-option');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.toggle('selected', i === idx);
+      }
+      setTimeout(function() {
+        if (quizData.current < quizData.selectedQuestions.length - 1) {
+          quizData.current++;
+          renderQuizQuestion();
+        } else {
+          submitQuizAnswers();
+        }
+      }, 250);
+    };
+
+    // 前端计分：统计每个维度总分
+    function calculateQuizScores() {
+      var scores = { D: 0, S: 0, B: 0, R: 0, O: 0, T: 0, I: 0, N: 0 };
+      for (var i = 0; i < quizData.answers.length; i++) {
+        var a = quizData.answers[i];
+        var q = quizData.selectedQuestions[i];
+        var opt = q.options[a.optionIndex];
+        var scoreMap = opt.score;
+        for (var dim in scoreMap) {
+          if (scores.hasOwnProperty(dim)) {
+            scores[dim] += scoreMap[dim];
+          }
+        }
+      }
+      return scores;
+    }
+
+    // 找出最高分的维度，返回 [winner, runnerUp, gap]
+    function findWinner(scores, dims) {
+      var list = dims.map(function(d) { return { dim: d, score: scores[d] }; });
+      list.sort(function(a, b) { return b.score - a.score; });
+      return { winner: list[0].dim, runnerUp: list[1].dim, gap: list[0].score - list[1].score, scores: list };
+    }
+
+    // 提交答案：前端计分确定类型，AI 只生成个性化描述
+    function submitQuizAnswers() {
+      quizBody.style.display = 'none';
+      quizLoading.style.display = 'flex';
+
+      // 1. 前端计分
+      var scores = calculateQuizScores();
+      var exprResult = findWinner(scores, ['D', 'S', 'B', 'R']);
+      var focusResult = findWinner(scores, ['O', 'T', 'I', 'N']);
+      var miraType = exprResult.winner + focusResult.winner;
+
+      // 2. 检查是否模糊（差距 < 3 分需要追加题目）
+      var ambiguous = exprResult.gap < 3 || focusResult.gap < 3;
+      if (ambiguous && quizData.selectedQuestions.length < 50) {
+        var more = selectQuestions(quizData.allQuestions.filter(function(q) {
+          return !quizData.selectedQuestions.some(function(sq) { return sq.id === q.id; });
+        }), 10);
+        if (more.length) {
+          quizData.selectedQuestions = quizData.selectedQuestions.concat(more);
+          quizOverlay.classList.add('active');
+          renderQuizQuestion();
+          return;
+        }
+      }
+
+      // 3. 构建答案文本
+      var answerText = quizData.answers.map(function(a, i) {
+        var q = quizData.selectedQuestions[i];
+        var opt = q.options[a.optionIndex];
+        var dim = Object.keys(opt.score).reduce(function(a, b) { return opt.score[a] > opt.score[b] ? a : b; });
+        return 'Q' + (i + 1) + ' [' + (q.type === 'expression' ? '表达' : '关注') + ']: ' + q.text + '\n选择: ' + opt.text + ' (+' + opt.score[dim] + ' ' + dim + ')';
+      }).join('\n\n');
+
+      var scoreText = '计分结果：\n表达方式维度: D=' + scores.D + ', S=' + scores.S + ', B=' + scores.B + ', R=' + scores.R + ' → 最高: ' + exprResult.winner + ' (领先' + exprResult.gap + '分)\n关注方向维度: O=' + scores.O + ', T=' + scores.T + ', I=' + scores.I + ', N=' + scores.N + ' → 最高: ' + focusResult.winner + ' (领先' + focusResult.gap + '分)\n\n确定类型: ' + miraType;
+
+      var prompt = '以下是一位用户完成的 MIRA 人格测试答案。\n\n' + scoreText + '\n\n' + answerText + '\n\n用户的 MIRA 类型已经由计分系统确定为：' + miraType + '。\n\n你的任务是基于用户的具体选择，生成个性化描述。不要猜测类型，直接使用已确定的类型 ' + miraType + '。\n\n请给出：\n1. miraType: "' + miraType + '"\n2. expression: 表达方式维度（' + exprResult.winner + '）的详细描述，1-2句话\n3. focus: 关注方向维度（' + focusResult.winner + '）的详细描述，1-2句话\n4. portrait: 个性化人格画像描述，3-4句话，必须引用用户的具体选择，不是通用模板\n5. insight: 亲密关系中的核心洞察，2-3句话\n6. suggest: 改善关系的具体建议，2-3句话\n\n请以 JSON 格式回复，不要包含任何其他文字。';
+
+      fetch(WORKER_API_BASE + '/api/mira-quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ miraType: miraType, scores: scores, prompt: prompt })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        quizOverlay.classList.remove('active');
+        // 确保 AI 返回的类型和前端计分一致
+        if (!data.miraType || data.miraType !== miraType) {
+          data.miraType = miraType;
+        }
+        openProfileOverlay(data);
+      })
+      .catch(function(e) {
+        console.error('Quiz submit error:', e);
+        quizOverlay.classList.remove('active');
+        // 即使 AI 失败，也使用前端计分结果展示
+        openProfileOverlay({ miraType: miraType });
+      });
+    }
+
+    // 绘制 Canvas 雷达图
+    function drawRadarChart(canvasId, scores) {
+      var canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var size = 220;
+      canvas.width = size; canvas.height = size;
+      var cx = size / 2, cy = size / 2, radius = 80;
+      var dims = ['D', 'S', 'B', 'R', 'O', 'T', 'I', 'N'];
+      var colors = ['#7EA7FF','#7EA7FF','#D4AF37','#D4AF37','#7EA7FF','#7EA7FF','#D4AF37','#D4AF37'];
+      var labels = ['暗影','柔光','明光','辉光','向外','朝向','倾向','向内'];
+
+      // 背景网格
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1;
+      for (var r = 1; r <= 4; r++) {
+        ctx.beginPath();
+        for (var i = 0; i < 8; i++) {
+          var angle = (Math.PI * 2 / 8) * i - Math.PI / 2;
+          var x = cx + Math.cos(angle) * (radius * r / 4);
+          var y = cy + Math.sin(angle) * (radius * r / 4);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath(); ctx.stroke();
+      }
+      // 轴线
+      for (var i = 0; i < 8; i++) {
+        var angle = (Math.PI * 2 / 8) * i - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+        ctx.stroke();
+        // 标签
+        var lx = cx + Math.cos(angle) * (radius + 18);
+        var ly = cy + Math.sin(angle) * (radius + 18);
+        ctx.fillStyle = colors[i];
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(labels[i], lx, ly);
+      }
+      // 数据区域
+      ctx.beginPath();
+      for (var i = 0; i < 8; i++) {
+        var angle = (Math.PI * 2 / 8) * i - Math.PI / 2;
+        var val = Math.min(15, Math.max(0, scores[dims[i]] || 0));
+        var r = (val / 15) * radius;
+        var x = cx + Math.cos(angle) * r;
+        var y = cy + Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(126,167,255,0.15)';
+      ctx.fill();
+      ctx.strokeStyle = '#7EA7FF';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // 数据点
+      for (var i = 0; i < 8; i++) {
+        var angle = (Math.PI * 2 / 8) * i - Math.PI / 2;
+        var val = Math.min(15, Math.max(0, scores[dims[i]] || 0));
+        var r = (val / 15) * radius;
+        var x = cx + Math.cos(angle) * r;
+        var y = cy + Math.sin(angle) * r;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = colors[i];
+        ctx.fill();
+      }
+    }
+
+    // 打开人格画像弹层（路线A/B/C 共用）
+    window.openProfileOverlay = function(data) {
+      var overlay = document.getElementById('profileOverlay');
+      var content = document.getElementById('profileContent');
+      var miraType = data.miraType || (data.aiData && data.aiData.miraType) || (data.raw && data.raw.miraType) || 'ST';
+      var miraInfo = getMiraInfo(miraType);
+      var dim = miraType[0];
+      var dir = miraType[1];
+
+      // 维度分数（从AI数据、quiz数据或默认值）
+      var scores = data._scores || (data.aiData && data.aiData._scores) || {};
+      if (!scores.D) {
+        scores = { D: dim==='D'?12:4, S: dim==='S'?12:4, B: dim==='B'?12:4, R: dim==='R'?12:4,
+                   O: dir==='O'?12:4, T: dir==='T'?12:4, I: dir==='I'?12:4, N: dir==='N'?12:4 };
+      }
+
+      // 优先使用 AI 返回的个性化内容
+      var expr = data.expression || (data.raw && data.raw.expression) || (miraInfo.dim + '型——' + miraInfo.desc);
+      var focusDir = data.focus || (data.raw && data.raw.focus) || (miraInfo.dir + '投射——' + miraInfo.desc);
+      var portrait = data.portrait || (data.raw && data.raw.portrait) || miraInfo.desc;
+      var insight = data.insight || (data.aiData && data.aiData.insight) || '你在关系中呈现出' + miraInfo.name + '的特质，这意味着你在亲密互动中有自己独特的站位方式。';
+      var suggest = data.suggest || (data.aiData && data.aiData.suggest) || '尝试在保持自我的同时，也留出空间给对方表达。';
+
+      // AI 原始分析数据（单人模式）
+      var ai = data.aiData || data;
+      var hasAiData = ai && ai.fact;
+
+      content.innerHTML =
+        // MIRA 配图 + 徽章
+        '<div style="text-align:center;margin-bottom:16px;">' +
+          '<img src="mira-images/' + miraType + '.jpg" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:2px solid rgba(212,175,55,0.3);margin-bottom:12px;box-shadow:0 4px 20px rgba(0,0,0,0.5);" onerror="this.style.display=\'none\'">' +
+          '<div class="profile-mira-badge">' + miraType + ' · ' + miraInfo.name + '</div>' +
+        '</div>' +
+        // 雷达图
+        '<div class="profile-section" style="text-align:center;">' +
+          '<div class="profile-section-title">人格维度分布</div>' +
+          '<canvas id="profileRadar" width="220" height="220" style="margin:8px auto;display:block;"></canvas>' +
+        '</div>' +
+        // 表达方式
+        '<div class="profile-section">' +
+          '<div class="profile-section-title">表达方式 · ' + miraInfo.dim + '</div>' +
+          '<div class="profile-section-body">' + expr + '</div>' +
+        '</div>' +
+        // 关注方向
+        '<div class="profile-section">' +
+          '<div class="profile-section-title">关注方向 · ' + miraInfo.dir + '</div>' +
+          '<div class="profile-section-body">' + focusDir + '</div>' +
+        '</div>' +
+        // 人格画像
+        '<div class="profile-section">' +
+          '<div class="profile-section-title">人格画像</div>' +
+          '<div class="profile-section-body">' + portrait + '</div>' +
+        '</div>' +
+        // AI 原始分析（如有）
+        (hasAiData ?
+        '<div class="profile-section">' +
+          '<div class="profile-section-title">AI 分析摘要</div>' +
+          '<div class="profile-section-body">' +
+            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">事实：</span>' + (ai.fact || '—') + '</div>' +
+            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">情绪：</span>' + (ai.emotion || '—') + '</div>' +
+            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">需求：</span>' + (ai.need || '—') + '</div>' +
+            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">误读：</span>' + (ai.misread || '—') + '</div>' +
+            '<div><span style="color:var(--blue);font-size:0.78rem;">状态：</span>' + (ai.status || '—') + '</div>' +
+          '</div>' +
+        '</div>' : '') +
+        // 关系洞察
+        '<div class="profile-section">' +
+          '<div class="profile-section-title">关系洞察</div>' +
+          '<div class="profile-section-body">' + insight + '</div>' +
+        '</div>' +
+        // 改善建议
+        '<div class="profile-section">' +
+          '<div class="profile-section-title">改善建议</div>' +
+          '<div class="profile-section-body">' + suggest + '</div>' +
+        '</div>' +
+        // 深度解读（异步加载）
+        '<div class="profile-section" id="profileDeepSection">' +
+          '<div class="profile-section-title">深度人格解读</div>' +
+          '<div class="profile-section-body" id="profileDeepBody">' +
+            '<div style="display:flex;align-items:center;gap:8px;color:var(--muted);">' +
+              '<div class="quiz-spinner" style="width:16px;height:16px;border-width:2px;"></div>' +
+              '<span style="font-size:0.85rem;">正在生成深度解读...</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      overlay.classList.add('active');
+      bindProfileOverlayEvents();
+
+      // 绘制雷达图
+      requestAnimationFrame(function() { drawRadarChart('profileRadar', scores); });
+
+      // 异步加载深度解读
+      loadDeepInterpretation(miraType, ai, scores);
+    };
+
+    // 加载深度解读
+    function loadDeepInterpretation(miraType, aiData, scores) {
+      var deepBody = document.getElementById('profileDeepBody');
+      if (!deepBody) return;
+
+      var prompt = '用户的 MIRA 人格类型是 ' + miraType + '。' +
+        (aiData && aiData.fact ? '用户在关系中的事实是：' + aiData.fact + '。情绪：' + aiData.emotion + '。核心需求：' + aiData.need + '。' : '') +
+        '请基于这些信息，生成一段 200-300 字的深度人格解读。内容应包括：' +
+        '1. 这种人格类型在亲密关系中的核心模式；' +
+        '2. 这种模式下容易产生的冲突和误解；' +
+        '3. 如何发挥这种人格的优势来改善关系。' +
+        '请以温暖、有洞察力的口吻写，像一位懂你的朋友在和你谈心。不要提及这是AI生成的。';
+
+      fetch(WORKER_API_BASE + '/api/mira-deep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ miraType: miraType, prompt: prompt })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.deepInterpretation) {
+          deepBody.innerHTML = '<div style="line-height:1.8;font-size:0.9rem;">' + data.deepInterpretation.replace(/\n/g, '<br>') + '</div>';
+        } else if (data.raw) {
+          deepBody.innerHTML = '<div style="line-height:1.8;font-size:0.9rem;">' + data.raw.replace(/\n/g, '<br>') + '</div>';
+        } else {
+          deepBody.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">深度解读生成失败，请稍后重试。</div>';
+        }
+      })
+      .catch(function(e) {
+        console.error('Deep interpretation error:', e);
+        deepBody.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">深度解读生成失败，请检查网络后重试。</div>';
+      });
+    }
+
+    // 关闭人格画像弹层（延迟绑定，弹层 HTML 在页面底部）
+    function bindProfileOverlayEvents() {
+      var closeBtn = document.getElementById('profileCloseBtn');
+      var overlay = document.getElementById('profileOverlay');
+      var restartBtn = document.getElementById('profileRestartBtn');
+      var ctaBtn = document.getElementById('profileCtaBtn');
+      if (closeBtn && !closeBtn._bound) {
+        closeBtn._bound = true;
+        closeBtn.onclick = function() { overlay.classList.remove('active'); };
+      }
+      if (overlay && !overlay._bound) {
+        overlay._bound = true;
+        overlay.onclick = function(e) { if (e.target === overlay) overlay.classList.remove('active'); };
+      }
+      if (restartBtn && !restartBtn._bound) {
+        restartBtn._bound = true;
+        restartBtn.onclick = function() { overlay.classList.remove('active'); restartExperience(); };
+      }
+      if (ctaBtn && !ctaBtn._bound) {
+        ctaBtn._bound = true;
+        ctaBtn.onclick = function() {
+          var detail = document.getElementById('profileCtaDetail');
+          var isOpen = detail.classList.contains('show');
+          if (isOpen) {
+            detail.classList.remove('show');
+            ctaBtn.classList.remove('active');
+            ctaBtn.textContent = '保存分析报告，添加专属顾问一对一解读';
+          } else {
+            detail.classList.add('show');
+            ctaBtn.classList.add('active');
+            ctaBtn.textContent = '收起';
+          }
+        };
+      }
+    }
+
+    // 保存人格画像长图
+    function bindProfileShareBtn() {
+      var btn = document.getElementById('profileShareBtn');
+      if (!btn || btn._bound) return;
+      btn._bound = true;
+      btn.onclick = function() {
+      var container = document.getElementById('profileContainer');
+      if (typeof html2canvas === 'undefined') {
+        alert('图片生成库未加载，请检查网络');
+        return;
+      }
+      html2canvas(container, { backgroundColor: '#08090B', scale: 2, useCORS: true }).then(function(canvas) {
+        canvas.toBlob(function(blob) {
+          if (!blob) { alert('生成失败'); return; }
+          var url = URL.createObjectURL(blob);
+          if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            var img = document.createElement('img');
+            img.src = url;
+            img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
+            var preview = document.createElement('div');
+            preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 12px;';
+            var tipBar = document.createElement('div');
+            tipBar.style.cssText = 'color:#D4AF37;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;max-width:520px;flex-shrink:0;';
+            tipBar.textContent = '长按图片保存到相册，或截图分享';
+            var closeBtn = document.createElement('button');
+            closeBtn.textContent = '关闭';
+            closeBtn.style.cssText = 'position:fixed;top:12px;right:12px;z-index:10001;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:6px 14px;border-radius:999px;font-size:13px;cursor:pointer;';
+            closeBtn.onclick = function() { document.body.removeChild(preview); };
+            preview.appendChild(closeBtn);
+            preview.appendChild(tipBar);
+            preview.appendChild(img);
+            document.body.appendChild(preview);
+          } else {
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'MIRA人格画像_' + new Date().toISOString().slice(0,10) + '.png';
+            a.click();
+          }
+        });
+      });
+    };
+    }
+
+    // 答题返回按钮
+    function bindQuizButtons() {
+      var backBtn = document.getElementById('quizBackBtn');
+      if (backBtn && !backBtn._bound) {
+        backBtn._bound = true;
+        backBtn.onclick = function() {
+          if (quizData.current > 0) {
+            quizData.current--;
+            quizData.answers.pop();
+            renderQuizQuestion();
+          } else {
+            if (confirm('确定要退出测试吗？进度将不会保存。')) {
+              quizOverlay.classList.remove('active');
+            }
+          }
+        };
+      }
+      var startBtn = document.getElementById('quizStartBtn');
+      if (startBtn && !startBtn._bound) {
+        startBtn._bound = true;
+        startBtn.onclick = function(e) { e.stopPropagation(); startQuiz(); };
+      }
+      var modeQuiz = document.getElementById('modeQuiz');
+      if (modeQuiz && !modeQuiz._bound) {
+        modeQuiz._bound = true;
+        modeQuiz.onclick = function(e) { if (e.target.id !== 'quizStartBtn') startQuiz(); };
+      }
+    }
+
+    // 页面加载后绑定底部弹层按钮（这些元素在 script 标签之后）
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() { bindProfileShareBtn(); bindQuizButtons(); bindProfileOverlayEvents(); });
+    } else {
+      bindProfileShareBtn(); bindQuizButtons(); bindProfileOverlayEvents();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════
+    // 封面逻辑
+    // ════════════════════════════════════════════════════════════════════════════════
 
     // 碎片动画
     (function() {
@@ -2693,12 +3321,42 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           html += '</div></div>';
           html += '</div>';
           html += '</div>';
+          html += '<div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">';
+          html += '<button class="btn btn-primary" style="flex:1; min-width:140px;" onclick="viewMyProfileFromCouple()">🔍 查看我的完整人格画像</button>';
+          html += '<button class="btn btn-secondary" style="flex:1; min-width:140px;" onclick="restartExperience()">🔄 重新开始</button>';
+          html += '</div>';
+          // 导流入口
+          html += '<div style="text-align:center;margin-top:24px;">';
+          html += '<button class="report-cta-btn" onclick="toggleReportCta(this)">保存分析报告，添加专属顾问一对一解读</button>';
+          html += '<div class="report-cta-detail" style="max-height:0;overflow:hidden;transition:all 0.4s var(--ease);opacity:0;">';
+          html += '<div style="width:32px;height:1px;background:var(--rule);margin:12px auto;"></div>';
+          html += '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">添加 Mirror 伙伴</div>';
+          html += '<div style="font-size:1.15rem;font-weight:700;color:var(--ink);letter-spacing:0.08em;font-family:Courier New,monospace;cursor:pointer;user-select:all;">S420S421</div>';
+          html += '<div style="font-size:0.68rem;color:var(--faint);margin-top:6px;">长按复制</div>';
+          html += '</div></div>';
           document.getElementById('coupleReportContent').innerHTML = html;
         }
       } catch (err) {
         document.getElementById('coupleReportContent').innerHTML = '<div style="color:var(--faint);">加载报告失败</div>';
       }
     }
+
+    // 双人模式下查看自己的人格画像
+    window.viewMyProfileFromCouple = async function() {
+      try {
+        var response = await fetch(WORKER_API_BASE + '/api/room/' + currentRoom.code + '/insight?role=' + currentRoom.role);
+        var data = await response.json();
+        if (data.insight) {
+          var insight = JSON.parse(data.insight);
+          openProfileOverlay({ aiData: insight });
+        } else {
+          alert('分析数据尚未准备好，请稍后再试');
+        }
+      } catch (err) {
+        console.error('加载人格画像失败:', err);
+        alert('加载失败，请重试');
+      }
+    };
 
     // 隐藏所有视图
     function hideAllViews() {
@@ -3001,5 +3659,50 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     });
   })();
   </script>
+
+  <!-- ══════════════════════════════════════════ MIRA 答题 Overlay ══════════════════════════════════════════ -->
+  <div class="quiz-overlay" id="quizOverlay">
+    <div class="quiz-container">
+      <div class="quiz-header">
+        <button class="quiz-back-btn" id="quizBackBtn">&#8592; 返回</button>
+        <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="quizProgressFill"></div></div>
+        <div class="quiz-progress-text" id="quizProgressText">1 / 30</div>
+      </div>
+      <div class="quiz-body" id="quizBody">
+        <div class="quiz-question" id="quizQuestion"></div>
+        <div class="quiz-options" id="quizOptions"></div>
+      </div>
+      <div class="quiz-loading" id="quizLoading" style="display:none;">
+        <div class="quiz-spinner"></div>
+        <p>AI 正在分析你的 MIRA 人格...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ MIRA 人格画像弹层 ══════════════════════════════════════════ -->
+  <div class="profile-overlay" id="profileOverlay">
+    <div class="profile-container" id="profileContainer">
+      <div class="profile-header">
+        <button class="profile-close-btn" id="profileCloseBtn">&#10005;</button>
+        <div class="profile-title">MIRA 完整人格画像</div>
+      </div>
+      <div class="profile-content" id="profileContent">
+        <!-- 内容由 JS 动态生成 -->
+      </div>
+      <div class="profile-actions">
+        <button class="btn btn-primary" id="profileShareBtn">&#128247; 保存长图</button>
+        <button class="btn btn-secondary" id="profileRestartBtn">&#128260; 重新开始</button>
+      </div>
+      <div class="profile-cta-wrap">
+        <button class="profile-cta-btn" id="profileCtaBtn">保存分析报告，添加专属顾问一对一解读</button>
+        <div class="profile-cta-detail" id="profileCtaDetail">
+          <div class="profile-cta-line"></div>
+          <div class="profile-cta-hint">添加 Mirror 伙伴</div>
+          <div class="profile-cta-id">S420S421</div>
+          <div class="profile-cta-tip">长按复制</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
