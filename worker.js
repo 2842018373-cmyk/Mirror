@@ -259,6 +259,12 @@ export default {
 
       // ══════════════════════════════════════════ AI 代理 API ══════════════════════════════════════════
 
+      // 全局请求体大小限制（100KB）
+      const contentLength = request.headers.get('Content-Length') || 0;
+      if (parseInt(contentLength) > 102400) {
+        return jsonResponse({ error: '请求体过大' }, 413, origin);
+      }
+
       // 单人模式 AI 分析（速率限制：每 IP 每分钟 10 次）
       if (path === '/api/analyze' && request.method === 'POST') {
         if (!checkRateLimit(clientIP, 'analyze', 10, 60000)) {
@@ -273,6 +279,12 @@ export default {
         if (prompt.length > 10000) return jsonResponse({ error: 'prompt 过长' }, 400, origin);
 
         const result = await callAI(env, prompt, mode || 'single', history || []);
+
+        // 分析成功后，异步存入 single_analyses 表
+        if (!result.error && (mode || 'single') === 'single') {
+          ctx.waitUntil(saveSingleAnalysis(env, prompt, result));
+        }
+
         return jsonResponse(result, 200, origin);
       }
 
@@ -324,6 +336,112 @@ export default {
 
         const result = await callAI(env, prompt, 'deep', []);
         return jsonResponse(result, 200, origin);
+      }
+
+      // ══════════════════════════════════════════ 数据库初始化 API ══════════════════════════════════════════
+
+      // 初始化数据库表（GET /api/init-db）
+      if (path === '/api/init-db' && request.method === 'GET') {
+        try {
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS single_analyses (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_input TEXT NOT NULL,
+              fact TEXT DEFAULT '',
+              emotion TEXT DEFAULT '',
+              need TEXT DEFAULT '',
+              misread TEXT DEFAULT '',
+              status TEXT DEFAULT '',
+              insight TEXT DEFAULT '',
+              suggest TEXT DEFAULT '',
+              mira_type TEXT DEFAULT '',
+              created_at TEXT DEFAULT (datetime('now'))
+            )
+          `).run();
+
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS mira_tests (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              mira_type TEXT NOT NULL,
+              expression TEXT DEFAULT '',
+              focus TEXT DEFAULT '',
+              portrait TEXT DEFAULT '',
+              scores_json TEXT DEFAULT '{}',
+              answers_json TEXT DEFAULT '{}',
+              created_at TEXT DEFAULT (datetime('now'))
+            )
+          `).run();
+
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS user_contacts (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              contact_type TEXT NOT NULL,
+              contact_value TEXT NOT NULL,
+              source TEXT DEFAULT '',
+              mira_type TEXT DEFAULT '',
+              created_at TEXT DEFAULT (datetime('now'))
+            )
+          `).run();
+
+          return jsonResponse({ success: true, message: '数据库表创建/验证完成' }, 200, origin);
+        } catch (err) {
+          console.error('init-db error:', err.message);
+          return jsonResponse({ error: '数据库初始化失败' }, 500, origin);
+        }
+      }
+
+      // ══════════════════════════════════════════ 联系方式提交 API ══════════════════════════════════════════
+
+      // 提交联系方式（POST /api/submit-contact）
+      if (path === '/api/submit-contact' && request.method === 'POST') {
+        if (!checkRateLimit(clientIP, 'submit_contact', 5, 60000)) {
+          return jsonResponse({ error: '提交过于频繁，请稍后再试' }, 429, origin);
+        }
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { contact_type, contact_value, source, mira_type } = body;
+        const validTypes = ['wechat', 'phone', 'email'];
+        if (!contact_type || !validTypes.includes(contact_type)) {
+          return jsonResponse({ error: 'contact_type 必须为 wechat/phone/email' }, 400, origin);
+        }
+        if (!contact_value || typeof contact_value !== 'string' || contact_value.trim().length === 0) {
+          return jsonResponse({ error: 'contact_value 不能为空' }, 400, origin);
+        }
+        if (contact_value.length > 100) {
+          return jsonResponse({ error: 'contact_value 过长' }, 400, origin);
+        }
+
+        await env.DB.prepare(
+          'INSERT INTO user_contacts (contact_type, contact_value, source, mira_type, created_at) VALUES (?, ?, ?, ?, datetime("now"))'
+        ).bind(contact_type, contact_value.trim(), source || '', mira_type || '').run();
+
+        return jsonResponse({ success: true, message: '联系方式已提交' }, 200, origin);
+      }
+
+      // ══════════════════════════════════════════ 管理后台 API ══════════════════════════════════════════
+
+      // 获取最近记录（GET /api/admin/records）
+      if (path === '/api/admin/records' && request.method === 'GET') {
+        try {
+          const [analyses, tests, contacts, rooms] = await Promise.all([
+            env.DB.prepare('SELECT * FROM single_analyses ORDER BY created_at DESC LIMIT 100').all(),
+            env.DB.prepare('SELECT * FROM mira_tests ORDER BY created_at DESC LIMIT 100').all(),
+            env.DB.prepare('SELECT * FROM user_contacts ORDER BY created_at DESC LIMIT 100').all(),
+            env.DB.prepare('SELECT id, status, created_at FROM rooms ORDER BY created_at DESC LIMIT 100').all(),
+          ]);
+
+          return jsonResponse({
+            single_analyses: analyses.results || [],
+            mira_tests: tests.results || [],
+            user_contacts: contacts.results || [],
+            rooms: rooms.results || [],
+          }, 200, origin);
+        } catch (err) {
+          console.error('admin/records error:', err.message);
+          return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
       }
 
       // 404
@@ -496,5 +614,28 @@ B的MIRA类型：${bInsight.miraType || 'BO'}
   } catch (err) {
     console.error('generateSharedReport error:', err.message);
     await env.DB.prepare("UPDATE rooms SET status = 'error' WHERE id = ? AND status = 'analyzed'").bind(code).run();
+  }
+}
+
+// 异步保存单人分析结果到 single_analyses 表
+async function saveSingleAnalysis(env, prompt, result) {
+  try {
+    // 截取摘要，避免超长
+    const userInput = (prompt || '').substring(0, 500);
+    await env.DB.prepare(
+      'INSERT INTO single_analyses (user_input, fact, emotion, need, misread, status, insight, suggest, mira_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))'
+    ).bind(
+      userInput,
+      result.fact || '',
+      result.emotion || '',
+      result.need || '',
+      result.misread || '',
+      result.status || '',
+      result.insight || '',
+      result.suggest || '',
+      result.miraType || '',
+    ).run();
+  } catch (err) {
+    console.error('saveSingleAnalysis error:', err.message);
   }
 }

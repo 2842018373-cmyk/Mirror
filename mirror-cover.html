@@ -410,7 +410,7 @@
     .profile-cta-btn.active { border-color: var(--blue); color: var(--ink); }
     .profile-cta-wrap { padding: 0 24px 20px; text-align: center; flex-shrink: 0; }
     .profile-cta-detail { max-height: 0; overflow: hidden; transition: all 0.4s var(--ease); opacity: 0; }
-    .profile-cta-detail.show { max-height: 120px; opacity: 1; margin-top: 14px; }
+    .profile-cta-detail.show { max-height: 300px; opacity: 1; margin-top: 14px; }
     .profile-cta-line { width: 32px; height: 1px; background: var(--rule); margin: 0 auto 12px; }
     .profile-cta-hint { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; }
     .profile-cta-id { font-size: 1.15rem; font-weight: 700; color: var(--ink); letter-spacing: 0.08em; font-family: 'Courier New', monospace; cursor: pointer; user-select: all; }
@@ -913,6 +913,16 @@
     var MIRROR_MODEL = 'agnes-1.5-flash';
     var WORKER_API_BASE = 'https://api.mirrorsoul.top';
 
+    // XSS 防护：转义 HTML 特殊字符，防止 AI 返回内容注入脚本
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+    // 安全文本输出（转义后保留换行）
+    function safeText(str) {
+      return escapeHtml(str).replace(/\n/g, '<br>');
+    }
+
     // System Prompt
     var MIRROR_SYSTEM_PROMPT = `你是 Mirror，一个关系理解与表达操作系统。
 
@@ -1335,19 +1345,19 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
             ti.className = 'mirror-trans-item';
             ti.style.animationDelay = (0.1 + idx * 0.2) + 's';
             ti.innerHTML = '<div class="mirror-trans-label ' + item.labelClass + '">' + item.label + '</div>' +
-              '<div class="mirror-trans-text">' + item.text + '</div>';
+              '<div class="mirror-trans-text">' + safeText(item.text) + '</div>';
             trans.appendChild(ti);
           });
           break;
 
         case 'insight':
           el.className = 'msg msg-insight';
-          el.innerHTML = '<div class="insight-label">洞察</div><div class="insight-text">' + content + '</div>';
+          el.innerHTML = '<div class="insight-label">洞察</div><div class="insight-text">' + safeText(content) + '</div>';
           break;
 
         case 'advice':
           el.className = 'msg msg-advice';
-          el.innerHTML = '<div class="advice-label">建议</div><div class="advice-text">' + content + '</div>';
+          el.innerHTML = '<div class="advice-label">建议</div><div class="advice-text">' + safeText(content) + '</div>';
           break;
 
         case 'actions':
@@ -2004,10 +2014,72 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">添加 Mirror 伙伴</div>' +
         '<div style="font-size:1.15rem;font-weight:700;color:var(--ink);letter-spacing:0.08em;font-family:Courier New,monospace;cursor:pointer;user-select:all;">S420S421</div>' +
         '<div style="font-size:0.68rem;color:var(--faint);margin-top:6px;">长按复制</div>' +
+        buildContactFormHTML() +
         '</div>';
       thread.appendChild(el);
       scrollThread();
     }
+
+    // 联系方式表单 HTML 片段
+    function buildContactFormHTML() {
+      return '<div style="width:32px;height:1px;background:var(--rule);margin:12px auto;"></div>' +
+        '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:10px;">留下联系方式，获取更多服务</div>' +
+        '<div style="display:flex;gap:8px;margin-bottom:8px;max-width:320px;margin-left:auto;margin-right:auto;">' +
+        '<select id="contactTypeSelect" style="flex:0 0 auto;width:80px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;color:var(--ink);font-size:0.78rem;padding:8px 6px;font-family:inherit;outline:none;">' +
+        '<option value="wechat">微信号</option>' +
+        '<option value="phone">手机号</option>' +
+        '<option value="email">邮箱</option>' +
+        '</select>' +
+        '<input id="contactValueInput" type="text" placeholder="请输入" style="flex:1;background:var(--surface);border:1px solid var(--rule);border-radius:12px;color:var(--ink);font-size:0.78rem;padding:8px 12px;font-family:inherit;outline:none;" />' +
+        '</div>' +
+        '<button onclick="submitContact()" style="background:linear-gradient(135deg,rgba(126,167,255,0.12),rgba(200,184,160,0.08));border:1px solid rgba(126,167,255,0.35);color:var(--blue);font-size:0.78rem;padding:8px 20px;border-radius:999px;cursor:pointer;font-family:inherit;font-weight:500;">提交联系方式</button>' +
+        '<div id="contactSubmitMsg" style="font-size:0.7rem;color:var(--cyan);margin-top:6px;min-height:16px;"></div>';
+    }
+
+    // 提交联系方式
+    window.submitContact = function(source) {
+      var typeEl = document.getElementById('contactTypeSelect');
+      var valueEl = document.getElementById('contactValueInput');
+      var msgEl = document.getElementById('contactSubmitMsg');
+      if (!typeEl || !valueEl || !msgEl) {
+        // 尝试 profile 弹层中的表单
+        typeEl = document.getElementById('profileContactType');
+        valueEl = document.getElementById('profileContactValue');
+        msgEl = document.getElementById('profileContactMsg');
+        if (!typeEl || !valueEl || !msgEl) return;
+      }
+      var contactType = typeEl.value;
+      var contactValue = valueEl.value.trim();
+      if (!contactValue) {
+        msgEl.style.color = '#FF6B6B';
+        msgEl.textContent = '请输入联系方式';
+        return;
+      }
+      msgEl.style.color = 'var(--cyan)';
+      msgEl.textContent = '提交中...';
+      fetch(WORKER_API_BASE + '/api/submit-contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_type: contactType,
+          contact_value: contactValue,
+          source: source || 'cta',
+          mira_type: window._currentMiraType || ''
+        })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) {
+          msgEl.style.color = 'var(--cyan)';
+          msgEl.textContent = '已提交，感谢信任';
+          valueEl.value = '';
+        } else {
+          msgEl.style.color = '#FF6B6B';
+          msgEl.textContent = data.error || '提交失败';
+        }
+      }).catch(function() {
+        msgEl.style.color = '#FF6B6B';
+        msgEl.textContent = '网络错误';
+      });
+    };
 
     window.toggleReportCta = function(btn) {
       var detail = btn.nextElementSibling;
@@ -2018,7 +2090,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         detail.style.marginTop = '0';
         btn.textContent = '保存分析报告，添加专属顾问一对一解读';
       } else {
-        detail.style.maxHeight = '120px';
+        detail.style.maxHeight = '300px';
         detail.style.opacity = '1';
         detail.style.marginTop = '8px';
         btn.textContent = '收起';
@@ -2113,7 +2185,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // ════════════════════════════════════════════════════════════════════════════════════════════
 
     function _rText(text) {
-      return (text || '—').replace(/\n/g, '<br>');
+      return safeText(text || '—');
     }
 
     function exportReport() {
@@ -2216,7 +2288,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var c = colors[type] || colors.mirror;
       return '<div style="margin:12px 0;border-radius:10px;padding:14px 18px;background:' + c[1] + ';border-left:3px solid ' + c[2] + '">' +
         '<div style="font-size:0.65rem;letter-spacing:1px;color:' + c[0] + ';margin-bottom:4px;font-weight:500">' + label + '</div>' +
-        '<div style="font-size:0.85rem;color:#C8D0DC;font-style:italic">\u201C' + text + '\u201D</div></div>';
+        '<div style="font-size:0.85rem;color:#C8D0DC;font-style:italic">\u201C' + safeText(text) + '\u201D</div></div>';
     }
 
     function generateShareCard() {
@@ -2708,39 +2780,39 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         // 表达方式
         '<div class="profile-section">' +
           '<div class="profile-section-title">表达方式 · ' + miraInfo.dim + '</div>' +
-          '<div class="profile-section-body">' + expr + '</div>' +
+          '<div class="profile-section-body">' + safeText(expr) + '</div>' +
         '</div>' +
         // 关注方向
         '<div class="profile-section">' +
           '<div class="profile-section-title">关注方向 · ' + miraInfo.dir + '</div>' +
-          '<div class="profile-section-body">' + focusDir + '</div>' +
+          '<div class="profile-section-body">' + safeText(focusDir) + '</div>' +
         '</div>' +
         // 人格画像
         '<div class="profile-section">' +
           '<div class="profile-section-title">人格画像</div>' +
-          '<div class="profile-section-body">' + portrait + '</div>' +
+          '<div class="profile-section-body">' + safeText(portrait) + '</div>' +
         '</div>' +
         // AI 原始分析（如有）
         (hasAiData ?
         '<div class="profile-section">' +
           '<div class="profile-section-title">AI 分析摘要</div>' +
           '<div class="profile-section-body">' +
-            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">事实：</span>' + (ai.fact || '—') + '</div>' +
-            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">情绪：</span>' + (ai.emotion || '—') + '</div>' +
-            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">需求：</span>' + (ai.need || '—') + '</div>' +
-            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">误读：</span>' + (ai.misread || '—') + '</div>' +
-            '<div><span style="color:var(--blue);font-size:0.78rem;">状态：</span>' + (ai.status || '—') + '</div>' +
+            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">事实：</span>' + safeText(ai.fact) + '</div>' +
+            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">情绪：</span>' + safeText(ai.emotion) + '</div>' +
+            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">需求：</span>' + safeText(ai.need) + '</div>' +
+            '<div style="margin-bottom:8px;"><span style="color:var(--blue);font-size:0.78rem;">误读：</span>' + safeText(ai.misread) + '</div>' +
+            '<div><span style="color:var(--blue);font-size:0.78rem;">状态：</span>' + safeText(ai.status) + '</div>' +
           '</div>' +
         '</div>' : '') +
         // 关系洞察
         '<div class="profile-section">' +
           '<div class="profile-section-title">关系洞察</div>' +
-          '<div class="profile-section-body">' + insight + '</div>' +
+          '<div class="profile-section-body">' + safeText(insight) + '</div>' +
         '</div>' +
         // 改善建议
         '<div class="profile-section">' +
           '<div class="profile-section-title">改善建议</div>' +
-          '<div class="profile-section-body">' + suggest + '</div>' +
+          '<div class="profile-section-body">' + safeText(suggest) + '</div>' +
         '</div>' +
         // 深度解读（异步加载）
         '<div class="profile-section" id="profileDeepSection">' +
@@ -2784,9 +2856,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.deepInterpretation) {
-          deepBody.innerHTML = '<div style="line-height:1.8;font-size:0.9rem;">' + data.deepInterpretation.replace(/\n/g, '<br>') + '</div>';
+          deepBody.innerHTML = '<div style="line-height:1.8;font-size:0.9rem;">' + safeText(data.deepInterpretation) + '</div>';
         } else if (data.raw) {
-          deepBody.innerHTML = '<div style="line-height:1.8;font-size:0.9rem;">' + data.raw.replace(/\n/g, '<br>') + '</div>';
+          deepBody.innerHTML = '<div style="line-height:1.8;font-size:0.9rem;">' + safeText(data.raw) + '</div>';
         } else {
           deepBody.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">深度解读生成失败，请稍后重试。</div>';
         }
@@ -3337,6 +3409,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           html += '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">添加 Mirror 伙伴</div>';
           html += '<div style="font-size:1.15rem;font-weight:700;color:var(--ink);letter-spacing:0.08em;font-family:Courier New,monospace;cursor:pointer;user-select:all;">S420S421</div>';
           html += '<div style="font-size:0.68rem;color:var(--faint);margin-top:6px;">长按复制</div>';
+          html += buildContactFormHTML();
           html += '</div></div>';
           document.getElementById('coupleReportContent').innerHTML = html;
         }
@@ -3704,6 +3777,18 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           <div class="profile-cta-hint">添加 Mirror 伙伴</div>
           <div class="profile-cta-id">S420S421</div>
           <div class="profile-cta-tip">长按复制</div>
+          <div style="width:32px;height:1px;background:var(--rule);margin:12px auto;"></div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:10px;">留下联系方式，获取更多服务</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;max-width:300px;margin-left:auto;margin-right:auto;">
+            <select id="profileContactType" style="flex:0 0 auto;width:80px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;color:var(--ink);font-size:0.78rem;padding:8px 6px;font-family:inherit;outline:none;">
+              <option value="wechat">微信号</option>
+              <option value="phone">手机号</option>
+              <option value="email">邮箱</option>
+            </select>
+            <input id="profileContactValue" type="text" placeholder="请输入" style="flex:1;background:var(--surface);border:1px solid var(--rule);border-radius:12px;color:var(--ink);font-size:0.78rem;padding:8px 12px;font-family:inherit;outline:none;" />
+          </div>
+          <button onclick="submitContact('profile')" style="background:linear-gradient(135deg,rgba(126,167,255,0.12),rgba(200,184,160,0.08));border:1px solid rgba(126,167,255,0.35);color:var(--blue);font-size:0.78rem;padding:8px 20px;border-radius:999px;cursor:pointer;font-family:inherit;font-weight:500;">提交联系方式</button>
+          <div id="profileContactMsg" style="font-size:0.7rem;color:var(--cyan);margin-top:6px;min-height:16px;"></div>
         </div>
       </div>
     </div>
