@@ -1886,8 +1886,69 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       return map[code] || map['ST'];
     }
 
+    // 前端关键词计分：基于 AI 返回的分析文本推断 MIRA 维度
+    function scoreMiraFromText(data) {
+      var text = [(data.fact||''), (data.emotion||''), (data.need||''), (data.misread||''), (data.insight||''), (data.suggest||''), (data.before||''), (data.innerThought||data.inner||''), (data.after||''), (data.summary||'')].join(' ');
+      var scores = { D: 0, S: 0, B: 0, R: 0, O: 0, T: 0, I: 0, N: 0 };
+
+      // 表达方式维度关键词
+      var exprKW = {
+        D: ['沉默','不说','藏','压抑','隐忍','憋','忍住','不敢说','闷','无言','默默','不表达','不说出','藏在心里','闭口','缄默','无声','回避','退缩','躲避'],
+        S: ['温柔','倾听','理解','感受','敏感','细腻','陪','安静','感知','体贴','温和','柔','包容','忍让','妥协','在乎感受','照顾情绪','默默承受','安抚'],
+        B: ['坦诚','直接','沟通','说出','表达','主动','面对','积极','解决','坦白','说出来','聊','谈','对话','交流','讨论','明确','开放','理性'],
+        R: ['强烈','激烈','爆发','愤怒','冲动','质问','指责','追','逼','直接问','控诉','不满','抱怨','吐槽','发泄','哭闹','争吵','冲突','指责','要求']
+      };
+
+      // 关注方向维度关键词
+      var focusKW = {
+        O: ['对方','他','她','你','陪伴','守护','付出','给','照顾','担心','关注','依赖','为对方','想着','等待','仰望','牺牲','委屈自己'],
+        T: ['双方','一起','共同','沟通','对话','平等','双向','互相','关系','我们','协调','平衡','磨合','商量','交流','互动'],
+        I: ['自己','我','我的','内心','反思','审视','意识到','明白','理解自己','认识','自我','边界','底线','原则','清楚','独立'],
+        N: ['孤独','一个人','独处','自在','内在','内心世界','自我对话','沉淀','思考','清静','空间','自由','距离','冷静']
+      };
+
+      for (var dim in exprKW) {
+        exprKW[dim].forEach(function(kw) {
+          var idx = text.indexOf(kw);
+          while (idx !== -1) { scores[dim] += 1; idx = text.indexOf(kw, idx + 1); }
+        });
+      }
+      for (var dim in focusKW) {
+        focusKW[dim].forEach(function(kw) {
+          var idx = text.indexOf(kw);
+          while (idx !== -1) { scores[dim] += 1; idx = text.indexOf(kw, idx + 1); }
+        });
+      }
+
+      // 基于关系状态微调
+      var status = (data.status || '').toLowerCase();
+      if (status.indexOf('冷') !== -1 || status.indexOf('沉默') !== -1) { scores.D += 2; scores.N += 1; }
+      if (status.indexOf('冲突') !== -1 || status.indexOf('争吵') !== -1) { scores.R += 2; scores.O += 1; }
+      if (status.indexOf('稳定') !== -1 || status.indexOf('平淡') !== -1) { scores.S += 1; scores.T += 1; }
+
+      return scores;
+    }
+
+    // 从分数确定 miraType
+    function determineMiraType(scores) {
+      var exprDims = ['D','S','B','R'];
+      var focusDims = ['O','T','I','N'];
+      var bestExpr = 'S', bestFocus = 'T', maxE = 0, maxF = 0;
+      exprDims.forEach(function(d) { if (scores[d] > maxE) { maxE = scores[d]; bestExpr = d; } });
+      focusDims.forEach(function(d) { if (scores[d] > maxF) { maxF = scores[d]; bestFocus = d; } });
+      // 如果全0，默认 ST
+      if (maxE === 0 && maxF === 0) return 'ST';
+      return bestExpr + bestFocus;
+    }
+
     function showResults(data) {
       setState('RESULT');
+
+      // 前端计分确定 miraType，覆盖 AI 的不稳定判断
+      var textScores = scoreMiraFromText(data);
+      var determinedType = determineMiraType(textScores);
+      data.miraType = determinedType;
+      data._scores = textScores;
 
       // 隐藏输入区
       document.getElementById('inputArea').classList.remove('active');
@@ -1901,11 +1962,11 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           counter: 'Step 1/5',
           title: 'Mirror 分析',
           body: function() {
-            var html = '<div class="card-row"><div class="card-row-label">关系状态</div><div class="card-row-value">' + (data.status || '存在误解') + '</div></div>' +
-              '<div class="card-row"><div class="card-row-label">事实</div><div class="card-row-value">' + (data.fact || '—') + '</div></div>' +
-              '<div class="card-row"><div class="card-row-label">情绪</div><div class="card-row-value">' + (data.emotion || '—') + '</div></div>' +
-              '<div class="card-row"><div class="card-row-label">需求</div><div class="card-row-value">' + (data.need || '—') + '</div></div>' +
-              '<div class="card-row"><div class="card-row-label">误解</div><div class="card-row-value">' + (data.misread || '—') + (data.misreadType ? '（' + data.misreadType + '）' : '') + '</div></div>';
+            var html = '<div class="card-row"><div class="card-row-label">关系状态</div><div class="card-row-value">' + safeText(data.status || '存在误解') + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">事实</div><div class="card-row-value">' + safeText(data.fact) + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">情绪</div><div class="card-row-value">' + safeText(data.emotion) + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">需求</div><div class="card-row-value">' + safeText(data.need) + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">误解</div><div class="card-row-value">' + safeText(data.misread) + (data.misreadType ? '（' + safeText(data.misreadType) + '）' : '') + '</div></div>';
             return html;
           }
         },
@@ -1913,25 +1974,25 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           counter: 'Step 2/5',
           title: 'Mirror Layer · 表达翻译',
           body: function() {
-            return '<div class="step-mirror-item attack"><div class="step-mirror-label attack">你说的是</div><div class="step-mirror-text">"' + (data.before || '—') + '"</div></div>' +
+            return '<div class="step-mirror-item attack"><div class="step-mirror-label attack">你说的是</div><div class="step-mirror-text">"' + safeText(data.before) + '"</div></div>' +
               '<div class="step-arrow">↓</div>' +
-              '<div class="step-mirror-item inner"><div class="step-mirror-label inner">你真正想说的是</div><div class="step-mirror-text">"' + (data.innerThought || data.inner || '—') + '"</div></div>' +
+              '<div class="step-mirror-item inner"><div class="step-mirror-label inner">你真正想说的是</div><div class="step-mirror-text">"' + safeText(data.innerThought || data.inner) + '"</div></div>' +
               '<div class="step-arrow">↓</div>' +
-              '<div class="step-mirror-item mirror"><div class="step-mirror-label mirror">Mirror 帮你翻译成</div><div class="step-mirror-text">"' + (data.after || '—') + '"</div></div>';
+              '<div class="step-mirror-item mirror"><div class="step-mirror-label mirror">Mirror 帮你翻译成</div><div class="step-mirror-text">"' + safeText(data.after) + '"</div></div>';
           }
         },
         {
           counter: 'Step 3/5',
           title: '洞察',
           body: function() {
-            return '<p style="font-size:0.95rem;color:var(--ink);line-height:1.9;margin:0;">' + (data.insight || '—') + '</p>';
+            return '<p style="font-size:0.95rem;color:var(--ink);line-height:1.9;margin:0;">' + safeText(data.insight) + '</p>';
           }
         },
         {
           counter: 'Step 4/5',
           title: '建议',
           body: function() {
-            return '<p style="font-size:0.95rem;color:var(--ink);line-height:1.9;margin:0;">' + (data.suggest || '—') + '</p>';
+            return '<p style="font-size:0.95rem;color:var(--ink);line-height:1.9;margin:0;">' + safeText(data.suggest) + '</p>';
           }
         },
         {
