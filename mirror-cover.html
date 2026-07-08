@@ -1887,44 +1887,79 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     }
 
     // 前端关键词计分：基于 AI 返回的分析文本推断 MIRA 维度
+    // 策略：只用情绪 + 事实 + 需求 + 误读（现状描述），排除建议/翻译/洞察（AI 意见）
+    // 权重：精确词组 > 单字，强信号词 > 弱信号词
     function scoreMiraFromText(data) {
-      var text = [(data.fact||''), (data.emotion||''), (data.need||''), (data.misread||''), (data.insight||''), (data.suggest||''), (data.before||''), (data.innerThought||data.inner||''), (data.after||''), (data.summary||'')].join(' ');
+      var fact = (data.fact || '');
+      var emotion = (data.emotion || '');
+      var need = (data.need || '');
+      var misread = (data.misread || '');
+      var before = (data.before || '');
+      var inner = (data.innerThought || data.inner || '');
+      var summary = (data.summary || '');
+      var text = [fact, emotion, need, misread, before, inner, summary].join(' ');
       var scores = { D: 0, S: 0, B: 0, R: 0, O: 0, T: 0, I: 0, N: 0 };
 
-      // 表达方式维度关键词
-      var exprKW = {
-        D: ['沉默','不说','藏','压抑','隐忍','憋','忍住','不敢说','闷','无言','默默','不表达','不说出','藏在心里','闭口','缄默','无声','回避','退缩','躲避'],
-        S: ['温柔','倾听','理解','感受','敏感','细腻','陪','安静','感知','体贴','温和','柔','包容','忍让','妥协','在乎感受','照顾情绪','默默承受','安抚'],
-        B: ['坦诚','直接','沟通','说出','表达','主动','面对','积极','解决','坦白','说出来','聊','谈','对话','交流','讨论','明确','开放','理性'],
-        R: ['强烈','激烈','爆发','愤怒','冲动','质问','指责','追','逼','直接问','控诉','不满','抱怨','吐槽','发泄','哭闹','争吵','冲突','指责','要求']
+      // 表达方式：只扫描事实和用户原话（最真实的行为描述）
+      var factText = [fact, before, inner].join(' ');
+      var exprExact = {
+        D: ['沉默','不说话','不回','不联系','不理','不说','藏心里','压在心里','忍着','忍住','憋着','不敢说','闷在心里','自己消化','回避','退缩','躲避','不表达','无回应'],
+        S: ['温柔','倾听','理解','感受','敏感','细腻','体贴','温和','包容','妥协','在乎','默默承受','配合','退让','默默陪','安安静静','小心翼翼'],
+        B: ['坦诚','直接说出','主动沟通','主动表达','面对','积极解决','坦白','说出来','明确表示','理性讨论','正面回应','开门见山','直说'],
+        R: ['爆发','愤怒','质问','指责','控诉','不满','抱怨','发泄','哭闹','争吵','冲突','要求','逼问','吵架','大吵','摔东西','拉黑','删好友']
       };
-
-      // 关注方向维度关键词
-      var focusKW = {
-        O: ['对方','他','她','你','陪伴','守护','付出','给','照顾','担心','关注','依赖','为对方','想着','等待','仰望','牺牲','委屈自己'],
-        T: ['双方','一起','共同','沟通','对话','平等','双向','互相','关系','我们','协调','平衡','磨合','商量','交流','互动'],
-        I: ['自己','我','我的','内心','反思','审视','意识到','明白','理解自己','认识','自我','边界','底线','原则','清楚','独立'],
-        N: ['孤独','一个人','独处','自在','内在','内心世界','自我对话','沉淀','思考','清静','空间','自由','距离','冷静']
+      var exprSoft = {
+        D: ['沉默','不说','藏','压抑','隐忍','忍','闷','无言','默默','回避','退'],
+        S: ['温柔','倾听','理解','感受','敏感','细腻','体贴','温和','包容','忍让','在乎','陪'],
+        B: ['坦诚','直接','沟通','说出','表达','主动','面对','积极','解决','交流','理性'],
+        R: ['强烈','激烈','愤怒','冲动','指责','不满','抱怨','争吵','冲突','要求']
       };
-
-      for (var dim in exprKW) {
-        exprKW[dim].forEach(function(kw) {
+      for (var dim in exprExact) {
+        exprExact[dim].forEach(function(kw) {
+          var idx = factText.indexOf(kw);
+          while (idx !== -1) { scores[dim] += 3; idx = factText.indexOf(kw, idx + 1); }
+        });
+      }
+      for (var dim in exprSoft) {
+        exprSoft[dim].forEach(function(kw) {
           var idx = text.indexOf(kw);
           while (idx !== -1) { scores[dim] += 1; idx = text.indexOf(kw, idx + 1); }
         });
       }
-      for (var dim in focusKW) {
-        focusKW[dim].forEach(function(kw) {
-          var idx = text.indexOf(kw);
-          while (idx !== -1) { scores[dim] += 1; idx = text.indexOf(kw, idx + 1); }
+
+      // 关注方向：用情绪+需求+总结来判断（最能反映注意力方向）
+      var focusText = [emotion, need, summary].join(' ');
+      var focusExact = {
+        O: ['为对方','在乎他','在乎她','担心对方','守护对方','想给他','想给她','对方开心','对方快乐','牺牲自己','委屈自己','等待对方','仰望对方'],
+        T: ['一起努力','共同面对','互相理解','双向沟通','平等对话','关系平衡','我们一起','双方一起','彼此尊重'],
+        I: ['反思自己','审视自己','意识到自己','理解自己','认识自己','自我成长','自我价值','独立思考','明确边界','守住底线','原则问题'],
+        N: ['一个人也行','独处自在','不需要依赖','内心世界','自我对话','安静沉淀','保持距离','冷静空间','自由独立']
+      };
+      var focusSoft = {
+        O: ['对方','他','她','在乎对方','给对方','为对方','等待','陪伴','付出'],
+        T: ['双方','一起','共同','平等','互相','关系','我们','沟通'],
+        I: ['反思','审视','意识到','认识','自我','边界','底线','原则'],
+        N: ['孤独','独处','自在','内在','沉淀','距离','冷静','空间','自由']
+      };
+      for (var dim in focusExact) {
+        focusExact[dim].forEach(function(kw) {
+          var idx = focusText.indexOf(kw);
+          while (idx !== -1) { scores[dim] += 3; idx = focusText.indexOf(kw, idx + 1); }
+        });
+      }
+      for (var dim in focusSoft) {
+        focusSoft[dim].forEach(function(kw) {
+          var idx = focusText.indexOf(kw);
+          while (idx !== -1) { scores[dim] += 1; idx = focusText.indexOf(kw, idx + 1); }
         });
       }
 
-      // 基于关系状态微调
+      // 状态微调（强信号 +5）
       var status = (data.status || '').toLowerCase();
-      if (status.indexOf('冷') !== -1 || status.indexOf('沉默') !== -1) { scores.D += 2; scores.N += 1; }
-      if (status.indexOf('冲突') !== -1 || status.indexOf('争吵') !== -1) { scores.R += 2; scores.O += 1; }
-      if (status.indexOf('稳定') !== -1 || status.indexOf('平淡') !== -1) { scores.S += 1; scores.T += 1; }
+      if (status.indexOf('冷') !== -1 || status.indexOf('沉默') !== -1 || status.indexOf('断裂') !== -1) { scores.D += 5; scores.N += 2; }
+      if (status.indexOf('冲突') !== -1 || status.indexOf('争吵') !== -1 || status.indexOf('对抗') !== -1) { scores.R += 5; scores.O += 2; }
+      if (status.indexOf('稳定') !== -1 || status.indexOf('平淡') !== -1) { scores.S += 3; scores.T += 2; }
+      if (status.indexOf('暧昧') !== -1 || status.indexOf('热恋') !== -1) { scores.R += 3; scores.O += 3; }
 
       return scores;
     }
