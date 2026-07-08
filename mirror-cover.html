@@ -2686,43 +2686,49 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
       var prompt = '以下是一位用户完成的 MIRA 人格测试答案。\n\n' + scoreText + '\n\n' + answerText + '\n\n用户的 MIRA 类型已经由计分系统确定为：' + miraType + '。\n\n你的任务是基于用户的具体选择，生成个性化描述。不要猜测类型，直接使用已确定的类型 ' + miraType + '。\n\n请给出：\n1. miraType: "' + miraType + '"\n2. expression: 表达方式维度（' + exprResult.winner + '）的详细描述，1-2句话\n3. focus: 关注方向维度（' + focusResult.winner + '）的详细描述，1-2句话\n4. portrait: 个性化人格画像描述，3-4句话，必须引用用户的具体选择，不是通用模板\n5. insight: 亲密关系中的核心洞察，2-3句话\n6. suggest: 改善关系的具体建议，2-3句话\n\n请以 JSON 格式回复，不要包含任何其他文字。';
 
+      // 用标记位防止重复展示
+      var quizFinished = false;
+      function finishQuiz(data) {
+        if (quizFinished) return;
+        quizFinished = true;
+        var ov = document.getElementById('quizOverlay');
+        var ld = document.getElementById('quizLoading');
+        if (ov) ov.classList.remove('active');
+        if (ld) ld.style.display = 'none';
+        openProfileOverlay(data);
+      }
+
+      // AbortController 超时：10 秒后主动取消请求
+      var controller = window.AbortController ? new AbortController() : null;
+      var timeoutId = setTimeout(function() {
+        if (controller) controller.abort();
+        finishQuiz({ miraType: miraType, scores: scores });
+      }, 10000);
+
       fetch(WORKER_API_BASE + '/api/mira-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ miraType: miraType, scores: scores, prompt: prompt })
+        body: JSON.stringify({ miraType: miraType, scores: scores, prompt: prompt }),
+        signal: controller ? controller.signal : undefined
       })
       .then(function(r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
       .then(function(data) {
-        quizOverlay.classList.remove('active');
-        quizLoading.style.display = 'none';
-        // 确保 AI 返回的类型和前端计分一致
-        if (!data.miraType || data.miraType !== miraType) {
-          data.miraType = miraType;
+        clearTimeout(timeoutId);
+        if (data.error) {
+          finishQuiz({ miraType: miraType, scores: scores });
+        } else {
+          if (!data.miraType || data.miraType !== miraType) data.miraType = miraType;
+          finishQuiz(data);
         }
-        openProfileOverlay(data);
       })
       .catch(function(e) {
-        console.error('Quiz submit error:', e);
-        quizOverlay.classList.remove('active');
-        quizLoading.style.display = 'none';
-        // 即使 AI 失败，也使用前端计分结果展示
-        openProfileOverlay({ miraType: miraType, scores: scores });
+        clearTimeout(timeoutId);
+        console.warn('Quiz AI failed:', e.message || e);
+        finishQuiz({ miraType: miraType, scores: scores });
       });
-
-      // 超时保护：15 秒后强制展示结果
-      setTimeout(function() {
-        var overlay = document.getElementById('quizOverlay');
-        var loading = document.getElementById('quizLoading');
-        if (overlay && overlay.classList.contains('active') && loading && loading.style.display === 'flex') {
-          console.warn('Quiz AI timeout - showing result with frontend data');
-          overlay.classList.remove('active');
-          loading.style.display = 'none';
-          openProfileOverlay({ miraType: miraType, scores: scores });
-        }
-      }, 15000);
     }
 
     // 绘制 Canvas 雷达图
