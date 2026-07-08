@@ -2691,9 +2691,13 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ miraType: miraType, scores: scores, prompt: prompt })
       })
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(function(data) {
         quizOverlay.classList.remove('active');
+        quizLoading.style.display = 'none';
         // 确保 AI 返回的类型和前端计分一致
         if (!data.miraType || data.miraType !== miraType) {
           data.miraType = miraType;
@@ -2703,9 +2707,22 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       .catch(function(e) {
         console.error('Quiz submit error:', e);
         quizOverlay.classList.remove('active');
+        quizLoading.style.display = 'none';
         // 即使 AI 失败，也使用前端计分结果展示
-        openProfileOverlay({ miraType: miraType });
+        openProfileOverlay({ miraType: miraType, scores: scores });
       });
+
+      // 超时保护：15 秒后强制展示结果
+      setTimeout(function() {
+        var overlay = document.getElementById('quizOverlay');
+        var loading = document.getElementById('quizLoading');
+        if (overlay && overlay.classList.contains('active') && loading && loading.style.display === 'flex') {
+          console.warn('Quiz AI timeout - showing result with frontend data');
+          overlay.classList.remove('active');
+          loading.style.display = 'none';
+          openProfileOverlay({ miraType: miraType, scores: scores });
+        }
+      }, 15000);
     }
 
     // 绘制 Canvas 雷达图
