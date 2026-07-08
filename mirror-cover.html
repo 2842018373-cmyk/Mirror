@@ -2701,6 +2701,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
       var prompt = '以下是一位用户完成的 MIRA 人格测试答案。\n\n' + scoreText + '\n\n' + answerText + '\n\n用户的 MIRA 类型已经由计分系统确定为：' + miraType + '。\n\n你的任务是基于用户的具体选择，生成个性化描述。不要猜测类型，直接使用已确定的类型 ' + miraType + '。\n\n请给出：\n1. miraType: "' + miraType + '"\n2. expression: 表达方式维度（' + exprResult.winner + '）的详细描述，1-2句话\n3. focus: 关注方向维度（' + focusResult.winner + '）的详细描述，1-2句话\n4. portrait: 个性化人格画像描述，3-4句话，必须引用用户的具体选择，不是通用模板\n5. insight: 亲密关系中的核心洞察，2-3句话\n6. suggest: 改善关系的具体建议，2-3句话\n\n请以 JSON 格式回复，不要包含任何其他文字。';
 
+      // 调试状态显示
+      var dbg = document.getElementById('quizDebugStatus');
+      if (dbg) { dbg.style.display = 'block'; dbg.textContent = '类型:' + miraType + ' 准备请求AI...'; }
+
       // 用标记位防止重复展示
       var quizFinished = false;
       function finishQuiz(data) {
@@ -2744,6 +2748,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       // AbortController 超时：10 秒后主动取消请求
       var controller = window.AbortController ? new AbortController() : null;
       var timeoutId = setTimeout(function() {
+        if (dbg) dbg.textContent = '超时10秒，强制显示结果';
         if (controller) controller.abort();
         finishQuiz({ miraType: miraType, scores: scores });
       }, 10000);
@@ -2751,11 +2756,13 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       // 终极保底：20 秒后如果还在加载，强制显示基础结果
       setTimeout(function() {
         if (!quizFinished) {
+          if (dbg) dbg.textContent = '终极保底触发(20秒)';
           console.warn('ULTIMATE FALLBACK triggered');
           showFallbackResult(miraType, scores);
         }
       }, 20000);
 
+      if (dbg) dbg.textContent = '类型:' + miraType + ' 请求AI中...';
       fetch(WORKER_API_BASE + '/api/mira-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2763,6 +2770,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         signal: controller ? controller.signal : undefined
       })
       .then(function(r) {
+        if (dbg) dbg.textContent = 'AI响应: HTTP ' + r.status;
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
@@ -2777,6 +2785,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       })
       .catch(function(e) {
         clearTimeout(timeoutId);
+        if (dbg) dbg.textContent = '请求失败: ' + (e.message || e);
         console.warn('Quiz AI failed:', e.message || e);
         finishQuiz({ miraType: miraType, scores: scores });
       });
@@ -3866,6 +3875,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       <div class="quiz-loading" id="quizLoading" style="display:none;">
         <div class="quiz-spinner"></div>
         <p>AI 正在分析你的 MIRA 人格...</p>
+        <p id="quizDebugStatus" style="margin-top:12px;font-size:0.7rem;color:#555;display:none;"></p>
       </div>
     </div>
   </div>
