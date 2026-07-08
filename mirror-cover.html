@@ -2648,6 +2648,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 提交答案：前端计分确定类型，AI 只生成个性化描述
     function submitQuizAnswers() {
+      try {
       var quizBody = document.getElementById('quizBody');
       var quizLoading = document.getElementById('quizLoading');
       var quizOverlay = document.getElementById('quizOverlay');
@@ -2789,6 +2790,14 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         console.warn('Quiz AI failed:', e.message || e);
         finishQuiz({ miraType: miraType, scores: scores });
       });
+      } catch (fatalErr) {
+        console.error('submitQuizAnswers FATAL:', fatalErr);
+        var dbg2 = document.getElementById('quizDebugStatus');
+        if (dbg2) { dbg2.style.display = 'block'; dbg2.textContent = '严重错误: ' + (fatalErr.message || fatalErr); }
+        // 强制回到功能页
+        var ov2 = document.getElementById('quizOverlay');
+        if (ov2) ov2.classList.remove('active');
+      }
     }
 
     // 绘制 Canvas 雷达图
