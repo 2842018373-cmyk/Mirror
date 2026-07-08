@@ -2670,8 +2670,21 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         if (more.length) {
           quizData.selectedQuestions = quizData.selectedQuestions.concat(more);
           quizData.current = quizData.answers.length; // 从已答完的下一题开始
-          quizOverlay.classList.add('active');
-          renderQuizQuestion();
+          // 弹窗提示用户即将追加题目
+          var extraInfo = document.createElement('div');
+          extraInfo.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:24px;';
+          extraInfo.innerHTML =
+            '<div style="background:var(--bg-elevated,#12131a);border:1px solid var(--rule,rgba(255,255,255,0.08));border-radius:16px;padding:32px 28px;max-width:320px;width:100%;text-align:center;">' +
+              '<div style="font-size:1.1rem;font-weight:600;color:#E8EDF5;margin-bottom:12px;">你的答案比较均衡</div>' +
+              '<div style="font-size:0.88rem;color:var(--muted,#8A92A0);line-height:1.7;margin-bottom:24px;">为了更精准地判断你的 MIRA 人格类型，还需要再回答 <span style="color:#D4AF37;font-weight:700;">' + more.length + '</span> 道题</div>' +
+              '<button style="padding:12px 32px;border-radius:999px;background:linear-gradient(135deg,#7EA7FF,#6495ED);color:#fff;font-size:0.95rem;font-weight:600;border:none;cursor:pointer;font-family:inherit;" id="quizContinueBtn">继续答题</button>' +
+            '</div>';
+          document.body.appendChild(extraInfo);
+          document.getElementById('quizContinueBtn').onclick = function() {
+            document.body.removeChild(extraInfo);
+            quizOverlay.classList.add('active');
+            renderQuizQuestion();
+          };
           return;
         }
       }
