@@ -2661,13 +2661,15 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var miraType = exprResult.winner + focusResult.winner;
 
       // 2. 检查是否模糊（差距 < 3 分需要追加题目）
-      var ambiguous = exprResult.gap < 3 || focusResult.gap < 3;
-      if (ambiguous && quizData.selectedQuestions.length < 50) {
+      // 最多追加一轮（10 题），避免无限循环
+      var ambiguous = (exprResult.gap < 3 || focusResult.gap < 3) && quizData.selectedQuestions.length <= 30;
+      if (ambiguous) {
         var more = selectQuestions(quizData.allQuestions.filter(function(q) {
           return !quizData.selectedQuestions.some(function(sq) { return sq.id === q.id; });
         }), 10);
         if (more.length) {
           quizData.selectedQuestions = quizData.selectedQuestions.concat(more);
+          quizData.current = quizData.answers.length; // 从已答完的下一题开始
           quizOverlay.classList.add('active');
           renderQuizQuestion();
           return;
