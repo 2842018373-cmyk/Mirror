@@ -2530,11 +2530,6 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // ════════════════════════════════════════════════════════════════════════════════════════════
 
     var quizData = { questions: [], current: 0, answers: [], selectedQuestions: [], allQuestions: [] };
-    var quizOverlay = document.getElementById('quizOverlay');
-    var quizBody = document.getElementById('quizBody');
-    var quizLoading = document.getElementById('quizLoading');
-    var quizProgressFill = document.getElementById('quizProgressFill');
-    var quizProgressText = document.getElementById('quizProgressText');
 
     // 加载题库
     function loadQuizBank() {
@@ -2573,6 +2568,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     function startQuiz() {
       loadQuizBank().then(function(all) {
         if (!all.length) return;
+        var quizOverlay = document.getElementById('quizOverlay');
         quizData.selectedQuestions = selectQuestions(all, 30);
         quizData.current = 0;
         quizData.answers = [];
@@ -2583,6 +2579,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 渲染当前题目
     function renderQuizQuestion() {
+      var quizBody = document.getElementById('quizBody');
+      var quizLoading = document.getElementById('quizLoading');
+      var quizProgressFill = document.getElementById('quizProgressFill');
+      var quizProgressText = document.getElementById('quizProgressText');
       var q = quizData.selectedQuestions[quizData.current];
       var total = quizData.selectedQuestions.length;
       var pct = ((quizData.current + 1) / total) * 100;
@@ -2648,6 +2648,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 提交答案：前端计分确定类型，AI 只生成个性化描述
     function submitQuizAnswers() {
+      var quizBody = document.getElementById('quizBody');
+      var quizLoading = document.getElementById('quizLoading');
+      var quizOverlay = document.getElementById('quizOverlay');
       quizBody.style.display = 'none';
       quizLoading.style.display = 'flex';
 
