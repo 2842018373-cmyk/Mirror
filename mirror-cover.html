@@ -2706,11 +2706,39 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       function finishQuiz(data) {
         if (quizFinished) return;
         quizFinished = true;
-        var ov = document.getElementById('quizOverlay');
-        var ld = document.getElementById('quizLoading');
-        if (ov) ov.classList.remove('active');
-        if (ld) ld.style.display = 'none';
-        openProfileOverlay(data);
+        try {
+          var ov = document.getElementById('quizOverlay');
+          var ld = document.getElementById('quizLoading');
+          if (ov) ov.classList.remove('active');
+          if (ld) ld.style.display = 'none';
+          openProfileOverlay(data);
+        } catch (err) {
+          console.error('finishQuiz error:', err);
+          // openProfileOverlay 失败时，直接显示基本信息
+          showFallbackResult(miraType, scores);
+        }
+      }
+
+      // 终极保底：直接操作 DOM 显示结果，不依赖任何其他函数
+      function showFallbackResult(type, sc) {
+        try {
+          var ov = document.getElementById('quizOverlay');
+          var ld = document.getElementById('quizLoading');
+          if (ov) ov.classList.remove('active');
+          if (ov) ov.style.display = 'none';
+          if (ld) ld.style.display = 'none';
+          var info = getMiraInfo(type);
+          var div = document.createElement('div');
+          div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(8,9,11,0.95);overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:40px 20px;color:#E8EDF5;font-family:inherit;';
+          div.innerHTML =
+            '<div style="font-size:2.5rem;font-weight:700;letter-spacing:6px;background:linear-gradient(135deg,#D4AF37,#F0D080);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;">' + type + '</div>' +
+            '<div style="font-size:1rem;color:#D4AF37;margin-bottom:24px;">' + (info.name || '') + '</div>' +
+            '<div style="max-width:400px;width:100%;text-align:center;line-height:1.8;color:var(--muted,#8A92A0);font-size:0.9rem;">' + (info.desc || '') + '</div>' +
+            '<button style="margin-top:32px;padding:12px 32px;border-radius:999px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#E8EDF5;font-size:0.9rem;cursor:pointer;font-family:inherit;" onclick="this.parentElement.remove()">关闭</button>';
+          document.body.appendChild(div);
+        } catch (e2) {
+          console.error('showFallbackResult error:', e2);
+        }
       }
 
       // AbortController 超时：10 秒后主动取消请求
@@ -2719,6 +2747,14 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         if (controller) controller.abort();
         finishQuiz({ miraType: miraType, scores: scores });
       }, 10000);
+
+      // 终极保底：20 秒后如果还在加载，强制显示基础结果
+      setTimeout(function() {
+        if (!quizFinished) {
+          console.warn('ULTIMATE FALLBACK triggered');
+          showFallbackResult(miraType, scores);
+        }
+      }, 20000);
 
       fetch(WORKER_API_BASE + '/api/mira-quiz', {
         method: 'POST',
