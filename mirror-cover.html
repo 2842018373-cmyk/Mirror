@@ -1145,11 +1145,18 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         var modeHint = mode === 'letter' ? '\n\n请以写信模式（mode:"letter"）输出 JSON。' : '\n\n请以单人模式（mode:"single"）输出 JSON。';
         messages.push({ role: 'user', content: userText + modeHint });
 
+        var controller = window.AbortController ? new AbortController() : null;
+        var analyzeTimeout = setTimeout(function() {
+          if (controller) controller.abort();
+        }, 30000);
+
         var response = await fetch(WORKER_API_BASE + '/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: userText + modeHint, mode: mode || 'single', history: messages })
+          body: JSON.stringify({ prompt: userText + modeHint, mode: mode || 'single', history: messages }),
+          signal: controller ? controller.signal : undefined
         });
+        clearTimeout(analyzeTimeout);
         if (!response.ok) throw new Error('API 错误: ' + response.status);
         var data = await response.json();
         if (data.error) throw new Error(data.error);
@@ -2980,13 +2987,25 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         '3. 如何发挥这种人格的优势来改善关系。' +
         '请以温暖、有洞察力的口吻写，像一位懂你的朋友在和你谈心。不要提及这是AI生成的。';
 
+      var controller = window.AbortController ? new AbortController() : null;
+      var deepTimeout = setTimeout(function() {
+        if (controller) controller.abort();
+        deepBody.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">深度解读生成超时，请稍后重试。</div>';
+      }, 12000);
+
       fetch(WORKER_API_BASE + '/api/mira-deep', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ miraType: miraType, prompt: prompt })
+        body: JSON.stringify({ miraType: miraType, prompt: prompt }),
+        signal: controller ? controller.signal : undefined
       })
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(function(data) {
+        clearTimeout(deepTimeout);
+        if (data.error) throw new Error(data.error);
         if (data.deepInterpretation) {
           deepBody.innerHTML = '<div style="line-height:1.8;font-size:0.9rem;">' + safeText(data.deepInterpretation) + '</div>';
         } else if (data.raw) {
@@ -2996,6 +3015,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         }
       })
       .catch(function(e) {
+        clearTimeout(deepTimeout);
         console.error('Deep interpretation error:', e);
         deepBody.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">深度解读生成失败，请检查网络后重试。</div>';
       });
