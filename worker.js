@@ -285,7 +285,7 @@ export default {
           ctx.waitUntil(saveSingleAnalysis(env, prompt, result));
         }
 
-        return jsonResponse(result, 200, origin);
+        return jsonResponse(result, result.error ? 500 : 200, origin);
       }
 
       // 写信模式
@@ -301,7 +301,7 @@ export default {
         if (!prompt || typeof prompt !== 'string') return jsonResponse({ error: 'prompt 不能为空' }, 400, origin);
 
         const result = await callAI(env, prompt, 'letter', history || []);
-        return jsonResponse(result, 200, origin);
+        return jsonResponse(result, result.error ? 500 : 200, origin);
       }
 
       // MIRA 人格测试判题
@@ -318,7 +318,7 @@ export default {
         if (prompt.length > 15000) return jsonResponse({ error: 'prompt 过长' }, 400, origin);
 
         const result = await callAI(env, prompt, 'quiz', []);
-        return jsonResponse(result, 200, origin);
+        return jsonResponse(result, result.error ? 500 : 200, origin);
       }
 
       // MIRA 深度解读
@@ -335,7 +335,7 @@ export default {
         if (prompt.length > 15000) return jsonResponse({ error: 'prompt 过长' }, 400, origin);
 
         const result = await callAI(env, prompt, 'deep', []);
-        return jsonResponse(result, 200, origin);
+        return jsonResponse(result, result.error ? 500 : 200, origin);
       }
 
       // ══════════════════════════════════════════ 数据库初始化 API ══════════════════════════════════════════
