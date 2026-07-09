@@ -455,7 +455,17 @@ export default {
   },
 };
 
-// 调用 Agnes AI（带超时和错误处理）
+// 带超时的 fetch（Cloudflare Workers 中手动实现超时）
+async function fetchWithTimeout(url, options, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('FETCH_TIMEOUT')), timeoutMs);
+    fetch(url, options)
+      .then(res => { clearTimeout(timer); resolve(res); })
+      .catch(err => { clearTimeout(timer); reject(err); });
+  });
+}
+
+// 调用 Agnes AI（带超时、重试和错误处理）
 async function callAI(env, prompt, mode, history) {
   const systemPrompts = {
     single: '你是 Mirror，一个关系理解与表达操作系统。你擅长通过5层深度提问（事实→情绪→需求→意义→行动）来理解用户的情感关系状态。请严格以JSON格式回复（不要包含任何其他文字），包含以下字段：fact(事实摘要)、emotion(情绪识别)、need(核心需求)、misread(可能误读)、misreadType(误读类型：状态误读/行为误读/表达误读/自我投射)、status(关系状态评估)、before(用户原始的攻击性表达，一句典型的话)、innerThought(用户内心的真实想法)、after(Mirror翻译后的非暴力表达)、insight(深度洞察，2-3句话)、suggest(改善建议，具体可执行)、summary(一句话总结用户真正想表达的)、scores(对象，包含8个字段：expr_D表达暗影倾向1-15、expr_S表达柔光倾向1-15、expr_B表达明光倾向1-15、expr_R表达辉光倾向1-15、focus_O关注向外倾向1-15、focus_T关注朝向倾向1-15、focus_I关注倾向倾向1-15、focus_N关注向内倾向1-15。8个字段之和应为32，每个字段1-15，代表用户在关系中各维度的强度。D=暗影内敛/S=柔光温和/B=明光积极/R=辉光强烈，O=向外关注对方/T=朝向关系平衡/I=倾向自我反思/N=向内关注自我)。',
@@ -473,47 +483,71 @@ async function callAI(env, prompt, mode, history) {
     { role: 'user', content: prompt },
   ];
 
-  let response;
-  try {
-    response = await fetch('https://apihub.agnes-ai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.AI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'agnes-1.5-flash',
-        messages,
-        temperature: 0.15,
-        max_tokens: 2000,
-      }),
-    });
-  } catch (e) {
-    return { error: 'AI 服务连接失败', raw: null };
-  }
+  const maxRetries = 2;
+  const timeoutMs = 15000;
 
-  if (!response.ok) {
-    return { error: `AI 服务返回错误 (${response.status})`, raw: null };
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '';
-
-  if (!content) {
-    return { error: 'AI 返回内容为空', raw: null };
-  }
-
-  // 解析 JSON
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let response;
+    try {
+      response = await fetchWithTimeout('https://apihub.agnes-ai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.AI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: 'agnes-1.5-flash',
+          messages,
+          temperature: 0.15,
+          max_tokens: 2000,
+        }),
+      }, timeoutMs);
+    } catch (e) {
+      if (e.message === 'FETCH_TIMEOUT') {
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+        return { error: 'AI 服务响应超时，请稍后重试', raw: null };
+      }
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      return { error: 'AI 服务连接失败', raw: null };
     }
-  } catch (e) {
-    // 解析失败
+
+    // 对 502/503/504/429 错误进行重试
+    if (!response.ok) {
+      const status = response.status;
+      if ((status === 502 || status === 503 || status === 504 || status === 429) && attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+        continue;
+      }
+      return { error: `AI 服务返回错误 (${status})`, raw: null };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    if (!content) {
+      return { error: 'AI 返回内容为空', raw: null };
+    }
+
+    // 解析 JSON（deep 模式预期纯文本，解析失败也没关系）
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (e) {
+      // 解析失败
+    }
+
+    return { raw: content, error: 'JSON解析失败' };
   }
 
-  return { raw: content, error: 'JSON解析失败' };
+  return { error: 'AI 服务暂时不可用，请稍后重试', raw: null };
 }
 
 // 双人分析：分别分析 A 和 B（带错误处理）

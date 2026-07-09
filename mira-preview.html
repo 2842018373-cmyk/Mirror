@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIRA 关系光谱预览</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #08090B;
+    color: #E8EAED;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 40px 20px;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: 8px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #A8B2D1 0%, #D4AF37 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    color: #5A6270;
+    font-size: 0.85rem;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .card {
+    position: relative;
+    background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    padding: 28px;
+    overflow: hidden;
+    transition: transform 0.3s ease, border-color 0.3s ease;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(212,175,55,0.2);
+  }
+  /* 镜像对称光晕 */
+  .card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: 50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at center, rgba(212,175,55,0.03) 0%, transparent 60%);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .card::after {
+    content: '';
+    position: absolute;
+    bottom: -50%;
+    left: 50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at center, rgba(100,149,237,0.03) 0%, transparent 60%);
+    transform: translateX(-50%) scaleY(-1);
+    pointer-events: none;
+  }
+  .mira-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .mira-text {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: #5A6270;
+    font-weight: 500;
+  }
+  .code {
+    font-size: 2.2rem;
+    font-weight: 200;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, #A8B2D1 0%, #D4AF37 50%, #6495ED 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+  }
+  .chinese-name {
+    font-size: 1.1rem;
+    color: #D4AF37;
+    font-weight: 400;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .divider {
+    width: 40px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent);
+    margin-bottom: 12px;
+  }
+  .description {
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: #8A92A0;
+    position: relative;
+    z-index: 1;
+  }
+  .spectrum-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+    width: 60px;
+    height: 60px;
+    margin-top: 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .spectrum-cell {
+    border-radius: 3px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .spectrum-cell.active {
+    background: linear-gradient(135deg, rgba(212,175,55,0.3), rgba(100,149,237,0.3));
+    border-color: rgba(212,175,55,0.3);
+    box-shadow: 0 0 8px rgba(212,175,55,0.15);
+  }
+</style>
+</head>
+<body>
+
+<h1>M I R A</h1>
+<p class="subtitle">Mirror Identity Reflection Archetype · 关系光谱</p>
+
+<div class="grid" id="cardGrid"></div>
+
+<script>
+const types = [
+  { code: 'DO', name: '无声的守望者', desc: '你几乎不说出自己的感受，所有的关注都倾注在对方身上。你通过细微的观察来理解对方的需要，用沉默的方式守护着这段关系。' },
+  { code: 'DT', name: '静默的共鸣者', desc: '你不善言辞，但你总是在场。对方开心时你默默陪着，对方低落时你安静守候。你不会主动说出"我懂你"，但你用沉默传达了比语言更深的东西。' },
+  { code: 'DI', name: '沉思的独行者', desc: '你习惯把一切藏在心里反复咀嚼。关系中的风吹草动，你都会独自思考很久。你很清楚自己的感受，但你不确定是否要说出来。' },
+  { code: 'DN', name: '封存的深海者', desc: '你像一个密封的深海——表面平静，深处有巨大的暗涌。你几乎不表达，也几乎不向外关注。不是不在乎，而是你已经习惯了一个人处理所有的事。' },
+  { code: 'SO', name: '温柔的聆听者', desc: '你是天生的倾听者。对方说的每一句话你都会认真对待，对方的每一个情绪你都能感知到。你偶尔会回应，但更多时候你选择听。' },
+  { code: 'ST', name: '灵动的镜映者', desc: '你在关系中像一面灵动的镜子——既照见对方的喜怒哀乐，也映出自己内心的波澜。你能感知对方的需求，同时也在默默照顾自己的感受。' },
+  { code: 'SI', name: '自知的探索者', desc: '你是一个善于反思的人。关系中的每一次摩擦，你都会回头审视自己的内心。你倾听对方，但更在意从这段关系中认识自己。' },
+  { code: 'SN', name: '内敛的感知者', desc: '你对外界的刺激很敏感，但你选择把所有的感知都内化。你不主动表达，但你对自己有着极其清晰的认知。你的沉默不是空的，里面装满了一个人的宇宙。' },
+  { code: 'BO', name: '热忱的守护者', desc: '你会主动说出关心，会用行动表达爱意，会把对方放在第一位。你的热情是真挚的，你的付出是不求回报的。但有时候你也需要停下来问问自己：在守护对方的同时，谁在守护你？' },
+  { code: 'BT', name: '坦诚的对话者', desc: '你相信沟通的力量。你愿意说出自己的想法，也愿意倾听对方的声音。你追求的是一种平等、开放的对话关系。你不害怕冲突，因为你觉得坦诚比和谐更重要。' },
+  { code: 'BI', name: '清晰的边界者', desc: '你知道自己的底线在哪里，也敢于说出来。你不会为了取悦对方而委屈自己，你相信好的关系不需要牺牲自我。你的直接有时会让人觉得"太理性了"，但这恰恰是你对关系最真诚的尊重。' },
+  { code: 'BN', name: '果敢的宣言者', desc: '你清楚自己要什么，而且你敢说出来。在关系中，你是一个不会被忽视的存在。你的表达力很强，但你可能需要偶尔放慢脚步，留一点空间给沉默。' },
+  { code: 'RO', name: '炽热的追随者', desc: '你对感情毫无保留。你会大声说出爱意，会直接追问对方的想法，会把所有的注意力都给到对方。你的热烈是珍贵的，但有时候你的直接可能会让对方感到压力。' },
+  { code: 'RT', name: '敏锐的洞察者', desc: '你一眼就能看出关系中存在的问题，而且你会直言不讳地指出来。你不是为了批评，而是因为你相信面对真相比回避更好。你的洞察力是天赋，但有时候真相太锋利，需要包裹一层温柔。' },
+  { code: 'RI', name: '坚定的自我者', desc: '你是一个非常有主见的人。你知道自己值不值得，也知道自己该不该继续。你不会为了关系而改变自己，因为你觉得——好的关系不需要你变成另一个人。' },
+  { code: 'RN', name: '璀璨的独白者', desc: '你在关系中更像是和自己在对话。你会直接表达自己的感受和想法，但你不太在意对方是否理解。你的世界有完整的光谱，你就是自己最好的听众。' },
+];
+
+function getGridPosition(code) {
+  const x = ['D','S','B','R'].indexOf(code[0]);
+  const y = ['O','T','I','N'].indexOf(code[1]);
+  return { x, y };
+}
+
+const grid = document.getElementById('cardGrid');
+types.forEach(t => {
+  const pos = getGridPosition(t.code);
+  const cells = [];
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      const isActive = c === pos.x && r === pos.y;
+      cells.push(`<div class="spectrum-cell${isActive ? ' active' : ''}"></div>`);
+    }
+  }
+
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="mira-badge">
+      <span class="mira-text">MIRA</span>
+    </div>
+    <div class="code">${t.code}</div>
+    <div class="chinese-name">${t.name}</div>
+    <div class="divider"></div>
+    <div class="description">${t.desc}</div>
+    <div class="spectrum-grid">${cells.join('')}</div>
+  `;
+  grid.appendChild(card);
+});
+</script>
+
+</body>
+</html>

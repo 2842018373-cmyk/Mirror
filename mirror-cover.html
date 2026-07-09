@@ -2974,8 +2974,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       loadDeepInterpretation(miraType, ai, scores);
     };
 
-    // 加载深度解读
-    function loadDeepInterpretation(miraType, aiData, scores) {
+    // 加载深度解读（带重试机制）
+    function loadDeepInterpretation(miraType, aiData, scores, retryCount) {
+      retryCount = retryCount || 0;
       var deepBody = document.getElementById('profileDeepBody');
       if (!deepBody) return;
 
@@ -2990,8 +2991,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var controller = window.AbortController ? new AbortController() : null;
       var deepTimeout = setTimeout(function() {
         if (controller) controller.abort();
-        deepBody.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">深度解读生成超时，请稍后重试。</div>';
-      }, 12000);
+        showDeepError('深度解读生成超时，请稍后重试。', miraType, aiData, scores, retryCount);
+      }, 15000);
 
       fetch(WORKER_API_BASE + '/api/mira-deep', {
         method: 'POST',
@@ -3011,14 +3012,41 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         } else if (data.raw) {
           deepBody.innerHTML = '<div style="line-height:1.8;font-size:0.9rem;">' + safeText(data.raw) + '</div>';
         } else {
-          deepBody.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">深度解读生成失败，请稍后重试。</div>';
+          showDeepError('深度解读生成失败，请稍后重试。', miraType, aiData, scores, retryCount);
         }
       })
       .catch(function(e) {
         clearTimeout(deepTimeout);
         console.error('Deep interpretation error:', e);
-        deepBody.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">深度解读生成失败，请检查网络后重试。</div>';
+        showDeepError('深度解读生成失败，请检查网络后重试。', miraType, aiData, scores, retryCount);
       });
+    }
+
+    // 显示深度解读错误（带重试按钮）
+    function showDeepError(message, miraType, aiData, scores, retryCount) {
+      var deepBody = document.getElementById('profileDeepBody');
+      if (!deepBody) return;
+      var canRetry = retryCount < 2;
+      deepBody.innerHTML =
+        '<div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0;">' +
+          '<div style="color:var(--muted);font-size:0.85rem;text-align:center;">' + safeText(message) + '</div>' +
+          (canRetry ?
+            '<button id="deepRetryBtn" style="padding:8px 20px;border-radius:999px;background:rgba(126,167,255,0.12);border:1px solid rgba(126,167,255,0.25);color:var(--blue);font-size:0.85rem;cursor:pointer;font-family:inherit;transition:all 0.3s;">重新生成</button>' :
+            '<div style="color:var(--faint);font-size:0.78rem;">已达到最大重试次数，请稍后刷新页面再试</div>') +
+        '</div>';
+      if (canRetry) {
+        var retryBtn = document.getElementById('deepRetryBtn');
+        if (retryBtn) {
+          retryBtn.onclick = function() {
+            deepBody.innerHTML =
+              '<div style="display:flex;align-items:center;gap:8px;color:var(--muted);">' +
+                '<div class="quiz-spinner" style="width:16px;height:16px;border-width:2px;"></div>' +
+                '<span style="font-size:0.85rem;">正在重新生成深度解读...</span>' +
+              '</div>';
+            loadDeepInterpretation(miraType, aiData, scores, retryCount + 1);
+          };
+        }
+      }
     }
 
     // 关闭人格画像弹层（延迟绑定，弹层 HTML 在页面底部）

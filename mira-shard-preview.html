@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIRA 镜中碎片示例</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #08090B;
+    color: #E8EAED;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  .card {
+    position: relative;
+    width: 360px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 24px;
+    padding: 36px 32px;
+    overflow: hidden;
+    transition: transform 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+  }
+  .card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(212,175,55,0.25);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(212,175,55,0.08);
+  }
+  /* 镜像对称光晕 */
+  .card::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    left: 50%;
+    width: 140%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, rgba(212,175,55,0.04) 0%, transparent 60%);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .card::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: 50%;
+    width: 140%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, rgba(100,149,237,0.04) 0%, transparent 60%);
+    transform: translateX(-50%) scaleY(-1);
+    pointer-events: none;
+  }
+
+  .shard-container {
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 24px;
+    position: relative;
+    z-index: 1;
+  }
+  .shard-container svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 8px 24px rgba(212,175,55,0.15));
+    transition: filter 0.4s ease, transform 0.4s ease;
+  }
+  .card:hover .shard-container svg {
+    filter: drop-shadow(0 12px 32px rgba(212,175,55,0.25));
+    transform: scale(1.05);
+  }
+
+  .mira-badge {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .mira-text {
+    font-size: 0.65rem;
+    letter-spacing: 4px;
+    color: #5A6270;
+    font-weight: 500;
+  }
+  .code {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 100;
+    letter-spacing: 8px;
+    background: linear-gradient(135deg, #A8B2D1 0%, #D4AF37 50%, #6495ED 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+  }
+  .chinese-name {
+    text-align: center;
+    font-size: 1.2rem;
+    color: #D4AF37;
+    font-weight: 400;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .divider {
+    width: 50px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(212,175,55,0.4), transparent);
+    margin: 0 auto 16px;
+  }
+  .description {
+    text-align: center;
+    font-size: 0.85rem;
+    line-height: 1.8;
+    color: #8A92A0;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 底部坐标 */
+  .coords {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .coord-item {
+    text-align: center;
+  }
+  .coord-label {
+    font-size: 0.6rem;
+    color: #5A6270;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .coord-value {
+    font-size: 0.75rem;
+    color: #A8B2D1;
+  }
+
+  /* 说明文字 */
+  .legend {
+    margin-top: 40px;
+    max-width: 500px;
+    text-align: center;
+    color: #5A6270;
+    font-size: 0.75rem;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="shard-container">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- 碎片主体渐变：柔和的双向光 -->
+        <linearGradient id="shardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#A8B2D1;stop-opacity:0.9" />
+          <stop offset="35%" style="stop-color:#D4AF37;stop-opacity:0.7" />
+          <stop offset="65%" style="stop-color:#6495ED;stop-opacity:0.7" />
+          <stop offset="100%" style="stop-color:#A8B2D1;stop-opacity:0.9" />
+        </linearGradient>
+        <!-- 内部纹理渐变 -->
+        <radialGradient id="innerGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.15" />
+          <stop offset="60%" style="stop-color:#ffffff;stop-opacity:0.05" />
+          <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+        </radialGradient>
+        <!-- 边缘高光 -->
+        <linearGradient id="edgeHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.6" />
+          <stop offset="50%" style="stop-color:#ffffff;stop-opacity:0.1" />
+          <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0.4" />
+        </linearGradient>
+      </defs>
+
+      <!-- 外发光层 -->
+      <path d="M100 20
+               C130 35, 160 50, 170 85
+               C180 120, 165 155, 140 175
+               C115 195, 85 195, 60 175
+               C35 155, 20 120, 30 85
+               C40 50, 70 35, 100 20Z"
+            fill="url(#shardGrad)"
+            opacity="0.15"
+            filter="blur(8px)"
+            transform="scale(1.1) translate(-10,-10)" />
+
+      <!-- 碎片主体：Soft Toward = 柔和的水滴/花瓣形，双向对称 -->
+      <path d="M100 25
+               C125 40, 150 55, 160 90
+               C168 120, 155 150, 130 168
+               C115 180, 100 185, 100 185
+               C100 185, 85 180, 70 168
+               C45 150, 32 120, 40 90
+               C50 55, 75 40, 100 25Z"
+            fill="url(#shardGrad)"
+            stroke="url(#edgeHighlight)"
+            stroke-width="1.5"
+            opacity="0.85" />
+
+      <!-- 内部光晕 -->
+      <ellipse cx="100" cy="105" rx="45" ry="55" fill="url(#innerGlow)" />
+
+      <!-- 内部纹理线：表示"倾听"的波纹 -->
+      <path d="M70 85 Q100 75, 130 85" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" />
+      <path d="M75 100 Q100 90, 125 100" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.8" />
+      <path d="M80 115 Q100 105, 120 115" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.8" />
+
+      <!-- 中心亮点：镜面反光 -->
+      <ellipse cx="85" cy="70" rx="12" ry="8" fill="rgba(255,255,255,0.25)" transform="rotate(-30, 85, 70)" />
+      <ellipse cx="115" cy="140" rx="8" ry="5" fill="rgba(255,255,255,0.12)" transform="rotate(20, 115, 140)" />
+
+      <!-- 碎片裂纹/棱线：表示镜子 -->
+      <path d="M100 25 L100 185" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" />
+      <path d="M40 90 Q70 105, 100 105 Q130 105, 160 90" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" />
+    </svg>
+  </div>
+
+  <div class="mira-badge">
+    <span class="mira-text">M I R A</span>
+  </div>
+  <div class="code">S T</div>
+  <div class="chinese-name">灵动的镜映者</div>
+  <div class="divider"></div>
+  <div class="description">
+    你在关系中像一面灵动的镜子——<br>
+    既照见对方的喜怒哀乐，<br>
+    也映出自己内心的波澜。
+  </div>
+
+  <div class="coords">
+    <div class="coord-item">
+      <div class="coord-label">光度</div>
+      <div class="coord-value">柔和 Soft</div>
+    </div>
+    <div class="coord-item">
+      <div class="coord-label">方向</div>
+      <div class="coord-value">朝向 Toward</div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <p><strong>设计说明</strong></p>
+  <p>碎片形状 → 表达倾向（D圆/S水滴/B菱形/R星形）</p>
+  <p>光泽方向 → 关注焦点（O向右/T双向/I倾斜/N收敛）</p>
+  <p>内部纹理 → 类型的独特特征（波纹=倾听，射线=表达等）</p>
+  <p>hover 时碎片放大 + 光晕增强 + 卡片上浮</p>
+</div>
+
+</body>
+</html>
