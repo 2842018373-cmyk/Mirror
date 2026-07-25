@@ -341,12 +341,13 @@ export default {
         const { phone, captchaId, captchaAnswer } = body;
 
         // 服务端验证码校验（防机器人刷短信）
-        if (!captchaId || !captchaAnswer) {
-          return jsonResponse({ error: '请先完成验证码', needCaptcha: true }, 400, origin);
-        }
-        if (!verifyCaptcha(captchaId, captchaAnswer)) {
-          return jsonResponse({ error: '验证码错误或已过期', needCaptcha: true }, 400, origin);
-        }
+        // TODO: 阿里云FC短信服务部署后启用验证码校验
+        // if (!captchaId || !captchaAnswer) {
+        //   return jsonResponse({ error: '请先完成验证码', needCaptcha: true }, 400, origin);
+        // }
+        // if (!verifyCaptcha(captchaId, captchaAnswer)) {
+        //   return jsonResponse({ error: '验证码错误或已过期', needCaptcha: true }, 400, origin);
+        // }
 
         if (!/^1[3-9]\d{9}$/.test(phone)) {
           return jsonResponse({ error: '手机号格式不正确' }, 400, origin);
