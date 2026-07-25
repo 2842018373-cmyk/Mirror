@@ -265,6 +265,10 @@
     .auth-divider span { font-size: 0.78rem; color: var(--faint); white-space: nowrap; }
     .auth-guest-btn { width: 100%; padding: 12px; border-radius: 14px; border: 1px solid var(--rule); background: transparent; color: var(--muted); font-size: 0.85rem; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
     .auth-guest-btn:hover { border-color: rgba(126,167,255,0.3); color: var(--ink); }
+    .auth-tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: 12px; overflow: hidden; border: 1px solid var(--rule); }
+    .auth-tab { flex: 1; padding: 10px 0; text-align: center; font-size: 0.84rem; color: var(--muted); cursor: pointer; background: transparent; border: none; font-family: inherit; transition: all 0.3s var(--ease); }
+    .auth-tab.active { background: rgba(126,167,255,0.12); color: var(--ink); font-weight: 600; }
+    .auth-tab:hover:not(.active) { color: var(--ink); }
     .auth-error { text-align: center; font-size: 0.78rem; color: #F87454; margin-top: 8px; min-height: 1.2em; }
     .auth-code-row { display: flex; gap: 10px; margin-bottom: 14px; }
     .auth-code-row .auth-input { flex: 1; }
@@ -971,6 +975,7 @@
 
     function openAuthOverlay() {
       generateCaptcha();
+      switchAuthTab('sms');
       document.getElementById('authOverlay').classList.add('active');
       document.getElementById('authError').textContent = '';
       document.getElementById('authCodeRow').style.display = 'none';
@@ -978,6 +983,8 @@
       document.getElementById('authSendCodeBtn').textContent = '获取验证码';
       document.getElementById('authPhoneInput').value = '';
       document.getElementById('authCodeInput').value = '';
+      document.getElementById('authPwdPhoneInput').value = '';
+      document.getElementById('authPwdInput').value = '';
     }
 
     function closeAuthOverlay() {
@@ -1027,23 +1034,74 @@
       }
     }
 
+    function switchAuthTab(tab) {
+      document.getElementById('tabSms').classList.toggle('active', tab === 'sms');
+      document.getElementById('tabPwd').classList.toggle('active', tab === 'pwd');
+      document.getElementById('authPhoneSection').style.display = tab === 'sms' ? 'block' : 'none';
+      document.getElementById('authPwdSection').style.display = tab === 'pwd' ? 'block' : 'none';
+      document.getElementById('authError').textContent = '';
+      document.getElementById('authPwdError').textContent = '';
+    }
+
+    async function handlePasswordLogin() {
+      var phone = document.getElementById('authPwdPhoneInput').value.trim();
+      var password = document.getElementById('authPwdInput').value;
+      var errorEl = document.getElementById('authPwdError');
+      errorEl.textContent = '';
+
+      if (!/^1[3-9]\d{9}$/.test(phone)) {
+        errorEl.textContent = '请输入正确的手机号';
+        return;
+      }
+      if (!password) {
+        errorEl.textContent = '请输入密码';
+        return;
+      }
+
+      var btn = document.getElementById('authPwdLoginBtn');
+      btn.disabled = true;
+      btn.textContent = '登录中...';
+
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/auth/password-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: phone, password: password })
+        });
+        var data = await resp.json();
+        if (data.success) {
+          setAuthUser(data.user, data.token);
+          closeAuthOverlay();
+          if (!data.isGuest) {
+            var banner = document.getElementById('authTouristBanner');
+            if (banner) banner.classList.remove('show');
+          } else {
+            showTouristBanner();
+          }
+        } else {
+          errorEl.textContent = data.error || '登录失败';
+          btn.disabled = false;
+          btn.textContent = '登录';
+        }
+      } catch (e) {
+        errorEl.textContent = '网络错误，请重试';
+        btn.disabled = false;
+        btn.textContent = '登录';
+      }
+    }
+
     async function handleSendCode() {
       var phone = document.getElementById('authPhoneInput').value.trim();
-      // 服务端验证码校验暂未启用，前端保留UI但答案非必填
-        // var captchaAnswer = document.getElementById('authCaptchaA').value.trim();
-        var errorEl = document.getElementById('authError');
-        errorEl.textContent = '';
+      var captchaAnswer = document.getElementById('authCaptchaA') ? document.getElementById('authCaptchaA').value.trim() : '';
+      var errorEl = document.getElementById('authError');
+      errorEl.textContent = '';
 
-        if (!/^1[3-9]\d{9}$/.test(phone)) {
-          errorEl.textContent = '请输入正确的手机号';
-          return;
-        }
-        // if (!captchaAnswer) {
-        //   errorEl.textContent = '请先回答验证题';
-        //   return;
-        // }
+      if (!/^1[3-9]\d{9}$/.test(phone)) {
+        errorEl.textContent = '请输入正确的手机号';
+        return;
+      }
 
-        var btn = document.getElementById('authSendCodeBtn');
+      var btn = document.getElementById('authSendCodeBtn');
       btn.disabled = true;
       btn.textContent = '发送中...';
 
@@ -1051,7 +1109,7 @@
         var resp = await fetch(WORKER_API_BASE + '/api/auth/send-code', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: phone, captchaId: serverCaptchaId, captchaAnswer: parseInt(captchaAnswer) })
+          body: JSON.stringify({ phone: phone, captchaId: serverCaptchaId, captchaAnswer: captchaAnswer ? parseInt(captchaAnswer) : null })
         });
         var data = await resp.json();
         if (data.success) {
@@ -1065,18 +1123,19 @@
             if (seconds <= 0) { clearInterval(timer); btn.disabled = false; btn.textContent = '重新获取'; }
             else { btn.textContent = seconds + 's'; }
           }, 1000);
-          // 开发模式显示验证码
+          // 开发模式：将验证码直接显示在页面上
           if (data.devCode) {
-            errorEl.textContent = '';
+            errorEl.style.color = '#4caf50';
+            errorEl.textContent = '[测试] 验证码: ' + data.devCode;
             console.log('[DEV] 验证码:', data.devCode);
           }
         } else {
+          errorEl.style.color = '';
           errorEl.textContent = data.error || '发送失败';
           btn.disabled = false;
           btn.textContent = '获取验证码';
-          // 验证码失败后刷新题目
           generateCaptcha();
-          document.getElementById('authCaptchaA').value = '';
+          if (document.getElementById('authCaptchaA')) document.getElementById('authCaptchaA').value = '';
         }
       } catch (e) {
         errorEl.textContent = '网络错误，请重试';
@@ -4226,7 +4285,12 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       <div class="auth-logo">🪞</div>
       <div class="auth-title">Mirror</div>
       <div class="auth-subtitle">登录以保存你的分析结果</div>
-      <!-- 手机号登录 -->
+      <!-- 登录方式 Tab -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabSms" onclick="switchAuthTab('sms')">验证码登录</button>
+        <button class="auth-tab" id="tabPwd" onclick="switchAuthTab('pwd')">密码登录</button>
+      </div>
+      <!-- 手机号验证码登录 -->
       <div id="authPhoneSection">
         <div class="auth-input-group">
           <input type="tel" class="auth-input" id="authPhoneInput" placeholder="请输入手机号" maxlength="11">
@@ -4243,6 +4307,19 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           <button class="auth-code-btn" id="authCodeBtn" onclick="handleVerifyCode()" disabled>登录</button>
         </div>
         <div class="auth-error" id="authError"></div>
+      </div>
+      <!-- 密码登录 -->
+      <div id="authPwdSection" style="display:none;">
+        <div class="auth-input-group">
+          <input type="tel" class="auth-input" id="authPwdPhoneInput" placeholder="请输入手机号" maxlength="11">
+        </div>
+        <div class="auth-input-group">
+          <input type="password" class="auth-input" id="authPwdInput" placeholder="请输入密码">
+        </div>
+        <div class="auth-input-group">
+          <button class="auth-btn auth-btn-primary" id="authPwdLoginBtn" onclick="handlePasswordLogin()">登录</button>
+        </div>
+        <div class="auth-error" id="authPwdError"></div>
       </div>
       <!-- 分割线 -->
       <div class="auth-divider"><span>或</span></div>

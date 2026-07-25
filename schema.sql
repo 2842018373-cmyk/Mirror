@@ -20,11 +20,13 @@ CREATE INDEX IF NOT EXISTS idx_rooms_expires ON rooms(expires_at);
 
 -- ══════════════════════════════════════════ 用户系统 ══════════════════════════════════════════
 
--- 用户表（支持游客和手机号两种身份）
+-- 用户表（支持游客、手机号、密码三种登录方式）
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guest_id TEXT UNIQUE,           -- 游客UUID（游客模式时生成）
   phone TEXT UNIQUE,              -- 手机号（手机号登录时填入，游客为NULL）
+  password_hash TEXT,             -- 密码哈希（SHA-256(salt+password)，密码登录时使用）
+  password_salt TEXT,              -- 密码盐值（随机生成）
   nickname TEXT,                  -- 昵称（可选）
   mira_type TEXT,                 -- 用户最新的MIRA人格类型
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -33,6 +35,10 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_guest ON users(guest_id);
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+
+-- 密码登录初始化：为已有手机号用户设置默认密码 1234
+-- ALTER TABLE users ADD COLUMN password_hash TEXT;
+-- ALTER TABLE users ADD COLUMN password_salt TEXT;
 
 -- 验证码表（替代FC内存存储）
 CREATE TABLE IF NOT EXISTS verify_codes (

@@ -181,6 +181,37 @@ async function decryptText(env, encryptedBase64) {
   }
 }
 
+// ══════════════════════════════════════════ 密码哈希工具 ══════════════════════════════════════════
+
+const DEFAULT_PASSWORD = '1234';
+
+// 生成随机 salt
+function generateSalt(length = 16) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let salt = '';
+  const randomValues = crypto.getRandomValues(new Uint8Array(length));
+  for (let i = 0; i < length; i++) {
+    salt += chars[randomValues[i] % chars.length];
+  }
+  return salt;
+}
+
+// SHA-256 哈希
+async function hashPassword(password, salt) {
+  const data = new TextEncoder().encode(salt + password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// 为用户初始化默认密码
+async function initUserPassword(env, userId) {
+  const salt = generateSalt();
+  const hash = await hashPassword(DEFAULT_PASSWORD, salt);
+  await env.DB.prepare('UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?').bind(hash, salt, userId).run();
+  return { salt, hash };
+}
+
 // 生成 6 位房间码（组合数 10 亿+，防爆破）
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -329,6 +360,57 @@ export default {
         return jsonResponse({ success: true, token, isGuest: true, user: { id: user.id, phone: null, nickname: user.nickname } }, 200, origin);
       }
 
+      // 密码登录（POST /api/auth/password-login）
+      if (path === '/api/auth/password-login' && request.method === 'POST') {
+        if (!checkRateLimit(clientIP, 'password_login', 10, 60000)) {
+          return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
+        }
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { phone, password } = body;
+        if (!/^1[3-9]\d{9}$/.test(phone)) {
+          return jsonResponse({ error: '手机号格式不正确' }, 400, origin);
+        }
+        if (!password || password.length < 1 || password.length > 32) {
+          return jsonResponse({ error: '请输入密码' }, 400, origin);
+        }
+
+        // 查找用户
+        const user = await env.DB.prepare('SELECT id, phone, password_hash, password_salt, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
+        if (!user) {
+          return jsonResponse({ error: '该手机号尚未注册' }, 404, origin);
+        }
+
+        // 如果用户没有密码（老用户），初始化默认密码
+        let storedHash = user.password_hash;
+        let storedSalt = user.password_salt;
+        if (!storedHash || !storedSalt) {
+          const result = await initUserPassword(env, user.id);
+          storedHash = result.hash;
+          storedSalt = result.salt;
+        }
+
+        // 校验密码
+        const inputHash = await hashPassword(password, storedSalt);
+        if (inputHash !== storedHash) {
+          return jsonResponse({ error: '密码错误' }, 401, origin);
+        }
+
+        // 登录成功，更新最后登录时间
+        await env.DB.prepare('UPDATE users SET last_login_at = datetime("now") WHERE id = ?').bind(user.id).run();
+
+        // 生成 JWT
+        const token = await createJWT(env, { uid: user.id, gid: user.guest_id || null, phone: user.phone });
+        return jsonResponse({
+          success: true,
+          token,
+          isGuest: false,
+          user: { id: user.id, phone: user.phone, nickname: user.nickname }
+        }, 200, origin);
+      }
+
       // 发送验证码（POST /api/auth/send-code）
       if (path === '/api/auth/send-code' && request.method === 'POST') {
         if (!checkRateLimit(clientIP, 'send_code', 10, 60000)) {
@@ -366,10 +448,15 @@ export default {
         const code = String(Math.floor(100000 + Math.random() * 900000));
         const expireAt = Date.now() + 5 * 60 * 1000; // 5分钟
 
-        // 写入D1
-        await env.DB.prepare(
-          'INSERT OR REPLACE INTO verify_codes (phone, code, expire_at, attempts, created_at) VALUES (?, ?, ?, 0, datetime("now"))'
-        ).bind(phone, code, expireAt).run();
+        // 写入D1（加错误捕获）
+        try {
+          await env.DB.prepare(
+            'INSERT OR REPLACE INTO verify_codes (phone, code, expire_at, attempts, created_at) VALUES (?, ?, ?, 0, datetime("now"))'
+          ).bind(phone, code, expireAt).run();
+        } catch (dbErr) {
+          console.error('D1 Insert error:', dbErr.message, 'Phone:', phone);
+          return jsonResponse({ error: '系统繁忙，请稍后重试' }, 500, origin);
+        }
 
         // 调用阿里云FC发送短信
         try {
@@ -753,6 +840,8 @@ export default {
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               guest_id TEXT UNIQUE,
               phone TEXT UNIQUE,
+              password_hash TEXT,
+              password_salt TEXT,
               nickname TEXT,
               mira_type TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -775,6 +864,10 @@ export default {
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_rooms_expires ON rooms(expires_at)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_users_guest ON users(guest_id)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)').run();
+
+          // 为老 users 表添加密码字段（如果不存在）
+          try { await env.DB.prepare('ALTER TABLE users ADD COLUMN password_hash TEXT').run(); } catch(e) { /* 字段已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE users ADD COLUMN password_salt TEXT').run(); } catch(e) { /* 字段已存在 */ }
 
           return jsonResponse({ success: true, message: '数据库表创建/验证完成' }, 200, origin);
         } catch (err) {
