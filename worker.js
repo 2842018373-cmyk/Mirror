@@ -377,10 +377,14 @@ export default {
           return jsonResponse({ error: '请输入密码' }, 400, origin);
         }
 
-        // 查找用户
-        const user = await env.DB.prepare('SELECT id, phone, password_hash, password_salt, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
+        // 查找用户，不存在则自动注册
+        let user = await env.DB.prepare('SELECT id, phone, password_hash, password_salt, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
         if (!user) {
-          return jsonResponse({ error: '该手机号尚未注册' }, 404, origin);
+          // 自动注册：创建用户并设置默认密码
+          const salt = generateSalt();
+          const hash = await hashPassword(DEFAULT_PASSWORD, salt);
+          await env.DB.prepare('INSERT INTO users (phone, password_hash, password_salt, created_at, last_login_at) VALUES (?, ?, ?, datetime("now"), datetime("now"))').bind(phone, hash, salt).run();
+          user = await env.DB.prepare('SELECT id, phone, password_hash, password_salt, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
         }
 
         // 如果用户没有密码（老用户），初始化默认密码
@@ -459,8 +463,8 @@ export default {
         }
 
         // 调用阿里云FC发送短信
+        const fcUrl = env.FC_SMS_URL || '';
         try {
-          const fcUrl = env.FC_SMS_URL || '';
           if (fcUrl) {
             await fetch(fcUrl, {
               method: 'POST',
@@ -934,9 +938,8 @@ export default {
       return jsonResponse({ error: 'Not Found' }, 404, origin);
 
     } catch (err) {
-      // 调试阶段输出详细错误（上线前改回仅 console.error）
       console.error('Worker error:', err.message, err.stack);
-      return jsonResponse({ error: '服务器内部错误', debug: err.message }, 500, origin);
+      return jsonResponse({ error: '服务器内部错误' }, 500, origin);
     }
   },
 };
