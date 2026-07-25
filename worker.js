@@ -119,6 +119,7 @@ function generateCaptcha() {
   else answer = a * b;
   const id = 'cp_' + Math.random().toString(36).substr(2, 12);
   captchaStore.set(id, { answer, expireAt: Date.now() + 300000 }); // 5分钟有效
+  cleanExpiredCaptchas();
   return { id, question: a + ' ' + op + ' ' + b + ' = ?' };
 }
 
@@ -133,13 +134,13 @@ function verifyCaptcha(id, answer) {
   return parseInt(answer) === record.answer;
 }
 
-// 定期清理过期验证码
-setInterval(() => {
+// 惰性清理过期验证码（Cloudflare Workers 不支持 setInterval，在每次操作时顺便清理）
+function cleanExpiredCaptchas() {
   const now = Date.now();
   for (const [id, record] of captchaStore) {
     if (now > record.expireAt) captchaStore.delete(id);
   }
-}, 60000);
+}
 
 // ══════════════════════════════════════════ AES-GCM 加密工具 ══════════════════════════════════════════
 
