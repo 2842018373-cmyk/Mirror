@@ -240,6 +240,43 @@
     .followup-fs-input::placeholder { color: var(--faint); }
     .followup-fs-actions { display: flex; gap: 12px; justify-content: center; margin-top: 8px; }
 
+    /* ══════════════════════════════════════════ 登录弹窗 ══════════════════════════════════════════ */
+    .auth-overlay { position: fixed; inset: 0; z-index: 700; background: rgba(8,9,11,0.95); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); display: none; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.4s var(--ease); }
+    .auth-overlay.active { display: flex; opacity: 1; pointer-events: auto; }
+    .auth-card { background: var(--bg-elevated); border: 1px solid var(--rule); border-radius: 24px; width: 92%; max-width: 400px; padding: 32px 28px; transform: translateY(20px) scale(0.96); transition: transform 0.4s var(--ease); }
+    .auth-overlay.active .auth-card { transform: translateY(0) scale(1); }
+    .auth-logo { text-align: center; font-size: 2.4rem; margin-bottom: 8px; }
+    .auth-title { text-align: center; font-size: 1.1rem; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+    .auth-subtitle { text-align: center; font-size: 0.8rem; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+    .auth-input-group { margin-bottom: 14px; }
+    .auth-input { width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--rule); background: var(--surface-glass); color: var(--ink); font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.3s var(--ease); box-sizing: border-box; }
+    .auth-input:focus { border-color: rgba(126,167,255,0.4); }
+    .auth-input::placeholder { color: var(--faint); }
+    .auth-captcha { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .auth-captcha-label { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
+    .auth-captcha-answer { width: 60px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--surface-glass); color: var(--ink); font-size: 0.88rem; font-family: inherit; text-align: center; outline: none; transition: border-color 0.3s var(--ease); }
+    .auth-captcha-answer:focus { border-color: rgba(126,167,255,0.4); }
+    .auth-btn { width: 100%; padding: 14px; border-radius: 14px; border: none; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
+    .auth-btn-primary { background: linear-gradient(135deg,#7EA7FF,#5A8AEE); color: #08090B; }
+    .auth-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(126,167,255,0.3); }
+    .auth-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .auth-divider { display: flex; align-items: center; gap: 16px; margin: 20px 0; }
+    .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+    .auth-divider span { font-size: 0.78rem; color: var(--faint); white-space: nowrap; }
+    .auth-guest-btn { width: 100%; padding: 12px; border-radius: 14px; border: 1px solid var(--rule); background: transparent; color: var(--muted); font-size: 0.85rem; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
+    .auth-guest-btn:hover { border-color: rgba(126,167,255,0.3); color: var(--ink); }
+    .auth-error { text-align: center; font-size: 0.78rem; color: #F87454; margin-top: 8px; min-height: 1.2em; }
+    .auth-code-row { display: flex; gap: 10px; margin-bottom: 14px; }
+    .auth-code-row .auth-input { flex: 1; }
+    .auth-code-btn { padding: 0 16px; border-radius: 14px; border: 1px solid rgba(126,167,255,0.3); background: rgba(126,167,255,0.08); color: var(--blue); font-size: 0.82rem; white-space: nowrap; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
+    .auth-code-btn:hover { background: rgba(126,167,255,0.15); }
+    .auth-code-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .auth-tourist-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 90; background: rgba(8,9,11,0.9); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--rule); padding: 10px 16px; display: flex; align-items: center; justify-content: center; gap: 12px; transform: translateY(-100%); transition: transform 0.3s var(--ease); font-size: 0.78rem; color: var(--muted); }
+    .auth-tourist-banner.show { transform: translateY(0); }
+    .auth-tourist-banner .auth-bind-btn { padding: 4px 14px; border-radius: 999px; border: 1px solid rgba(126,167,255,0.3); background: rgba(126,167,255,0.08); color: var(--blue); font-size: 0.78rem; cursor: pointer; font-family: inherit; transition: all 0.3s var(--ease); white-space: nowrap; }
+    .auth-tourist-banner .auth-bind-btn:hover { background: rgba(126,167,255,0.15); }
+    .auth-tourist-banner .auth-dismiss { color: var(--faint); cursor: pointer; padding: 2px 6px; }
+
     /* ══════════════════════════════════════════ 充足度判断卡片 ══════════════════════════════════════════ */
     .sufficiency-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(8,9,11,0.92); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.4s var(--ease); }
     .sufficiency-overlay.active { opacity: 1; pointer-events: auto; }
@@ -731,6 +768,7 @@
         <div>
           <div class="chat-title" style="background:linear-gradient(135deg,#D4AF37,#F0D080); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">MIRA 关系光谱</div>
           <div class="chat-subtitle">Mirror Identity Reflection Archetype</div>
+          <div style="font-size:0.68rem;color:#5A6270;letter-spacing:1px;margin-top:2px;">融合依恋理论 · 非暴力沟通 · 关系咨询实践</div>
         </div>
       </div>
     </div>
@@ -738,7 +776,7 @@
       <div style="text-align:center; margin-bottom:40px;">
         <div style="font-size:2rem; font-weight:200; letter-spacing:12px; margin-bottom:8px; background:linear-gradient(135deg,#A8B2D1,#D4AF37,#6495ED); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">M I R A</div>
         <div style="color:#5A6270; font-size:0.85rem; letter-spacing:3px;">Mirror Identity Reflection Archetype</div>
-        <div style="color:#6A7280; font-size:0.78rem; margin-top:16px; max-width:480px; margin-left:auto; margin-right:auto; line-height:1.8;">每个人的关系模式都是一面独特的镜子。MIRA 通过光的维度与投射方向，映射出你在关系中呈现的 16 种可能。</div>
+        <div style="color:#6A7280; font-size:0.78rem; margin-top:16px; max-width:480px; margin-left:auto; margin-right:auto; line-height:1.8;">每个人的关系模式都是一面独特的镜子。MIRA 融合依恋理论（Bowlby）与非暴力沟通（Rosenberg），基于亲密关系咨询实践经验，通过光的维度与投射方向，映射出你在关系中呈现的 16 种原型。本测试旨在辅助自我觉察，非临床诊断工具。</div>
       </div>
       <!-- Dimension Labels -->
       <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
@@ -913,6 +951,221 @@
     var MIRROR_MODEL = 'agnes-1.5-flash';
     var WORKER_API_BASE = 'https://api.mirrorsoul.top';
 
+    // ══════════════════════════════════════════ 登录系统 ══════════════════════════════════════════
+    var mirrorToken = localStorage.getItem('mirror_token') || '';
+    var mirrorUser = JSON.parse(localStorage.getItem('mirror_user') || 'null');
+    var serverCaptchaId = '';
+
+    async function generateCaptcha() {
+      var el = document.getElementById('authCaptchaQ');
+      if (el) el.textContent = '加载中...';
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/captcha');
+        var data = await resp.json();
+        serverCaptchaId = data.captchaId;
+        if (el) el.textContent = data.question;
+      } catch (e) {
+        if (el) el.textContent = '点击刷新';
+      }
+    }
+
+    function openAuthOverlay() {
+      generateCaptcha();
+      document.getElementById('authOverlay').classList.add('active');
+      document.getElementById('authError').textContent = '';
+      document.getElementById('authCodeRow').style.display = 'none';
+      document.getElementById('authSendCodeBtn').disabled = false;
+      document.getElementById('authSendCodeBtn').textContent = '获取验证码';
+      document.getElementById('authPhoneInput').value = '';
+      document.getElementById('authCodeInput').value = '';
+    }
+
+    function closeAuthOverlay() {
+      document.getElementById('authOverlay').classList.remove('active');
+    }
+
+    function dismissTouristBanner() {
+      document.getElementById('authTouristBanner').classList.remove('show');
+      localStorage.setItem('mirror_banner_dismissed', '1');
+    }
+
+    function showTouristBanner() {
+      if (mirrorUser && !mirrorUser.phone && !localStorage.getItem('mirror_banner_dismissed')) {
+        setTimeout(function() { document.getElementById('authTouristBanner').classList.add('show'); }, 2000);
+      }
+    }
+
+    function setAuthUser(user, token) {
+      mirrorUser = user;
+      mirrorToken = token;
+      localStorage.setItem('mirror_token', token);
+      localStorage.setItem('mirror_user', JSON.stringify(user));
+    }
+
+    async function handleGuestLogin() {
+      try {
+        var guestId = localStorage.getItem('mirror_guest_id');
+        if (!guestId) {
+          guestId = 'g_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('mirror_guest_id', guestId);
+        }
+        var resp = await fetch(WORKER_API_BASE + '/api/auth/guest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ guestId: guestId })
+        });
+        var data = await resp.json();
+        if (data.success) {
+          setAuthUser(data.user, data.token);
+          closeAuthOverlay();
+          showTouristBanner();
+        } else {
+          document.getElementById('authError').textContent = data.error || '游客登录失败';
+        }
+      } catch (e) {
+        document.getElementById('authError').textContent = '网络错误，请重试';
+      }
+    }
+
+    async function handleSendCode() {
+      var phone = document.getElementById('authPhoneInput').value.trim();
+      var captchaAnswer = document.getElementById('authCaptchaA').value.trim();
+      var errorEl = document.getElementById('authError');
+      errorEl.textContent = '';
+
+      if (!/^1[3-9]\d{9}$/.test(phone)) {
+        errorEl.textContent = '请输入正确的手机号';
+        return;
+      }
+      if (!captchaAnswer) {
+        errorEl.textContent = '请先回答验证题';
+        return;
+      }
+
+      var btn = document.getElementById('authSendCodeBtn');
+      btn.disabled = true;
+      btn.textContent = '发送中...';
+
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/auth/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: phone, captchaId: serverCaptchaId, captchaAnswer: parseInt(captchaAnswer) })
+        });
+        var data = await resp.json();
+        if (data.success) {
+          document.getElementById('authCodeRow').style.display = 'flex';
+          var codeBtn = document.getElementById('authCodeBtn');
+          codeBtn.disabled = false;
+          // 倒计时
+          var seconds = data.expireIn || 300;
+          var timer = setInterval(function() {
+            seconds--;
+            if (seconds <= 0) { clearInterval(timer); btn.disabled = false; btn.textContent = '重新获取'; }
+            else { btn.textContent = seconds + 's'; }
+          }, 1000);
+          // 开发模式显示验证码
+          if (data.devCode) {
+            errorEl.textContent = '';
+            console.log('[DEV] 验证码:', data.devCode);
+          }
+        } else {
+          errorEl.textContent = data.error || '发送失败';
+          btn.disabled = false;
+          btn.textContent = '获取验证码';
+          // 验证码失败后刷新题目
+          generateCaptcha();
+          document.getElementById('authCaptchaA').value = '';
+        }
+      } catch (e) {
+        errorEl.textContent = '网络错误，请重试';
+        btn.disabled = false;
+        btn.textContent = '获取验证码';
+      }
+    }
+
+    async function handleVerifyCode() {
+      var phone = document.getElementById('authPhoneInput').value.trim();
+      var code = document.getElementById('authCodeInput').value.trim();
+      var errorEl = document.getElementById('authError');
+      errorEl.textContent = '';
+
+      if (!code) {
+        errorEl.textContent = '请输入验证码';
+        return;
+      }
+
+      var btn = document.getElementById('authCodeBtn');
+      btn.disabled = true;
+      btn.textContent = '验证中...';
+
+      try {
+        // 如果是游客，先获取token再绑定
+        var token = mirrorToken;
+        if (!token) {
+          var guestId = localStorage.getItem('mirror_guest_id');
+          if (!guestId) {
+            guestId = 'g_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('mirror_guest_id', guestId);
+          }
+          var guestResp = await fetch(WORKER_API_BASE + '/api/auth/guest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guestId: guestId })
+          });
+          var guestData = await guestResp.json();
+          if (guestData.success) token = guestData.token;
+        }
+
+        var resp = await fetch(WORKER_API_BASE + '/api/auth/bind-phone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: phone, code: code, token: token })
+        });
+        var data = await resp.json();
+        if (data.success) {
+          setAuthUser({ id: mirrorUser ? mirrorUser.id : 0, phone: phone }, data.token);
+          closeAuthOverlay();
+          // 隐藏游客横幅
+          document.getElementById('authTouristBanner').classList.remove('show');
+          localStorage.setItem('mirror_banner_dismissed', '1');
+        } else {
+          errorEl.textContent = data.error || '验证失败';
+          btn.disabled = false;
+          btn.textContent = '登录';
+        }
+      } catch (e) {
+        errorEl.textContent = '网络错误，请重试';
+        btn.disabled = false;
+        btn.textContent = '登录';
+      }
+    }
+
+    // 页面加载时检查登录状态
+    function checkAuthState() {
+      if (mirrorToken) {
+        // 已有token，静默续期
+        fetch(WORKER_API_BASE + '/api/auth/me', {
+          headers: { 'Authorization': 'Bearer ' + mirrorToken }
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.success) {
+            setAuthUser(data.user, mirrorToken);
+            if (data.user.isGuest) showTouristBanner();
+          } else {
+            // token失效，清除
+            mirrorToken = '';
+            mirrorUser = null;
+            localStorage.removeItem('mirror_token');
+            localStorage.removeItem('mirror_user');
+          }
+        }).catch(function() {});
+      }
+      // 没有token，显示登录弹窗
+      if (!mirrorToken) {
+        setTimeout(openAuthOverlay, 800);
+      }
+    }
+
     // XSS 防护：转义 HTML 特殊字符，防止 AI 返回内容注入脚本
     function escapeHtml(str) {
       if (!str) return '';
@@ -1004,6 +1257,7 @@ Deep Rescue 示例：你真正想要的，不只是回应，而是被稳定地�
 {"mode":"letter","recipientType":"爱人/家人/离世亲人/过去的自己/未来的自己","letterIntent":"想念/感谢/道歉/和解/告别/哀伤/原谅/求助/爱","emotion":"","need":"","mirror":"","empathy":"对用户情绪的承接与看见（200字以上，不要否定、不要评判，让用户感到被理解）","gentleGuide":"10%的温柔引导（不是说教，而是邀请用户看到另一种可能，50字以内）","deepRescue":"最底层的情感救赎（100字以内）","replyTone":"","reply":"","suggest":"","risk":{"level":"low","signals":[]},"confidence":0.0}
 
 MIRA 分类（Mirror Identity Reflection Archetype）：
+基于依恋理论（Bowlby）的表达风格维度与非暴力沟通（Rosenberg）的关注取向维度，结合亲密关系咨询实践经验归纳。
 在单人模式和双人模式中，根据用户的关系行为模式，从以下16种类型中选择最匹配的一个。
 维度：D(暗影-内敛) / S(柔光-温和) / B(明光-积极) / R(辉光-强烈) × O(向外关注) / T(朝向对方) / I(倾向自我) / N(向内聚焦)
 
@@ -2240,21 +2494,15 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var miraInfo = getMiraInfo(miraType);
       var dateStr = new Date().toISOString().slice(0, 10);
 
-      // 创建临时报告容器
-      var report = document.createElement('div');
-      report.id = '_exportReport';
-      report.style.cssText = 'position:fixed;left:-9999px;top:0;width:420px;padding:32px 24px;background:#08090B;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;font-size:14px;line-height:1.8;box-sizing:border-box;';
-      report.innerHTML =
+      var reportHtml =
         '<div style="text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid rgba(126,167,255,0.15)">' +
           '<div style="font-size:1.6rem;letter-spacing:4px;margin-bottom:4px">MIRROR</div>' +
           '<div style="font-size:0.75rem;color:#7EA7FF;letter-spacing:2px">关系镜像分析报告</div>' +
           '<div style="font-size:0.7rem;color:#5A6472;margin-top:4px">' + dateStr + '</div></div>' +
-        // Step 1
         '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 1 / 5 &mdash; MIRROR 分析</div>' +
           '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px">' +
             _rRow('关系状态', d.status) + _rRow('事实', d.fact) + _rRow('情绪', d.emotion) + _rRow('需求', d.need) + _rRow('误解', d.misread) +
           '</div></div>' +
-        // Step 2
         '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 2 / 5 &mdash; MIRROR LAYER</div>' +
           _rBlock('attack', '你说的是', d.before || d.insight || '—') +
           '<div style="text-align:center;color:#5A6472;margin:8px 0">&darr;</div>' +
@@ -2262,13 +2510,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           '<div style="text-align:center;color:#5A6472;margin:8px 0">&darr;</div>' +
           _rBlock('mirror', 'Mirror 帮你翻译成', d.after || '—') +
         '</div>' +
-        // Step 3
         '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 3 / 5 &mdash; 洞察</div>' +
           '<div style="font-size:14px;color:#C8D0DC">' + _rText(d.insight) + '</div></div>' +
-        // Step 4
         '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 4 / 5 &mdash; 建议</div>' +
           '<div style="font-size:14px;color:#C8D0DC">' + _rText(d.suggest) + '</div></div>' +
-        // Step 5
         '<div style="margin-bottom:28px"><div style="font-size:0.65rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:12px;font-weight:600">STEP 5 / 5 &mdash; MIRA 关系原型</div>' +
           '<div style="text-align:center;padding:24px;background:rgba(126,167,255,0.04);border:1px solid rgba(126,167,255,0.1);border-radius:12px">' +
             '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:2px;margin-bottom:12px">MIRROR IDENTITY REFLECTION ARCHETYPE</div>' +
@@ -2279,48 +2524,67 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           '</div></div>' +
         '<div style="text-align:center;margin-top:32px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.04);font-size:0.65rem;color:#5A6472;letter-spacing:1px">Generated by Mirror</div>';
 
-      document.body.appendChild(report);
-
       addMessage('system', '正在生成报告图片…');
 
-      html2canvas(report, { backgroundColor: '#08090B', scale: 2, useCORS: true, allowTaint: true }).then(function(canvas) {
-        canvas.toBlob(function(blob) {
-          document.body.removeChild(report);
-          if (!blob) { addMessage('system', '导出失败，请重试'); return; }
-          var url = URL.createObjectURL(blob);
-          // 移动端兼容：直接在当前页弹出全屏预览，用户长按图片保存
-          if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            var img = document.createElement('img');
-            img.src = url;
-            img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
-            var preview = document.createElement('div');
-            preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 12px;';
-            var tipBar = document.createElement('div');
-            tipBar.style.cssText = 'color:#7EA7FF;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;max-width:420px;flex-shrink:0;';
-            tipBar.textContent = '长按图片保存到相册';
-            preview.appendChild(tipBar);
-            preview.appendChild(img);
-            var closeBtn = document.createElement('div');
-            closeBtn.textContent = '关闭';
-            closeBtn.style.cssText = 'margin-top:16px;padding:10px 32px;border:1px solid #7EA7FF;color:#7EA7FF;border-radius:8px;cursor:pointer;font-size:14px;';
-            closeBtn.onclick = function() { document.body.removeChild(preview); URL.revokeObjectURL(url); };
-            preview.appendChild(closeBtn);
-            preview.onclick = function(e) { if (e.target === preview) { document.body.removeChild(preview); URL.revokeObjectURL(url); } };
-            document.body.appendChild(preview);
-          } else {
-            // 桌面端：直接下载
-            var link = document.createElement('a');
-            link.download = 'Mirror-Report-' + dateStr + '.png';
-            link.href = url;
-            link.click();
-            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-            addMessage('system', '报告已保存');
+      // 创建 overflow:visible 的 wrapper，报告用默认 static 定位
+      var wrapper = document.createElement('div');
+      wrapper.id = '_rpWrapper';
+      wrapper.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;overflow:visible;z-index:-1;opacity:0;pointer-events:none;';
+      document.body.appendChild(wrapper);
+
+      var report = document.createElement('div');
+      report.id = '_exportReport';
+      report.style.cssText = 'width:420px;padding:32px 24px;background:#08090B;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;font-size:14px;line-height:1.8;box-sizing:border-box;';
+      report.innerHTML = reportHtml;
+      wrapper.appendChild(report);
+
+      // 等浏览器渲染一帧后再截图
+      requestAnimationFrame(function() {
+        var h = report.scrollHeight;
+        html2canvas(report, {
+          backgroundColor: '#08090B', scale: 2, useCORS: true, allowTaint: true,
+          width: 420, height: h, windowWidth: 420, windowHeight: h,
+          onclone: function(doc) {
+            var el = doc.getElementById('_exportReport');
+            if (el) { el.style.opacity = '1'; }
           }
-        }, 'image/png');
-      }).catch(function(err) {
-        document.body.removeChild(report);
-        addMessage('system', '导出失败，请重试');
-        console.error('exportReport error:', err);
+        }).then(function(canvas) {
+          document.body.removeChild(wrapper);
+          canvas.toBlob(function(blob) {
+            if (!blob) { addMessage('system', '导出失败，请重试'); return; }
+            var url = URL.createObjectURL(blob);
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+              var img = document.createElement('img');
+              img.src = url;
+              img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
+              var preview = document.createElement('div');
+              preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 12px;';
+              var tipBar = document.createElement('div');
+              tipBar.style.cssText = 'color:#7EA7FF;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;max-width:420px;flex-shrink:0;';
+              tipBar.textContent = '长按图片保存到相册';
+              preview.appendChild(tipBar);
+              preview.appendChild(img);
+              var closeBtn = document.createElement('div');
+              closeBtn.textContent = '关闭';
+              closeBtn.style.cssText = 'margin-top:16px;padding:10px 32px;border:1px solid #7EA7FF;color:#7EA7FF;border-radius:8px;cursor:pointer;font-size:14px;';
+              closeBtn.onclick = function() { document.body.removeChild(preview); URL.revokeObjectURL(url); };
+              preview.appendChild(closeBtn);
+              preview.onclick = function(e) { if (e.target === preview) { document.body.removeChild(preview); URL.revokeObjectURL(url); } };
+              document.body.appendChild(preview);
+            } else {
+              var link = document.createElement('a');
+              link.download = 'Mirror-Report-' + dateStr + '.png';
+              link.href = url;
+              link.click();
+              setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+              addMessage('system', '报告已保存');
+            }
+          }, 'image/png');
+        }).catch(function(err) {
+          if (document.getElementById('_rpWrapper')) document.body.removeChild(wrapper);
+          addMessage('system', '导出失败，请重试');
+          console.error('exportReport error:', err);
+        });
       });
     }
 
@@ -2345,7 +2609,6 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var dim = miraType[0];
       var dir = miraType[1];
 
-      // 维度得分条（从AI数据或默认值）
       var exprScores = d._scores || { D: dim==='D'?12:3, S: dim==='S'?12:3, B: dim==='B'?12:3, R: dim==='R'?12:3 };
       var focusScores = d._focusScores || { O: dir==='O'?12:3, T: dir==='T'?12:3, I: dir==='I'?12:3, N: dir==='N'?12:3 };
 
@@ -2360,30 +2623,21 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         '</div>';
       }
 
-      var tags = [
-        miraInfo.dim, miraInfo.dir,
-        dim === 'D' ? '内敛深沉' : dim === 'S' ? '温柔细腻' : dim === 'B' ? '主动坦诚' : '炽热锐利'
-      ];
-
+      var tags = [miraInfo.dim, miraInfo.dir, dim === 'D' ? '内敛深沉' : dim === 'S' ? '温柔细腻' : dim === 'B' ? '主动坦诚' : '炽热锐利'];
       var insight = d.insight || miraInfo.desc;
       var suggest = d.suggest || '尝试在关系中更直接地表达你的真实感受，让对方了解你的内心世界。';
       var feeling = d.emotion || '在这段关系中，你可能正在经历一种复杂的情绪状态。';
 
-      var card = document.createElement('div');
-      card.id = '_shareCard';
-      card.style.cssText = 'position:fixed;left:-9999px;top:0;width:375px;background:#08090B;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;box-sizing:border-box;overflow:hidden;';
-      card.innerHTML =
+      // 构建卡片 HTML（不含 img，后面用预加载的图片替换）
+      var cardHtml =
         '<div style="height:3px;background:linear-gradient(90deg,#D4AF37,#F0D080,#D4AF37);"></div>' +
-        // Header
         '<div style="padding:28px 24px 4px;text-align:center;">' +
           '<div style="font-size:0.65rem;letter-spacing:5px;color:#7EA7FF;margin-bottom:4px;">M I R R O R</div>' +
           '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:1px;">我的 MIRA 关系人格</div>' +
         '</div>' +
-        // MIRA Image
         '<div style="text-align:center;padding:12px 0;">' +
-          '<img src="mira-images/' + miraType + '.jpg" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid rgba(212,175,55,0.3);box-shadow:0 4px 20px rgba(0,0,0,0.5);" onerror="this.style.display=\'none\'">' +
+          '<img id="_scImg" src="" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid rgba(212,175,55,0.3);box-shadow:0 4px 20px rgba(0,0,0,0.5);display:none;">' +
         '</div>' +
-        // Type
         '<div style="text-align:center;padding:0 24px 4px;">' +
           '<div style="font-size:3.2rem;font-weight:800;letter-spacing:6px;background:linear-gradient(180deg,#F0D080,#D4AF37,#B8962E);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;display:inline-block;">' + miraType + '</div>' +
           '<div style="font-size:1.1rem;font-weight:600;color:#F0EDE6;letter-spacing:2px;margin-top:4px;">' + miraInfo.name + '</div>' +
@@ -2393,87 +2647,110 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           '</div>' +
         '</div>' +
         '<div style="width:40px;height:1px;background:rgba(212,175,55,0.3);margin:16px auto;"></div>' +
-        // Dimension bars
         '<div style="padding:0 28px 10px;">' +
           '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:10px;font-weight:600;">表达方式维度</div>' +
-          barHtml('D', exprScores.D || 3, '#7EA7FF') +
-          barHtml('S', exprScores.S || 3, '#7EA7FF') +
-          barHtml('B', exprScores.B || 3, '#D4AF37') +
-          barHtml('R', exprScores.R || 3, '#D4AF37') +
+          barHtml('D', exprScores.D || 3, '#7EA7FF') + barHtml('S', exprScores.S || 3, '#7EA7FF') +
+          barHtml('B', exprScores.B || 3, '#D4AF37') + barHtml('R', exprScores.R || 3, '#D4AF37') +
         '</div>' +
         '<div style="padding:0 28px 14px;">' +
           '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:10px;font-weight:600;">关注方向维度</div>' +
-          barHtml('O', focusScores.O || 3, '#7EA7FF') +
-          barHtml('T', focusScores.T || 3, '#7EA7FF') +
-          barHtml('I', focusScores.I || 3, '#D4AF37') +
-          barHtml('N', focusScores.N || 3, '#D4AF37') +
+          barHtml('O', focusScores.O || 3, '#7EA7FF') + barHtml('T', focusScores.T || 3, '#7EA7FF') +
+          barHtml('I', focusScores.I || 3, '#D4AF37') + barHtml('N', focusScores.N || 3, '#D4AF37') +
         '</div>' +
-        // Insight
         '<div style="width:40px;height:1px;background:rgba(212,175,55,0.3);margin:14px auto;"></div>' +
         '<div style="padding:0 28px 12px;text-align:center;">' +
           '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">在这段感情中的位置</div>' +
           '<div style="font-size:0.8rem;color:#C8D0DC;line-height:1.8;">' + _rText(insight) + '</div>' +
         '</div>' +
-        // Feeling
         '<div style="padding:0 28px 12px;text-align:center;">' +
           '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">你的真实感受</div>' +
           '<div style="font-size:0.8rem;color:#C8D0DC;line-height:1.8;font-style:italic;">\u201C' + _rText(feeling) + '\u201D</div>' +
         '</div>' +
-        // Suggest
         '<div style="padding:0 28px 18px;text-align:center;">' +
           '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">给这段关系的建议</div>' +
           '<div style="font-size:0.8rem;color:#C8D0DC;line-height:1.8;">' + _rText(suggest) + '</div>' +
         '</div>' +
-        // Tags
         '<div style="padding:0 24px 24px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">' +
           tags.map(function(t) { return '<span style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);color:#D4AF37;padding:5px 12px;border-radius:20px;font-size:0.7rem;letter-spacing:0.5px;">' + t + '</span>'; }).join('') +
         '</div>' +
-        // Footer
         '<div style="padding:18px 24px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.04);">' +
           '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:1px;">Generated by Mirror · mirrorsoul.top</div>' +
           '<div style="font-size:0.55rem;color:#3A4149;margin-top:6px;">测测你的 MIRA 关系人格</div>' +
         '</div>';
 
-      document.body.appendChild(card);
       addMessage('system', '正在生成分享卡片…');
 
-      html2canvas(card, { backgroundColor: '#08090B', scale: 2, useCORS: true, allowTaint: true }).then(function(canvas) {
-        canvas.toBlob(function(blob) {
-          document.body.removeChild(card);
-          if (!blob) { addMessage('system', '生成失败，请重试'); return; }
-          var url = URL.createObjectURL(blob);
-          if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            var img = document.createElement('img');
-            img.src = url;
-            img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
-            var preview = document.createElement('div');
-            preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 12px;';
-            var tipBar = document.createElement('div');
-            tipBar.style.cssText = 'color:#D4AF37;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;max-width:375px;flex-shrink:0;';
-            tipBar.textContent = '长按图片保存到相册，然后去微信分享';
-            preview.appendChild(tipBar);
-            preview.appendChild(img);
-            var closeBtn = document.createElement('div');
-            closeBtn.textContent = '关闭';
-            closeBtn.style.cssText = 'margin-top:16px;padding:10px 32px;border:1px solid #D4AF37;color:#D4AF37;border-radius:8px;cursor:pointer;font-size:14px;';
-            closeBtn.onclick = function() { document.body.removeChild(preview); URL.revokeObjectURL(url); };
-            preview.appendChild(closeBtn);
-            preview.onclick = function(e) { if (e.target === preview) { document.body.removeChild(preview); URL.revokeObjectURL(url); } };
-            document.body.appendChild(preview);
-          } else {
-            var link = document.createElement('a');
-            link.download = 'Mirror-MIRA-' + miraType + '.png';
-            link.href = url;
-            link.click();
-            setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-            addMessage('system', '分享卡片已保存');
-          }
-        }, 'image/png');
-      }).catch(function(err) {
-        document.body.removeChild(card);
-        addMessage('system', '生成失败，请重试');
-        console.error('generateShareCard error:', err);
-      });
+      // 预加载 MIRA 图片，确保截图完整
+      var preloadImg = new Image();
+      preloadImg.onload = doCapture;
+      preloadImg.onerror = doCapture;
+      preloadImg.src = 'mira-images/' + miraType + '.jpg';
+
+      function doCapture() {
+        // 创建 overflow:visible 的 wrapper，卡片用默认 static 定位
+        var wrapper = document.createElement('div');
+        wrapper.id = '_scWrapper';
+        wrapper.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;overflow:visible;z-index:-1;opacity:0;pointer-events:none;';
+        document.body.appendChild(wrapper);
+
+        var card = document.createElement('div');
+        card.id = '_shareCard';
+        card.style.cssText = 'width:375px;background:#08090B;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;box-sizing:border-box;';
+        card.innerHTML = cardHtml;
+        // 把预加载的图片地址填进去
+        var scImg = card.querySelector('#_scImg');
+        if (scImg) { scImg.src = 'mira-images/' + miraType + '.jpg'; scImg.style.display = 'inline-block'; }
+        wrapper.appendChild(card);
+
+        // 等浏览器渲染一帧后再截图
+        requestAnimationFrame(function() {
+          var h = card.scrollHeight;
+          html2canvas(card, {
+            backgroundColor: '#08090B', scale: 2, useCORS: true, allowTaint: true,
+            width: 375, height: h, windowWidth: 375, windowHeight: h,
+            onclone: function(doc) {
+              var el = doc.getElementById('_shareCard');
+              if (el) { el.style.opacity = '1'; }
+            }
+          }).then(function(canvas) {
+            document.body.removeChild(wrapper);
+            canvas.toBlob(function(blob) {
+              if (!blob) { addMessage('system', '生成失败，请重试'); return; }
+              var url = URL.createObjectURL(blob);
+              if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                var img = document.createElement('img');
+                img.src = url;
+                img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
+                var preview = document.createElement('div');
+                preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 12px;';
+                var tipBar = document.createElement('div');
+                tipBar.style.cssText = 'color:#D4AF37;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;max-width:375px;flex-shrink:0;';
+                tipBar.textContent = '长按图片保存到相册，然后去微信分享';
+                preview.appendChild(tipBar);
+                preview.appendChild(img);
+                var closeBtn = document.createElement('div');
+                closeBtn.textContent = '关闭';
+                closeBtn.style.cssText = 'margin-top:16px;padding:10px 32px;border:1px solid #D4AF37;color:#D4AF37;border-radius:8px;cursor:pointer;font-size:14px;';
+                closeBtn.onclick = function() { document.body.removeChild(preview); URL.revokeObjectURL(url); };
+                preview.appendChild(closeBtn);
+                preview.onclick = function(e) { if (e.target === preview) { document.body.removeChild(preview); URL.revokeObjectURL(url); } };
+                document.body.appendChild(preview);
+              } else {
+                var link = document.createElement('a');
+                link.download = 'Mirror-MIRA-' + miraType + '.png';
+                link.href = url;
+                link.click();
+                setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+                addMessage('system', '分享卡片已保存');
+              }
+            }, 'image/png');
+          }).catch(function(err) {
+            if (document.getElementById('_scWrapper')) document.body.removeChild(wrapper);
+            addMessage('system', '生成失败，请重试');
+            console.error('generateShareCard error:', err);
+          });
+        });
+      }
     }
 
     function exportLetterReply() {
@@ -2709,10 +2986,6 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
       var prompt = '以下是一位用户完成的 MIRA 人格测试答案。\n\n' + scoreText + '\n\n' + answerText + '\n\n用户的 MIRA 类型已经由计分系统确定为：' + miraType + '。\n\n你的任务是基于用户的具体选择，生成个性化描述。不要猜测类型，直接使用已确定的类型 ' + miraType + '。\n\n请给出：\n1. miraType: "' + miraType + '"\n2. expression: 表达方式维度（' + exprResult.winner + '）的详细描述，1-2句话\n3. focus: 关注方向维度（' + focusResult.winner + '）的详细描述，1-2句话\n4. portrait: 个性化人格画像描述，3-4句话，必须引用用户的具体选择，不是通用模板\n5. insight: 亲密关系中的核心洞察，2-3句话\n6. suggest: 改善关系的具体建议，2-3句话\n\n请以 JSON 格式回复，不要包含任何其他文字。';
 
-      // 调试状态显示
-      var dbg = document.getElementById('quizDebugStatus');
-      if (dbg) { dbg.style.display = 'block'; dbg.textContent = '类型:' + miraType + ' 准备请求AI...'; }
-
       // 用标记位防止重复展示
       var quizFinished = false;
       function finishQuiz(data) {
@@ -2756,7 +3029,6 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       // AbortController 超时：10 秒后主动取消请求
       var controller = window.AbortController ? new AbortController() : null;
       var timeoutId = setTimeout(function() {
-        if (dbg) dbg.textContent = '超时10秒，强制显示结果';
         if (controller) controller.abort();
         finishQuiz({ miraType: miraType, scores: scores });
       }, 10000);
@@ -2764,13 +3036,11 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       // 终极保底：20 秒后如果还在加载，强制显示基础结果
       setTimeout(function() {
         if (!quizFinished) {
-          if (dbg) dbg.textContent = '终极保底触发(20秒)';
           console.warn('ULTIMATE FALLBACK triggered');
           showFallbackResult(miraType, scores);
         }
       }, 20000);
 
-      if (dbg) dbg.textContent = '类型:' + miraType + ' 请求AI中...';
       fetch(WORKER_API_BASE + '/api/mira-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2778,7 +3048,6 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         signal: controller ? controller.signal : undefined
       })
       .then(function(r) {
-        if (dbg) dbg.textContent = 'AI响应: HTTP ' + r.status;
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
@@ -2793,14 +3062,11 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       })
       .catch(function(e) {
         clearTimeout(timeoutId);
-        if (dbg) dbg.textContent = '请求失败: ' + (e.message || e);
         console.warn('Quiz AI failed:', e.message || e);
         finishQuiz({ miraType: miraType, scores: scores });
       });
       } catch (fatalErr) {
         console.error('submitQuizAnswers FATAL:', fatalErr);
-        var dbg2 = document.getElementById('quizDebugStatus');
-        if (dbg2) { dbg2.style.display = 'block'; dbg2.textContent = '严重错误: ' + (fatalErr.message || fatalErr); }
         // 强制回到功能页
         var ov2 = document.getElementById('quizOverlay');
         if (ov2) ov2.classList.remove('active');
@@ -3091,41 +3357,77 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       if (!btn || btn._bound) return;
       btn._bound = true;
       btn.onclick = function() {
-      var container = document.getElementById('profileContainer');
-      if (typeof html2canvas === 'undefined') {
-        alert('图片生成库未加载，请检查网络');
-        return;
-      }
-      html2canvas(container, { backgroundColor: '#08090B', scale: 2, useCORS: true }).then(function(canvas) {
-        canvas.toBlob(function(blob) {
-          if (!blob) { alert('生成失败'); return; }
-          var url = URL.createObjectURL(blob);
-          if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            var img = document.createElement('img');
-            img.src = url;
-            img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
-            var preview = document.createElement('div');
-            preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 12px;';
-            var tipBar = document.createElement('div');
-            tipBar.style.cssText = 'color:#D4AF37;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;max-width:520px;flex-shrink:0;';
-            tipBar.textContent = '长按图片保存到相册，或截图分享';
-            var closeBtn = document.createElement('button');
-            closeBtn.textContent = '关闭';
-            closeBtn.style.cssText = 'position:fixed;top:12px;right:12px;z-index:10001;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:6px 14px;border-radius:999px;font-size:13px;cursor:pointer;';
-            closeBtn.onclick = function() { document.body.removeChild(preview); };
-            preview.appendChild(closeBtn);
-            preview.appendChild(tipBar);
-            preview.appendChild(img);
-            document.body.appendChild(preview);
-          } else {
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = 'MIRA人格画像_' + new Date().toISOString().slice(0,10) + '.png';
-            a.click();
-          }
+        var container = document.getElementById('profileContainer');
+        var content = document.getElementById('profileContent');
+        var actions = container.querySelector('.profile-actions');
+        var ctaWrap = container.querySelector('.profile-cta-wrap');
+        if (typeof html2canvas === 'undefined') {
+          alert('图片生成库未加载，请检查网络');
+          return;
+        }
+
+        // 隐藏不需要出现在截图中的元素
+        if (actions) actions.style.display = 'none';
+        if (ctaWrap) ctaWrap.style.display = 'none';
+
+        // 临时移除高度限制，让内容完全展开
+        var origContainerStyle = container.getAttribute('style') || '';
+        var origContentStyle = content.getAttribute('style') || '';
+        container.style.maxHeight = 'none';
+        container.style.overflow = 'visible';
+        container.style.transform = 'none';
+        content.style.overflow = 'visible';
+
+        requestAnimationFrame(function() {
+          var fullHeight = container.scrollHeight;
+          html2canvas(container, {
+            backgroundColor: '#08090B', scale: 2, useCORS: true,
+            width: container.offsetWidth, height: fullHeight,
+            windowWidth: container.offsetWidth, windowHeight: fullHeight
+          }).then(function(canvas) {
+            // 恢复原始样式
+            container.setAttribute('style', origContainerStyle);
+            content.setAttribute('style', origContentStyle);
+            if (actions) actions.style.display = '';
+            if (ctaWrap) ctaWrap.style.display = '';
+            canvas.toBlob(function(blob) {
+              if (!blob) { alert('生成失败'); return; }
+              var url = URL.createObjectURL(blob);
+              if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                var img = document.createElement('img');
+                img.src = url;
+                img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
+                var preview = document.createElement('div');
+                preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 12px;';
+                var tipBar = document.createElement('div');
+                tipBar.style.cssText = 'color:#D4AF37;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;max-width:520px;flex-shrink:0;';
+                tipBar.textContent = '长按图片保存到相册，或截图分享';
+                var closeBtn = document.createElement('button');
+                closeBtn.textContent = '关闭';
+                closeBtn.style.cssText = 'position:fixed;top:12px;right:12px;z-index:10001;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:6px 14px;border-radius:999px;font-size:13px;cursor:pointer;';
+                closeBtn.onclick = function() { document.body.removeChild(preview); };
+                preview.appendChild(closeBtn);
+                preview.appendChild(tipBar);
+                preview.appendChild(img);
+                document.body.appendChild(preview);
+              } else {
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'MIRA人格画像_' + new Date().toISOString().slice(0,10) + '.png';
+                a.click();
+              }
+            });
+          }).catch(function(err) {
+            // 出错时恢复样式
+            container.setAttribute('style', origContainerStyle);
+            content.setAttribute('style', origContentStyle);
+            if (actions) actions.style.display = '';
+            if (ctaWrap) ctaWrap.style.display = '';
+            console.error('bindProfileShareBtn error:', err);
+            alert('生成失败，请重试');
+          });
         });
-      });
-    };
+      };
     }
 
     // 答题返回按钮
@@ -3159,9 +3461,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 页面加载后绑定底部弹层按钮（这些元素在 script 标签之后）
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function() { bindProfileShareBtn(); bindQuizButtons(); bindProfileOverlayEvents(); });
+      document.addEventListener('DOMContentLoaded', function() { bindProfileShareBtn(); bindQuizButtons(); bindProfileOverlayEvents(); checkAuthState(); });
     } else {
-      bindProfileShareBtn(); bindQuizButtons(); bindProfileOverlayEvents();
+      bindProfileShareBtn(); bindQuizButtons(); bindProfileOverlayEvents(); checkAuthState();
     }
 
     // ════════════════════════════════════════════════════════════════════════════════
@@ -3917,6 +4219,44 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
   })();
   </script>
 
+  <!-- ══════════════════════════════════════════ 登录弹窗 ══════════════════════════════════════════ -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <div class="auth-logo">🪞</div>
+      <div class="auth-title">Mirror</div>
+      <div class="auth-subtitle">登录以保存你的分析结果</div>
+      <!-- 手机号登录 -->
+      <div id="authPhoneSection">
+        <div class="auth-input-group">
+          <input type="tel" class="auth-input" id="authPhoneInput" placeholder="请输入手机号" maxlength="11">
+        </div>
+        <div class="auth-captcha">
+          <span class="auth-captcha-label" id="authCaptchaQ"></span>
+          <input type="number" class="auth-captcha-answer" id="authCaptchaA" placeholder="?" maxlength="2">
+        </div>
+        <div class="auth-input-group">
+          <button class="auth-btn auth-btn-primary" id="authSendCodeBtn" onclick="handleSendCode()">获取验证码</button>
+        </div>
+        <div class="auth-code-row" id="authCodeRow" style="display:none;">
+          <input type="number" class="auth-input" id="authCodeInput" placeholder="输入验证码" maxlength="6">
+          <button class="auth-code-btn" id="authCodeBtn" onclick="handleVerifyCode()" disabled>登录</button>
+        </div>
+        <div class="auth-error" id="authError"></div>
+      </div>
+      <!-- 分割线 -->
+      <div class="auth-divider"><span>或</span></div>
+      <!-- 游客模式 -->
+      <button class="auth-guest-btn" onclick="handleGuestLogin()">游客模式进入</button>
+      <div style="text-align:center;margin-top:8px;font-size:0.72rem;color:var(--faint);">数据暂存本地，清除后丢失</div>
+    </div>
+  </div>
+  <!-- 游客提示横幅 -->
+  <div class="auth-tourist-banner" id="authTouristBanner">
+    <span>当前为游客模式，绑定手机号可永久保存分析结果</span>
+    <button class="auth-bind-btn" onclick="openAuthOverlay()">绑定手机号</button>
+    <span class="auth-dismiss" onclick="dismissTouristBanner()">&times;</span>
+  </div>
+
   <!-- ══════════════════════════════════════════ MIRA 答题 Overlay ══════════════════════════════════════════ -->
   <div class="quiz-overlay" id="quizOverlay">
     <div class="quiz-container">
@@ -3931,7 +4271,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       </div>
       <div class="quiz-loading" id="quizLoading" style="display:none;">
         <div class="quiz-spinner"></div>
-        <p>AI 正在分析你的 MIRA 人格...</p>
+        <p>Mirror正在照映你的MIRA人格...</p>
         <p id="quizDebugStatus" style="margin-top:12px;font-size:0.7rem;color:#555;display:none;"></p>
       </div>
     </div>

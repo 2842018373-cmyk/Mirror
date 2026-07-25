@@ -1,6 +1,6 @@
-// ══════════════════════════════════════════ Mirror API Worker v2 ══════════════════════════════════════════
+// ══════════════════════════════════════════ Mirror API Worker v3 ══════════════════════════════════════════
 // Cloudflare Workers + D1 后端
-// v2: 安全加固 + 数据隔离修复 + 错误处理 + 速率限制
+// v3: 安全加固 + 数据隔离 + 认证系统 + AES加密 + 服务端验证码
 
 // CORS 白名单
 const ALLOWED_ORIGINS = [
@@ -16,18 +16,16 @@ const ALLOWED_ORIGINS = [
 ];
 
 function getCorsHeaders(origin) {
-  if (ALLOWED_ORIGINS.includes(origin)) {
-    return {
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    };
-  }
-  return {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGINS[0],
+  const headers = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  } else {
+    headers['Access-Control-Allow-Origin'] = ALLOWED_ORIGINS[0];
+  }
+  return headers;
 }
 
 // 简易速率限制（基于 IP + 端点，内存级，适合 Workers 单实例）
@@ -47,7 +45,142 @@ function checkRateLimit(ip, endpoint, maxRequests = 10, windowMs = 60000) {
   return true;
 }
 
-// 生成 6 位房间码（从 4 位升级，组合数从 81 万提升到 10 亿+）
+// ══════════════════════════════════════════ 安全中间件 ══════════════════════════════════════════
+
+// 已知恶意 User-Agent 特征
+const BLOCKED_UA_PATTERNS = [
+  /bot$/i, /crawl/i, /spider/i, /scraper/i, /curl\//i, /python-requests/i,
+  /httpclient/i, /wget/i, /nikto/i, /sqlmap/i, /nmap/i, /masscan/i,
+  /hydra/i, /dirbuster/i, /gobuster/i,
+];
+
+// IP 黑名单（内存级，重启清空）
+const ipBlacklist = new Set();
+
+// 全局安全检查（在所有路由之前执行）
+function securityCheck(request, env) {
+  const path = new URL(request.url).pathname;
+  const method = request.method;
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const ua = request.headers.get('User-Agent') || '';
+
+  // 1. IP 黑名单
+  if (ipBlacklist.has(ip)) {
+    return { blocked: true, status: 403, reason: 'Forbidden' };
+  }
+
+  // 2. User-Agent 过滤
+  if (!ua || ua.length < 10) {
+    return { blocked: true, status: 403, reason: 'Invalid User-Agent' };
+  }
+  for (const pattern of BLOCKED_UA_PATTERNS) {
+    if (pattern.test(ua) && !ua.includes('Cloudflare')) {
+      return { blocked: true, status: 403, reason: 'Blocked User-Agent' };
+    }
+  }
+
+  // 3. 全局请求体大小限制（100KB）
+  const contentLength = parseInt(request.headers.get('Content-Length') || '0');
+  if (contentLength > 102400) {
+    return { blocked: true, status: 413, reason: 'Request body too large' };
+  }
+
+  // 4. 全局 IP 级速率限制（每 IP 每分钟 100 次请求）
+  if (!checkRateLimit(ip, '_global', 100, 60000)) {
+    return { blocked: true, status: 429, reason: 'Too many requests' };
+  }
+
+  // 5. 只允许 GET/POST/OPTIONS
+  if (!['GET', 'POST', 'OPTIONS'].includes(method)) {
+    return { blocked: true, status: 405, reason: 'Method not allowed' };
+  }
+
+  // 6. 路径遍历防护
+  if (path.includes('..') || path.includes('//')) {
+    return { blocked: true, status: 400, reason: 'Invalid path' };
+  }
+
+  return { blocked: false };
+}
+
+// ══════════════════════════════════════════ 服务端验证码 ══════════════════════════════════════════
+
+// 验证码存储（替代前端生成，防机器人刷短信）
+const captchaStore = new Map();
+
+function generateCaptcha() {
+  const a = Math.floor(Math.random() * 10) + 1;
+  const b = Math.floor(Math.random() * 10) + 1;
+  const ops = ['+', '-', '×'];
+  const op = ops[Math.floor(Math.random() * 3)];
+  let answer;
+  if (op === '+') answer = a + b;
+  else if (op === '-') answer = a - b;
+  else answer = a * b;
+  const id = 'cp_' + Math.random().toString(36).substr(2, 12);
+  captchaStore.set(id, { answer, expireAt: Date.now() + 300000 }); // 5分钟有效
+  return { id, question: a + ' ' + op + ' ' + b + ' = ?' };
+}
+
+function verifyCaptcha(id, answer) {
+  const record = captchaStore.get(id);
+  if (!record) return false;
+  if (Date.now() > record.expireAt) {
+    captchaStore.delete(id);
+    return false;
+  }
+  captchaStore.delete(id); // 一次性使用
+  return parseInt(answer) === record.answer;
+}
+
+// 定期清理过期验证码
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, record] of captchaStore) {
+    if (now > record.expireAt) captchaStore.delete(id);
+  }
+}, 60000);
+
+// ══════════════════════════════════════════ AES-GCM 加密工具 ══════════════════════════════════════════
+
+async function getEncryptionKey(env) {
+  const secret = env.ENCRYPTION_KEY || 'mirror-dev-encryption-key-32';
+  const keyMaterial = new TextEncoder().encode(secret.padEnd(32, '0').slice(0, 32));
+  return await crypto.subtle.importKey('raw', keyMaterial, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function encryptText(env, plaintext) {
+  try {
+    const key = await getEncryptionKey(env);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(plaintext);
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+    // 拼接: iv(12字节) + ciphertext
+    const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(ciphertext), iv.length);
+    return btoa(String.fromCharCode(...combined));
+  } catch (e) {
+    console.error('Encryption failed:', e.message);
+    return null;
+  }
+}
+
+async function decryptText(env, encryptedBase64) {
+  try {
+    const key = await getEncryptionKey(env);
+    const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const ciphertext = combined.slice(12);
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    // 解密失败可能是旧 Base64 数据，返回 null 让调用方走兼容逻辑
+    return null;
+  }
+}
+
+// 生成 6 位房间码（组合数 10 亿+，防爆破）
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -76,7 +209,67 @@ function isExpired(room) {
   return new Date(room.expires_at) < new Date();
 }
 
-// 主处理函数
+// ══════════════════════════════════════════ JWT 工具函数 ══════════════════════════════════════════
+
+function base64urlEncode(str) {
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function base64urlDecode(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  return atob(str);
+}
+
+// 创建 JWT（HS256，7天过期）
+async function createJWT(env, payload) {
+  const header = base64urlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const body = base64urlEncode(JSON.stringify({
+    ...payload,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 7 * 24 * 3600,
+  }));
+  const data = `${header}.${body}`;
+
+  const secret = env.JWT_SECRET || 'mirror-dev-jwt-secret-key';
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
+  const signature = base64urlEncode(String.fromCharCode(...new Uint8Array(sig)));
+
+  return `${data}.${signature}`;
+}
+
+// 验证 JWT
+async function verifyJWT(env, token) {
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Invalid token format');
+
+  const secret = env.JWT_SECRET || 'mirror-dev-jwt-secret-key';
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+
+  const sig = new Uint8Array([...base64urlDecode(parts[2])].map(c => c.charCodeAt(0)));
+  const valid = await crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
+  if (!valid) throw new Error('Invalid signature');
+
+  const payload = JSON.parse(base64urlDecode(parts[1]));
+  if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Token expired');
+
+  return payload;
+}
+
+// ══════════════════════════════════════════ 主处理函数 ══════════════════════════════════════════
+
 export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || '';
@@ -91,7 +284,190 @@ export default {
     const path = url.pathname;
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
 
+    // ══════════════════════════════════════════ 全局安全检查 ══════════════════════════════════════════
+    const security = securityCheck(request, env);
+    if (security.blocked) {
+      return new Response(JSON.stringify({ error: security.reason }), {
+        status: security.status,
+        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(origin) },
+      });
+    }
+
     try {
+      // ══════════════════════════════════════════ 验证码 API ══════════════════════════════════════════
+
+      // 获取验证码题目（GET /api/captcha）
+      if (path === '/api/captcha' && request.method === 'GET') {
+        const captcha = generateCaptcha();
+        return jsonResponse({ captchaId: captcha.id, question: captcha.question }, 200, origin);
+      }
+
+      // ══════════════════════════════════════════ 认证 API ══════════════════════════════════════════
+
+      // 游客登录（POST /api/auth/guest）
+      if (path === '/api/auth/guest' && request.method === 'POST') {
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { guestId } = body;
+        if (!guestId || typeof guestId !== 'string' || guestId.length < 10) {
+          return jsonResponse({ error: '无效的游客ID' }, 400, origin);
+        }
+
+        // 查找或创建用户
+        let user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, created_at FROM users WHERE guest_id = ?').bind(guestId).first();
+
+        if (!user) {
+          await env.DB.prepare('INSERT INTO users (guest_id, created_at, last_login_at) VALUES (?, datetime("now"), datetime("now"))').bind(guestId).run();
+          user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, created_at FROM users WHERE guest_id = ?').bind(guestId).first();
+        } else {
+          await env.DB.prepare('UPDATE users SET last_login_at = datetime("now") WHERE id = ?').bind(user.id).run();
+        }
+
+        const token = await createJWT(env, { uid: user.id, gid: guestId, phone: null });
+        return jsonResponse({ success: true, token, isGuest: true, user: { id: user.id, phone: null, nickname: user.nickname } }, 200, origin);
+      }
+
+      // 发送验证码（POST /api/auth/send-code）
+      if (path === '/api/auth/send-code' && request.method === 'POST') {
+        if (!checkRateLimit(clientIP, 'send_code', 10, 60000)) {
+          return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
+        }
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { phone, captchaId, captchaAnswer } = body;
+
+        // 服务端验证码校验（防机器人刷短信）
+        if (!captchaId || !captchaAnswer) {
+          return jsonResponse({ error: '请先完成验证码', needCaptcha: true }, 400, origin);
+        }
+        if (!verifyCaptcha(captchaId, captchaAnswer)) {
+          return jsonResponse({ error: '验证码错误或已过期', needCaptcha: true }, 400, origin);
+        }
+
+        if (!/^1[3-9]\d{9}$/.test(phone)) {
+          return jsonResponse({ error: '手机号格式不正确' }, 400, origin);
+        }
+
+        // 检查60秒冷却
+        const existing = await env.DB.prepare('SELECT created_at FROM verify_codes WHERE phone = ?').bind(phone).first();
+        if (existing) {
+          const elapsed = Date.now() - new Date(existing.created_at).getTime();
+          if (elapsed < 60000) {
+            return jsonResponse({ error: '请稍后再试', remainSeconds: Math.ceil((60000 - elapsed) / 1000) }, 429, origin);
+          }
+        }
+
+        // 生成6位验证码
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const expireAt = Date.now() + 5 * 60 * 1000; // 5分钟
+
+        // 写入D1
+        await env.DB.prepare(
+          'INSERT OR REPLACE INTO verify_codes (phone, code, expire_at, attempts, created_at) VALUES (?, ?, ?, 0, datetime("now"))'
+        ).bind(phone, code, expireAt).run();
+
+        // 调用阿里云FC发送短信
+        try {
+          const fcUrl = env.FC_SMS_URL || '';
+          if (fcUrl) {
+            await fetch(fcUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'sendCode', phone, code }),
+            });
+          } else {
+            // FC未配置时，验证码写日志（开发模式）
+            console.log(`[SMS-DEV] 验证码: ${code}, 手机号: ${phone}`);
+          }
+        } catch (e) {
+          console.error('FC SMS call failed:', e.message);
+          return jsonResponse({ error: '短信发送失败，请稍后重试' }, 500, origin);
+        }
+
+        return jsonResponse({ success: true, expireIn: 300, devCode: fcUrl ? undefined : code }, 200, origin);
+      }
+
+      // 绑定手机号（POST /api/auth/bind-phone）
+      if (path === '/api/auth/bind-phone' && request.method === 'POST') {
+        if (!checkRateLimit(clientIP, 'bind_phone', 5, 60000)) {
+          return jsonResponse({ error: '操作过于频繁' }, 429, origin);
+        }
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { phone, code, token: currentToken } = body;
+        if (!phone || !code) {
+          return jsonResponse({ error: '手机号和验证码不能为空' }, 400, origin);
+        }
+        if (!/^1[3-9]\d{9}$/.test(phone)) {
+          return jsonResponse({ error: '手机号格式不正确' }, 400, origin);
+        }
+
+        // 验证当前Token
+        let payload;
+        try {
+          payload = await verifyJWT(env, currentToken);
+        } catch (e) {
+          return jsonResponse({ error: '登录已过期，请重新登录' }, 401, origin);
+        }
+
+        // 查验证码
+        const record = await env.DB.prepare('SELECT * FROM verify_codes WHERE phone = ?').bind(phone).first();
+        if (!record) {
+          return jsonResponse({ error: '请先获取验证码' }, 400, origin);
+        }
+
+        if (Date.now() > record.expire_at) {
+          await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(phone).run();
+          return jsonResponse({ error: '验证码已过期，请重新获取' }, 400, origin);
+        }
+
+        // 错误次数检查
+        const newAttempts = (record.attempts || 0) + 1;
+        if (newAttempts > 5) {
+          await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(phone).run();
+          return jsonResponse({ error: '尝试次数过多，请重新获取验证码' }, 400, origin);
+        }
+
+        // 更新尝试次数
+        await env.DB.prepare('UPDATE verify_codes SET attempts = ? WHERE phone = ?').bind(newAttempts, phone).run();
+
+        if (record.code !== code) {
+          return jsonResponse({ error: '验证码错误' }, 400, origin);
+        }
+
+        // 验证成功，绑定手机号
+        await env.DB.prepare('UPDATE users SET phone = ?, last_login_at = datetime("now") WHERE id = ?').bind(phone, payload.uid).run();
+        await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(phone).run();
+
+        // 生成新Token（包含phone）
+        const newToken = await createJWT(env, { uid: payload.uid, gid: payload.gid, phone });
+        return jsonResponse({ success: true, token: newToken, isGuest: false }, 200, origin);
+      }
+
+      // 获取当前用户信息（GET /api/auth/me）
+      if (path === '/api/auth/me' && request.method === 'GET') {
+        const authHeader = request.headers.get('Authorization') || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+        if (!token) {
+          return jsonResponse({ error: '未登录' }, 401, origin);
+        }
+        try {
+          const payload = await verifyJWT(env, token);
+          const user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, created_at FROM users WHERE id = ?').bind(payload.uid).first();
+          if (!user) {
+            return jsonResponse({ error: '用户不存在' }, 404, origin);
+          }
+          return jsonResponse({ success: true, user: { id: user.id, phone: user.phone, nickname: user.nickname, miraType: user.mira_type, isGuest: !user.phone } }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: 'Token已过期' }, 401, origin);
+        }
+      }
+
       // ══════════════════════════════════════════ 房间管理 API ══════════════════════════════════════════
 
       // 创建房间（速率限制：每 IP 每分钟 5 次）
@@ -101,7 +477,6 @@ export default {
         }
 
         const code = generateRoomCode();
-        // 检查房间码是否已存在（极小概率碰撞）
         const existing = await env.DB.prepare('SELECT id FROM rooms WHERE id = ?').bind(code).first();
         if (existing) {
           return jsonResponse({ error: '房间码冲突，请重试' }, 500, origin);
@@ -144,7 +519,7 @@ export default {
         }, 200, origin);
       }
 
-      // 提交输入（A 或 B）
+      // 提交输入（A 或 B）— AES-GCM 加密存储
       if (path.match(/^\/api\/room\/[A-Z0-9]{6}\/input$/) && request.method === 'POST') {
         const code = path.split('/')[3];
         let body;
@@ -160,8 +535,6 @@ export default {
         if (!room) return jsonResponse({ error: '房间不存在' }, 404, origin);
         if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
 
-        // 状态校验：只允许在 ready 或对方已输入时提交
-        const expectedStatus = validatedRole === 'a' ? 'ready' : 'ready';
         const otherInputField = validatedRole === 'a' ? 'b_input' : 'a_input';
         const otherRole = validatedRole === 'a' ? 'b' : 'a';
 
@@ -169,22 +542,22 @@ export default {
           return jsonResponse({ error: '当前状态不允许提交输入' }, 400, origin);
         }
 
-        // 检查是否已提交过
         const myInputField = validatedRole === 'a' ? 'a_input' : 'b_input';
         if (room[myInputField]) {
           return jsonResponse({ error: '你已经提交过输入了' }, 400, origin);
         }
 
-        // 编码存储
-        const encoded = btoa(unescape(encodeURIComponent(text)));
+        // AES-GCM 加密存储（替代明文 Base64）
+        const encrypted = await encryptText(env, text);
+        if (!encrypted) {
+          return jsonResponse({ error: '数据加密失败，请重试' }, 500, origin);
+        }
 
-        // 安全的参数化更新（避免 SQL 拼接）
         const newStatus = room[otherInputField] ? 'analyzing' : `${validatedRole}_input`;
         await env.DB.prepare(
           `UPDATE rooms SET ${myInputField} = ?, status = ? WHERE id = ?`
-        ).bind(encoded, newStatus, code).run();
+        ).bind(encrypted, newStatus, code).run();
 
-        // 如果双方都输入了，触发 AI 分析
         if (newStatus === 'analyzing') {
           ctx.waitUntil(analyzeCouple(env, code));
         }
@@ -226,19 +599,16 @@ export default {
         if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
         if (room.status !== 'analyzed') return jsonResponse({ error: '分析尚未完成，无法同意' }, 400, origin);
 
-        // 检查是否已同意
         const consentField = validatedRole === 'a' ? 'a_consent' : 'b_consent';
         if (room[consentField]) {
           return jsonResponse({ success: true, bothConsented: !!room.a_consent && !!room.b_consent, message: '你已经同意过了' }, 200, origin);
         }
 
-        // 安全更新
         await env.DB.prepare(`UPDATE rooms SET ${consentField} = 1 WHERE id = ?`).bind(code).run();
 
         const updated = await env.DB.prepare('SELECT a_consent, b_consent FROM rooms WHERE id = ?').bind(code).first();
         const bothConsented = !!updated.a_consent && !!updated.b_consent;
 
-        // 双方都同意，生成共同报告
         if (bothConsented) {
           ctx.waitUntil(generateSharedReport(env, code));
         }
@@ -259,12 +629,6 @@ export default {
 
       // ══════════════════════════════════════════ AI 代理 API ══════════════════════════════════════════
 
-      // 全局请求体大小限制（100KB）
-      const contentLength = request.headers.get('Content-Length') || 0;
-      if (parseInt(contentLength) > 102400) {
-        return jsonResponse({ error: '请求体过大' }, 413, origin);
-      }
-
       // 单人模式 AI 分析（速率限制：每 IP 每分钟 10 次）
       if (path === '/api/analyze' && request.method === 'POST') {
         if (!checkRateLimit(clientIP, 'analyze', 10, 60000)) {
@@ -280,7 +644,6 @@ export default {
 
         const result = await callAI(env, prompt, mode || 'single', history || []);
 
-        // 分析成功后，异步存入 single_analyses 表
         if (!result.error && (mode || 'single') === 'single') {
           ctx.waitUntil(saveSingleAnalysis(env, prompt, result));
         }
@@ -383,6 +746,34 @@ export default {
             )
           `).run();
 
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS users (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              guest_id TEXT UNIQUE,
+              phone TEXT UNIQUE,
+              nickname TEXT,
+              mira_type TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              last_login_at DATETIME
+            )
+          `).run();
+
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS verify_codes (
+              phone TEXT PRIMARY KEY,
+              code TEXT NOT NULL,
+              expire_at INTEGER NOT NULL,
+              attempts INTEGER DEFAULT 0,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+
+          // 创建索引优化查询
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_rooms_expires ON rooms(expires_at)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_users_guest ON users(guest_id)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)').run();
+
           return jsonResponse({ success: true, message: '数据库表创建/验证完成' }, 200, origin);
         } catch (err) {
           console.error('init-db error:', err.message);
@@ -455,7 +846,9 @@ export default {
   },
 };
 
-// 带超时的 fetch（Cloudflare Workers 中手动实现超时）
+// ══════════════════════════════════════════ AI 调用 ══════════════════════════════════════════
+
+// 带超时的 fetch
 async function fetchWithTimeout(url, options, timeoutMs) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('FETCH_TIMEOUT')), timeoutMs);
@@ -534,7 +927,12 @@ async function callAI(env, prompt, mode, history) {
       return { error: 'AI 返回内容为空', raw: null };
     }
 
-    // 解析 JSON（deep 模式预期纯文本，解析失败也没关系）
+    // deep 模式预期纯文本，直接返回 raw
+    if (mode === 'deep') {
+      return { raw: content };
+    }
+
+    // 其他模式尝试解析 JSON
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -550,7 +948,7 @@ async function callAI(env, prompt, mode, history) {
   return { error: 'AI 服务暂时不可用，请稍后重试', raw: null };
 }
 
-// 双人分析：分别分析 A 和 B（带错误处理）
+// 双人分析：分别分析 A 和 B（AES-GCM 解密 + Base64 兼容）
 async function analyzeCouple(env, code) {
   try {
     const room = await env.DB.prepare('SELECT * FROM rooms WHERE id = ?').bind(code).first();
@@ -559,9 +957,18 @@ async function analyzeCouple(env, code) {
       return;
     }
 
-    // 解码原文
-    const aText = decodeURIComponent(escape(atob(room.a_input)));
-    const bText = decodeURIComponent(escape(atob(room.b_input)));
+    // AES-GCM 解密原文（兼容旧 Base64 格式）
+    let aText, bText;
+    try {
+      aText = await decryptText(env, room.a_input);
+      if (!aText) aText = decodeURIComponent(escape(atob(room.a_input))); // 向下兼容旧数据
+      bText = await decryptText(env, room.b_input);
+      if (!bText) bText = decodeURIComponent(escape(atob(room.b_input))); // 向下兼容旧数据
+    } catch (e) {
+      console.error('Decrypt failed, trying base64 fallback:', e.message);
+      aText = decodeURIComponent(escape(atob(room.a_input)));
+      bText = decodeURIComponent(escape(atob(room.b_input)));
+    }
 
     // 分别分析 A 和 B
     const [aResult, bResult] = await Promise.all([
@@ -569,14 +976,12 @@ async function analyzeCouple(env, code) {
       callAI(env, `分析以下用户的情感关系描述，提取核心信息：${bText}`, 'single', []),
     ]);
 
-    // 检查 AI 调用是否成功
     if (aResult.error || bResult.error) {
       console.error('AI analysis failed:', { a: aResult.error, b: bResult.error });
       await env.DB.prepare("UPDATE rooms SET status = 'error' WHERE id = ?").bind(code).run();
       return;
     }
 
-    // 提取洞察摘要（安全取值，避免 undefined）
     const aInsight = JSON.stringify({
       fact: aResult.fact || '',
       emotion: aResult.emotion || '',
@@ -654,7 +1059,6 @@ B的MIRA类型：${bInsight.miraType || 'BO'}
 // 异步保存单人分析结果到 single_analyses 表
 async function saveSingleAnalysis(env, prompt, result) {
   try {
-    // 截取摘要，避免超长
     const userInput = (prompt || '').substring(0, 500);
     await env.DB.prepare(
       'INSERT INTO single_analyses (user_input, fact, emotion, need, misread, status, insight, suggest, mira_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))'
