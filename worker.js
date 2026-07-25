@@ -934,9 +934,9 @@ export default {
       return jsonResponse({ error: 'Not Found' }, 404, origin);
 
     } catch (err) {
-      // 不泄露内部错误细节
+      // 调试阶段输出详细错误（上线前改回仅 console.error）
       console.error('Worker error:', err.message, err.stack);
-      return jsonResponse({ error: '服务器内部错误' }, 500, origin);
+      return jsonResponse({ error: '服务器内部错误', debug: err.message }, 500, origin);
     }
   },
 };
