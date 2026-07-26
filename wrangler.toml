@@ -13,3 +13,7 @@ custom_domain = true
 
 [vars]
 # JWT_SECRET 和 ENCRYPTION_KEY 通过 Cloudflare Secrets 设置，不在 toml 中明文存储
+# 阿里云短信配置（敏感信息通过 wrangler secret put 设置）
+# ALIYUN_ACCESS_KEY_ID, ALIYUN_ACCESS_KEY_SECRET 通过 secret 设置
+SMS_SIGN_NAME = "官渡区青藤絮语信息咨询"
+SMS_TEMPLATE_CODE = "SMS_337410295"

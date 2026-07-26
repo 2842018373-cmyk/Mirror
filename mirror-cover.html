@@ -1,4 +1,4 @@
-<!-- Mirror - AI亲密关系镜像与低冲突沟通系统 -->
+﻿<!-- Mirror - AI亲密关系镜像与低冲突沟通系统 -->
 <!-- 对话流交互架构 v2.0 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -471,6 +471,293 @@
       .chat-header { padding-top: 28px; }
       .quiz-body { padding: 24px 16px; }
       .profile-container { width: 96%; max-height: 92vh; border-radius: 20px; }
+    }
+
+    /* ══════════════════════════════════════════ 底部导航栏 & Tab 页 ══════════════════════════════════════════ */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; height: 56px; z-index: 200;
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      background: rgba(8,9,11,0.85);
+      border-top: 1px solid var(--rule);
+      display: flex;
+      transition: transform 0.3s var(--ease);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .bottom-nav.hidden { transform: translateY(100%); }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; cursor: pointer; color: var(--faint); transition: color 0.2s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-item.active { color: var(--blue); }
+    .nav-icon { font-size: 1.3rem; line-height: 1; }
+    .nav-label { font-size: 0.68rem; letter-spacing: 0.02em; }
+
+    .tab-page {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 56px;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      z-index: 150; background: var(--bg);
+    }
+
+    /* 主页（模式选择）内容底部留白，避免被导航栏遮挡 */
+    #modeSelectView .chat-thread { padding-bottom: 88px !important; }
+
+    /* ══════════════════════════════════════════ 发现页 ══════════════════════════════════════════ */
+    .discover-sticky-top { position: sticky; top: 0; z-index: 10; background: var(--bg); }
+    .discover-title { padding: 20px 20px 10px; font-size: 1.35rem; font-weight: 600; color: var(--ink); letter-spacing: 0.02em; }
+    .discover-sub-tabs {
+      display: flex; border-bottom: 1px solid var(--rule);
+    }
+    .sub-tab {
+      flex: 1; text-align: center; padding: 12px 0; font-size: 0.85rem; color: var(--muted);
+      cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sub-tab.active { color: var(--ink); border-bottom-color: var(--blue); }
+    .discover-body { padding: 4px 0 32px; }
+
+    .discover-panel { animation: fadeIn 0.3s var(--ease); }
+    .codex-intro { padding: 14px 20px 10px; font-size: 0.76rem; color: var(--faint); letter-spacing: 1px; }
+    .codex-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 12px; }
+    .codex-card {
+      position: relative; border-radius: 10px; overflow: hidden; cursor: pointer;
+      aspect-ratio: 1; background: #0D0E12; border: 1px solid rgba(255,255,255,0.06);
+      transition: transform 0.3s var(--ease), border-color 0.3s var(--ease);
+    }
+    .codex-card:active { transform: scale(0.96); }
+    .codex-card img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s var(--ease); }
+    .codex-card:hover img { transform: scale(1.06); }
+    .codex-card .codex-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(8,9,11,0.92) 0%, rgba(8,9,11,0.2) 55%, transparent 100%);
+      display: flex; flex-direction: column; justify-content: flex-end; padding: 8px 9px;
+    }
+    .codex-code { font-size: 0.72rem; font-weight: 600; letter-spacing: 1px; color: #D4AF37; }
+    .codex-name { font-size: 0.66rem; color: #E8EDF5; line-height: 1.35; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .docs-section { padding: 22px 20px; border-bottom: 1px solid var(--rule); }
+    .docs-section:last-child { border-bottom: none; }
+    .docs-section-num { font-size: 0.7rem; color: var(--blue); letter-spacing: 2px; margin-bottom: 6px; }
+    .docs-section-title { font-size: 1.02rem; font-weight: 600; color: var(--ink); margin-bottom: 10px; letter-spacing: 0.01em; }
+    .docs-section-text { font-size: 0.88rem; line-height: 1.9; color: var(--muted); }
+
+    .faq-list { padding: 4px 0 16px; }
+    .faq-item { border-bottom: 1px solid var(--rule); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q {
+      padding: 16px 20px; font-size: 0.9rem; color: var(--ink); cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; line-height: 1.5;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .faq-q::after { content: '+'; flex-shrink: 0; font-size: 1.3rem; color: var(--blue); transition: transform 0.25s var(--ease); line-height: 1; }
+    .faq-item.open .faq-q::after { transform: rotate(45deg); }
+    .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.3s var(--ease); }
+    .faq-a-inner { padding: 0 20px 16px; font-size: 0.84rem; line-height: 1.85; color: var(--muted); }
+
+    /* ══════════════════════════════════════════ 我的页 ══════════════════════════════════════════ */
+    .mine-sticky-top { position: sticky; top: 0; z-index: 10; background: var(--bg); }
+    .mine-title { padding: 20px 20px 10px; font-size: 1.35rem; font-weight: 600; color: var(--ink); letter-spacing: 0.02em; }
+    .mine-body { padding: 0 0 32px; }
+
+    /* 用户卡片 */
+    .mine-user-card {
+      margin: 0 16px 16px; padding: 20px; border-radius: 16px;
+      background: var(--surface-glass); border: 1px solid var(--rule);
+      display: flex; align-items: center; gap: 14px;
+    }
+    .mine-avatar {
+      width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; font-weight: 600; color: var(--bg);
+    }
+    .mine-user-info { flex: 1; min-width: 0; }
+    .mine-user-name { font-size: 1.05rem; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+    .mine-user-name .edit-icon { font-size: 0.85rem; color: var(--faint); cursor: pointer; transition: color 0.2s; }
+    .mine-user-name .edit-icon:active { color: var(--blue); }
+    .mine-user-meta { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+    .mine-user-badge {
+      display: inline-block; font-size: 0.68rem; padding: 2px 8px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--rule); color: var(--faint); margin-left: 6px;
+    }
+    .mine-user-badge.phone { color: var(--cyan); border-color: rgba(154,230,255,0.2); }
+
+    /* 统计条 */
+    .mine-stats {
+      margin: 0 16px 16px; display: flex; gap: 8px;
+    }
+    .mine-stat-item {
+      flex: 1; padding: 14px 8px; border-radius: 14px; text-align: center;
+      background: var(--surface-glass); border: 1px solid var(--rule);
+    }
+    .mine-stat-num { font-size: 1.3rem; font-weight: 700; color: var(--ink); line-height: 1.2; }
+    .mine-stat-label { font-size: 0.68rem; color: var(--faint); margin-top: 4px; letter-spacing: 0.02em; }
+
+    /* 区块标题 */
+    .mine-section { margin: 0 16px 16px; }
+    .mine-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 4px 10px;
+    }
+    .mine-section-title { font-size: 0.9rem; font-weight: 600; color: var(--ink); letter-spacing: 0.02em; }
+    .mine-section-count { font-size: 0.72rem; color: var(--faint); }
+
+    /* MIRA 卡片 */
+    .mine-mira-card {
+      border-radius: 16px; overflow: hidden; cursor: pointer;
+      background: var(--bg-elevated); border: 1px solid var(--rule);
+      transition: border-color 0.3s var(--ease);
+    }
+    .mine-mira-card:active { border-color: rgba(126,167,255,0.3); }
+    .mine-mira-card.has-data { display: flex; align-items: center; gap: 14px; padding: 16px; }
+    .mine-mira-img {
+      width: 64px; height: 80px; border-radius: 10px; object-fit: cover; flex-shrink: 0;
+      background: #0D0E12;
+    }
+    .mine-mira-info { flex: 1; min-width: 0; }
+    .mine-mira-code { font-size: 0.82rem; font-weight: 700; letter-spacing: 1px;
+      background: linear-gradient(135deg,#D4AF37,#F0D080); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .mine-mira-name { font-size: 0.95rem; font-weight: 600; color: var(--ink); margin-top: 2px; }
+    .mine-mira-desc { font-size: 0.74rem; color: var(--muted); margin-top: 4px; line-height: 1.5;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .mine-mira-arrow { color: var(--faint); font-size: 1.1rem; flex-shrink: 0; }
+
+    .mine-empty-card {
+      padding: 28px 20px; text-align: center; border-radius: 16px;
+      background: var(--surface-glass); border: 1px dashed var(--rule);
+    }
+    .mine-empty-card .empty-icon { font-size: 1.8rem; opacity: 0.5; }
+    .mine-empty-card .empty-text { font-size: 0.82rem; color: var(--faint); margin-top: 8px; }
+    .mine-empty-card .empty-btn {
+      margin-top: 12px; display: inline-block; padding: 8px 20px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--rule); color: var(--blue);
+      font-size: 0.82rem; cursor: pointer; transition: all 0.2s var(--ease); font-family: inherit;
+    }
+    .mine-empty-card .empty-btn:active { background: rgba(126,167,255,0.1); }
+
+    /* 记录列表 */
+    .mine-record-list { display: flex; flex-direction: column; gap: 8px; }
+    .mine-record-item {
+      padding: 14px 16px; border-radius: 14px; cursor: pointer;
+      background: var(--surface-glass); border: 1px solid var(--rule);
+      transition: border-color 0.2s var(--ease);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .mine-record-item:active { border-color: rgba(126,167,255,0.2); }
+    .mine-record-icon { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1rem;
+      background: var(--surface); border: 1px solid var(--rule); }
+    .mine-record-body { flex: 1; min-width: 0; }
+    .mine-record-title { font-size: 0.85rem; color: var(--ink); font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mine-record-meta { font-size: 0.7rem; color: var(--faint); margin-top: 3px; }
+    .mine-record-arrow { color: var(--faint); font-size: 0.9rem; flex-shrink: 0; }
+
+    /* 设置区 */
+    .mine-settings { margin: 0 16px 16px; }
+    .mine-setting-item {
+      padding: 14px 16px; border-radius: 14px; cursor: pointer;
+      background: var(--surface-glass); border: 1px solid var(--rule);
+      display: flex; align-items: center; justify-content: space-between;
+      transition: border-color 0.2s var(--ease); margin-bottom: 8px;
+    }
+    .mine-setting-item:active { border-color: rgba(126,167,255,0.2); }
+    .mine-setting-label { font-size: 0.88rem; color: var(--ink); }
+    .mine-setting-value { font-size: 0.78rem; color: var(--faint); }
+    .mine-setting-arrow { color: var(--faint); font-size: 0.9rem; }
+
+    .mine-logout {
+      margin: 8px 16px 32px; padding: 14px; border-radius: 14px; text-align: center;
+      background: var(--surface-glass); border: 1px solid rgba(255,80,80,0.15);
+      color: #FF6B6B; font-size: 0.88rem; cursor: pointer; transition: all 0.2s var(--ease);
+      font-family: inherit;
+    }
+    .mine-logout:active { background: rgba(255,80,80,0.08); }
+
+    /* 加载状态 */
+    .mine-loading {
+      padding: 40px 20px; text-align: center;
+    }
+    .mine-loading .quiz-spinner { margin: 0 auto 12px; }
+    .mine-loading-text { font-size: 0.82rem; color: var(--faint); }
+
+    /* 未登录提示 */
+    .mine-login-prompt {
+      min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: 40px 24px; text-align: center;
+    }
+    .mine-login-prompt .prompt-icon { font-size: 2.8rem; opacity: 0.5; }
+    .mine-login-prompt .prompt-title { font-size: 1.1rem; font-weight: 600; color: var(--ink); }
+    .mine-login-prompt .prompt-hint { font-size: 0.82rem; color: var(--faint); line-height: 1.6; max-width: 240px; }
+    .mine-login-prompt .prompt-btn {
+      margin-top: 8px; padding: 12px 32px; border-radius: 999px; border: none;
+      background: var(--blue); color: var(--bg); font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: opacity 0.2s;
+    }
+    .mine-login-prompt .prompt-btn:active { opacity: 0.8; }
+
+    /* 编辑弹窗 */
+    .mine-modal-overlay {
+      position: fixed; inset: 0; z-index: 600; background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s var(--ease);
+    }
+    .mine-modal-overlay.active { display: flex; }
+    .mine-modal-card {
+      width: 92%; max-width: 380px; padding: 28px 24px; border-radius: 20px;
+      background: var(--bg-elevated); border: 1px solid var(--rule);
+      animation: fadeUp 0.3s var(--ease);
+    }
+    .mine-modal-title { font-size: 1.05rem; font-weight: 600; color: var(--ink); margin-bottom: 16px; }
+    .mine-modal-input {
+      width: 100%; padding: 12px 14px; border-radius: 12px; box-sizing: border-box;
+      border: 1px solid var(--rule); background: var(--surface); color: var(--ink);
+      font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s;
+      margin-bottom: 8px;
+    }
+    .mine-modal-input:focus { border-color: var(--blue); }
+    .mine-modal-hint { font-size: 0.72rem; color: var(--faint); margin-bottom: 16px; }
+    .mine-modal-error { font-size: 0.78rem; color: #FF6B6B; margin-bottom: 12px; min-height: 18px; }
+    .mine-modal-btns { display: flex; gap: 10px; }
+    .mine-modal-btn {
+      flex: 1; padding: 12px; border-radius: 12px; border: none; font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s;
+    }
+    .mine-modal-btn.cancel { background: var(--surface); color: var(--muted); border: 1px solid var(--rule); }
+    .mine-modal-btn.confirm { background: var(--blue); color: var(--bg); }
+    .mine-modal-btn:active { opacity: 0.8; }
+
+    /* 详情弹窗 */
+    .mine-detail-overlay {
+      position: fixed; inset: 0; z-index: 600; background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px); display: none; align-items: flex-end; justify-content: center;
+      animation: fadeIn 0.2s var(--ease);
+    }
+    .mine-detail-overlay.active { display: flex; }
+    .mine-detail-card {
+      width: 100%; max-width: 560px; max-height: 88vh; border-radius: 24px 24px 0 0;
+      background: var(--bg-elevated); border: 1px solid var(--rule); border-bottom: none;
+      display: flex; flex-direction: column; overflow: hidden;
+      animation: fadeUp 0.3s var(--ease);
+    }
+    .mine-detail-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--rule);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .mine-detail-title { font-size: 1rem; font-weight: 600; color: var(--ink); }
+    .mine-detail-close { font-size: 1.2rem; color: var(--faint); cursor: pointer; padding: 4px 8px; }
+    .mine-detail-body { padding: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .mine-detail-section { margin-bottom: 20px; }
+    .mine-detail-section:last-child { margin-bottom: 0; }
+    .mine-detail-label { font-size: 0.72rem; color: var(--blue); letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
+    .mine-detail-text { font-size: 0.88rem; line-height: 1.8; color: var(--muted); }
+    .mine-detail-tag {
+      display: inline-block; font-size: 0.72rem; padding: 4px 12px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--rule); color: var(--cyan); margin-right: 6px;
+    }
+
+    @media (max-width: 520px) {
+      .mine-modal-card { padding: 24px 20px; }
     }
   </style>
 </head>
@@ -2869,6 +3156,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         var modeView = document.getElementById('modeSelectView');
         modeView.style.display = 'flex';
         modeView.classList.add('active');
+        showBottomNav();
         // 重置状态
         state = 'IDLE';
         userData = { q1: '', scenario: '', aiData: null, mode: 'single', entryType: 'chat' };
@@ -2927,6 +3215,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 启动答题
     function startQuiz() {
+      hideBottomNav();
       loadQuizBank().then(function(all) {
         if (!all.length) return;
         var quizOverlay = document.getElementById('quizOverlay');
@@ -3400,11 +3689,11 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var ctaBtn = document.getElementById('profileCtaBtn');
       if (closeBtn && !closeBtn._bound) {
         closeBtn._bound = true;
-        closeBtn.onclick = function() { overlay.classList.remove('active'); };
+        closeBtn.onclick = function() { overlay.classList.remove('active'); showBottomNav(); };
       }
       if (overlay && !overlay._bound) {
         overlay._bound = true;
-        overlay.onclick = function(e) { if (e.target === overlay) overlay.classList.remove('active'); };
+        overlay.onclick = function(e) { if (e.target === overlay) { overlay.classList.remove('active'); showBottomNav(); } };
       }
       if (restartBtn && !restartBtn._bound) {
         restartBtn._bound = true;
@@ -3520,6 +3809,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           } else {
             if (confirm('确定要退出测试吗？进度将不会保存。')) {
               quizOverlay.classList.remove('active');
+              showBottomNav();
             }
           }
         };
@@ -3600,6 +3890,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           cover.classList.add('hidden');
           document.getElementById('modeSelectView').style.display = 'flex';
           document.getElementById('modeSelectView').classList.add('active');
+          showBottomNav();
         }, 800);
       }, 600);
     };
@@ -3610,6 +3901,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       document.getElementById('modeSelectView').style.display = 'none';
       cover.classList.remove('hidden', 'fade-out');
       parallaxActive = true;
+      hideBottomNav();
     };
 
     // 模式选择：子按钮点击
@@ -3639,6 +3931,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 初始化对话
     function initChat(mode, type) {
+      hideBottomNav();
       mode = mode || userData.mode || 'single';
       type = type || userData.entryType || 'chat';
       userData.mode = mode;
@@ -3682,6 +3975,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 初始化双人模式
     function initCoupleMode() {
+      hideBottomNav();
       // 显示创建/加入房间页
       showCoupleRoomView();
 
@@ -3704,6 +3998,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       document.getElementById('coupleRoomBackBtn').onclick = function() {
         document.getElementById('coupleRoomView').style.display = 'none';
         document.getElementById('modeSelectView').style.display = 'flex';
+        showBottomNav();
       };
 
       document.getElementById('coupleWaitBackBtn').onclick = function() {
@@ -3734,6 +4029,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 显示创建/加入房间页
     function showCoupleRoomView() {
+      hideBottomNav();
       hideAllViews();
       document.getElementById('coupleRoomView').style.display = 'flex';
     }
@@ -4129,6 +4425,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var modeView = document.getElementById('modeSelectView');
       modeView.style.display = 'flex';
       modeView.classList.add('active');
+      showBottomNav();
       // 清空对话
       document.getElementById('chatThread').innerHTML = '';
       state = 'IDLE';
@@ -4170,6 +4467,554 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         };
       }
     })();
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 底部导航栏 & 发现页（阶段 E / F）
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    // 切换底部 Tab
+    function switchTab(tabName) {
+      var tabDiscover = document.getElementById('tabDiscover');
+      var tabMine = document.getElementById('tabMine');
+      if (tabDiscover) tabDiscover.style.display = 'none';
+      if (tabMine) tabMine.style.display = 'none';
+
+      if (tabName === 'discover') {
+        if (tabDiscover) {
+          tabDiscover.style.display = 'block';
+          // 首次进入时渲染图鉴
+          renderCodexGrid();
+        }
+      } else if (tabName === 'mine') {
+        if (tabMine) tabMine.style.display = 'block';
+        initMinePage();
+      }
+
+      // 更新导航栏激活状态
+      document.querySelectorAll('.nav-item').forEach(function(item) {
+        item.classList.toggle('active', item.dataset.tab === tabName);
+      });
+
+      // 主页内容始终存在，不需要切换显示
+      showBottomNav();
+    }
+
+    function showBottomNav() {
+      var nav = document.getElementById('bottomNav');
+      if (nav) nav.classList.remove('hidden');
+    }
+
+    function hideBottomNav() {
+      var nav = document.getElementById('bottomNav');
+      if (nav) nav.classList.add('hidden');
+    }
+
+    // ══════════════════════════════════════════ 我的页（阶段 G） ══════════════════════════════════════════
+
+    // 获取 MIRA 类型信息
+    function getMiraTypeInfo(code) {
+      var types = window.MIRA_TYPES || [];
+      for (var i = 0; i < types.length; i++) {
+        if (types[i].code === code) return types[i];
+      }
+      return null;
+    }
+
+    // 格式化时间
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr.replace(' ', 'T'));
+      if (isNaN(d.getTime())) return dateStr;
+      var now = new Date();
+      var diff = (now - d) / 1000;
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+      if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+      if (diff < 604800) return Math.floor(diff / 86400) + '天前';
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var dd = String(d.getDate()).padStart(2, '0');
+      var hh = String(d.getHours()).padStart(2, '0');
+      var mi = String(d.getMinutes()).padStart(2, '0');
+      return mm + '-' + dd + ' ' + hh + ':' + mi;
+    }
+
+    // 我的页初始化
+    function initMinePage() {
+      if (!mirrorToken || !mirrorUser) {
+        document.getElementById('mineLoginPrompt').style.display = 'flex';
+        document.getElementById('mineContent').style.display = 'none';
+        return;
+      }
+      document.getElementById('mineLoginPrompt').style.display = 'none';
+      document.getElementById('mineContent').style.display = 'block';
+
+      // 渲染用户信息
+      renderMineProfile();
+
+      // 并行加载数据
+      loadMineMira();
+      loadMineAnalyses();
+      loadMineRooms();
+    }
+
+    // 渲染用户信息
+    function renderMineProfile() {
+      var u = mirrorUser || {};
+      var nickname = u.nickname || (u.phone ? u.phone.slice(-4) + '用户' : 'Mirror用户');
+      document.getElementById('mineNickname').textContent = nickname;
+      document.getElementById('mineAvatar').textContent = nickname.charAt(0).toUpperCase();
+
+      var metaEl = document.getElementById('mineUserMeta');
+      if (u.phone) {
+        metaEl.innerHTML = escapeHtml(u.phone.slice(0,3) + '****' + u.phone.slice(-4)) + ' <span class="mine-user-badge phone">已绑定</span>';
+      } else {
+        metaEl.innerHTML = '游客模式 <span class="mine-user-badge">未绑定手机号</span>';
+      }
+
+      // 密码提示
+      var pwdHint = document.getElementById('minePasswordHint');
+      if (pwdHint) {
+        pwdHint.textContent = u.phone ? '点击修改' : '初始密码1234';
+      }
+    }
+
+    // 加载 MIRA 结果
+    async function loadMineMira() {
+      var container = document.getElementById('mineMiraContainer');
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/mira', {
+          headers: { 'Authorization': 'Bearer ' + mirrorToken }
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        if (!data.mira) {
+          container.innerHTML =
+            '<div class="mine-empty-card">' +
+              '<div class="empty-icon">🔮</div>' +
+              '<div class="empty-text">还没有MIRA人格测试结果</div>' +
+              '<div class="empty-btn" onclick="switchTab(\'home\');setTimeout(function(){startQuiz();},300)">去测试</div>' +
+            '</div>';
+          document.getElementById('mineStatMira').textContent = '-';
+          return;
+        }
+
+        var mira = data.mira;
+        var info = getMiraTypeInfo(mira.mira_type);
+        var name = info ? info.name : '未知类型';
+        var desc = info ? info.desc : '';
+
+        document.getElementById('mineStatMira').textContent = mira.mira_type || '-';
+
+        container.innerHTML =
+          '<div class="mine-mira-card has-data" onclick="showMiraDetail(\'' + escapeHtml(mira.mira_type || '') + '\')">' +
+            '<img class="mine-mira-img" src="mira-images/' + encodeURIComponent(mira.mira_type || '') + '.jpg" alt="' + escapeHtml(name) + '" onerror="this.style.opacity=0.3" />' +
+            '<div class="mine-mira-info">' +
+              '<div class="mine-mira-code">' + escapeHtml(mira.mira_type || '') + '</div>' +
+              '<div class="mine-mira-name">' + escapeHtml(name) + '</div>' +
+              '<div class="mine-mira-desc">' + escapeHtml(desc) + '</div>' +
+            '</div>' +
+            '<div class="mine-mira-arrow">›</div>' +
+          '</div>';
+      } catch (e) {
+        container.innerHTML =
+          '<div class="mine-empty-card">' +
+            '<div class="empty-icon">📡</div>' +
+            '<div class="empty-text">加载失败，点击重试</div>' +
+            '<div class="empty-btn" onclick="loadMineMira()">重试</div>' +
+          '</div>';
+      }
+    }
+
+    // 显示 MIRA 详情
+    function showMiraDetail(typeCode) {
+      var info = getMiraTypeInfo(typeCode);
+      if (!info) return;
+      if (window.openMiraOverlay) {
+        window.openMiraOverlay(info);
+      }
+    }
+
+    // 加载分析记录
+    async function loadMineAnalyses() {
+      var container = document.getElementById('mineAnalysesContainer');
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/analyses?page=1&size=10', {
+          headers: { 'Authorization': 'Bearer ' + mirrorToken }
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        var list = data.list || [];
+        var total = data.total || 0;
+        document.getElementById('mineStatAnalyses').textContent = total;
+        document.getElementById('mineAnalysesCount').textContent = total > 0 ? '共' + total + '条' : '';
+
+        if (list.length === 0) {
+          container.innerHTML =
+            '<div class="mine-empty-card">' +
+              '<div class="empty-icon">💭</div>' +
+              '<div class="empty-text">还没有镜像分析记录</div>' +
+              '<div class="empty-btn" onclick="switchTab(\'home\');setTimeout(function(){initChat(\'single\',\'chat\');},300)">去分析</div>' +
+            '</div>';
+          return;
+        }
+
+        var html = '<div class="mine-record-list">';
+        list.forEach(function(item) {
+          var title = item.insight ? (item.insight.length > 40 ? item.insight.substring(0, 40) + '...' : item.insight) : '镜像分析 #' + item.id;
+          var miraTag = item.mira_type ? ' · ' + item.mira_type : '';
+          html +=
+            '<div class="mine-record-item" onclick="viewAnalysisDetail(' + item.id + ')">' +
+              '<div class="mine-record-icon">🔍</div>' +
+              '<div class="mine-record-body">' +
+                '<div class="mine-record-title">' + escapeHtml(title) + '</div>' +
+                '<div class="mine-record-meta">' + formatTime(item.created_at) + miraTag + '</div>' +
+              '</div>' +
+              '<div class="mine-record-arrow">›</div>' +
+            '</div>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML =
+          '<div class="mine-empty-card">' +
+            '<div class="empty-icon">📡</div>' +
+            '<div class="empty-text">加载失败，点击重试</div>' +
+            '<div class="empty-btn" onclick="loadMineAnalyses()">重试</div>' +
+          '</div>';
+      }
+    }
+
+    // 查看分析详情
+    async function viewAnalysisDetail(id) {
+      var overlay = document.getElementById('mineDetailOverlay');
+      var titleEl = document.getElementById('mineDetailTitle');
+      var bodyEl = document.getElementById('mineDetailBody');
+      titleEl.textContent = '分析详情';
+      bodyEl.innerHTML = '<div class="mine-loading"><div class="quiz-spinner"></div><div class="mine-loading-text">加载中...</div></div>';
+      overlay.classList.add('active');
+
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/analyses/' + id, {
+          headers: { 'Authorization': 'Bearer ' + mirrorToken }
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        var sections = '';
+
+        if (data.mira_type) {
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">MIRA 类型</div><div class="mine-detail-text"><span class="mine-detail-tag">' + escapeHtml(data.mira_type) + '</span></div></div>';
+        }
+
+        if (data.user_input) {
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">原始输入</div><div class="mine-detail-text">' + escapeHtml(data.user_input).replace(/\n/g, '<br>') + '</div></div>';
+        }
+        if (data.fact) {
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">事实</div><div class="mine-detail-text">' + escapeHtml(data.fact).replace(/\n/g, '<br>') + '</div></div>';
+        }
+        if (data.emotion) {
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">情绪</div><div class="mine-detail-text">' + escapeHtml(data.emotion).replace(/\n/g, '<br>') + '</div></div>';
+        }
+        if (data.need) {
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">需求</div><div class="mine-detail-text">' + escapeHtml(data.need).replace(/\n/g, '<br>') + '</div></div>';
+        }
+        if (data.misread) {
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">误读</div><div class="mine-detail-text">' + escapeHtml(data.misread).replace(/\n/g, '<br>') + '</div></div>';
+        }
+        if (data.insight) {
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">洞察</div><div class="mine-detail-text">' + escapeHtml(data.insight).replace(/\n/g, '<br>') + '</div></div>';
+        }
+        if (data.suggest) {
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">建议</div><div class="mine-detail-text">' + escapeHtml(data.suggest).replace(/\n/g, '<br>') + '</div></div>';
+        }
+
+        sections += '<div class="mine-detail-section"><div class="mine-detail-label">时间</div><div class="mine-detail-text">' + formatTime(data.created_at) + '</div></div>';
+
+        bodyEl.innerHTML = sections || '<div class="mine-detail-text">暂无详细数据</div>';
+      } catch (e) {
+        bodyEl.innerHTML = '<div class="mine-detail-text">加载失败：' + escapeHtml(e.message) + '</div>';
+      }
+    }
+
+    // 加载房间记录
+    async function loadMineRooms() {
+      var container = document.getElementById('mineRoomsContainer');
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/rooms?page=1&size=10', {
+          headers: { 'Authorization': 'Bearer ' + mirrorToken }
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        var list = data.list || [];
+        var total = data.total || 0;
+        document.getElementById('mineStatRooms').textContent = total;
+        document.getElementById('mineRoomsCount').textContent = total > 0 ? '共' + total + '条' : '';
+
+        if (list.length === 0) {
+          container.innerHTML =
+            '<div class="mine-empty-card">' +
+              '<div class="empty-icon">🚪</div>' +
+              '<div class="empty-text">还没有双人房间记录</div>' +
+              '<div class="empty-btn" onclick="switchTab(\'home\');setTimeout(function(){initCoupleMode();},300)">创建房间</div>' +
+            '</div>';
+          return;
+        }
+
+        var html = '<div class="mine-record-list">';
+        list.forEach(function(item) {
+          var roleText = item.role === 'a' ? '发起方' : '加入方';
+          var miraInfo = '';
+          if (item.my_mira_type && item.partner_mira_type) {
+            miraInfo = ' · ' + item.my_mira_type + ' × ' + item.partner_mira_type;
+          } else if (item.my_mira_type) {
+            miraInfo = ' · ' + item.my_mira_type;
+          }
+          html +=
+            '<div class="mine-record-item" onclick="viewRoomDetail(' + item.id + ')">' +
+              '<div class="mine-record-icon">🚪</div>' +
+              '<div class="mine-record-body">' +
+                '<div class="mine-record-title">房间 ' + escapeHtml(item.room_code) + ' · ' + roleText + '</div>' +
+                '<div class="mine-record-meta">' + formatTime(item.created_at) + miraInfo + '</div>' +
+              '</div>' +
+              '<div class="mine-record-arrow">›</div>' +
+            '</div>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML =
+          '<div class="mine-empty-card">' +
+            '<div class="empty-icon">📡</div>' +
+            '<div class="empty-text">加载失败，点击重试</div>' +
+            '<div class="empty-btn" onclick="loadMineRooms()">重试</div>' +
+          '</div>';
+      }
+    }
+
+    // 查看房间详情
+    async function viewRoomDetail(id) {
+      var overlay = document.getElementById('mineDetailOverlay');
+      var titleEl = document.getElementById('mineDetailTitle');
+      var bodyEl = document.getElementById('mineDetailBody');
+      titleEl.textContent = '房间详情';
+      bodyEl.innerHTML = '<div class="mine-loading"><div class="quiz-spinner"></div><div class="mine-loading-text">加载中...</div></div>';
+      overlay.classList.add('active');
+
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/rooms/' + id, {
+          headers: { 'Authorization': 'Bearer ' + mirrorToken }
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        var sections = '';
+
+        // 基本信息
+        var roleText = data.role === 'a' ? '发起方 (A)' : '加入方 (B)';
+        sections += '<div class="mine-detail-section"><div class="mine-detail-label">房间信息</div><div class="mine-detail-text">房间码：' + escapeHtml(data.room_code) + '<br>你的角色：' + roleText + '<br>时间：' + formatTime(data.created_at) + '</div></div>';
+
+        // MIRA 类型
+        if (data.my_mira_type || data.partner_mira_type) {
+          var miraHtml = '';
+          if (data.my_mira_type) miraHtml += '<span class="mine-detail-tag">我：' + escapeHtml(data.my_mira_type) + '</span>';
+          if (data.partner_mira_type) miraHtml += '<span class="mine-detail-tag">对方：' + escapeHtml(data.partner_mira_type) + '</span>';
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">MIRA 类型</div><div class="mine-detail-text">' + miraHtml + '</div></div>';
+        }
+
+        // 我的洞察
+        if (data.my_insight) {
+          var myInsightText = typeof data.my_insight === 'string' ? data.my_insight : JSON.stringify(data.my_insight, null, 2);
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">我的洞察</div><div class="mine-detail-text">' + escapeHtml(myInsightText).replace(/\n/g, '<br>') + '</div></div>';
+        }
+
+        // 对方的洞察
+        if (data.partner_insight) {
+          var partnerInsightText = typeof data.partner_insight === 'string' ? data.partner_insight : JSON.stringify(data.partner_insight, null, 2);
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">对方的洞察</div><div class="mine-detail-text">' + escapeHtml(partnerInsightText).replace(/\n/g, '<br>') + '</div></div>';
+        }
+
+        // 共同报告
+        if (data.shared_report) {
+          var reportText = typeof data.shared_report === 'string' ? data.shared_report : JSON.stringify(data.shared_report, null, 2);
+          sections += '<div class="mine-detail-section"><div class="mine-detail-label">共同报告</div><div class="mine-detail-text">' + escapeHtml(reportText).replace(/\n/g, '<br>') + '</div></div>';
+        }
+
+        bodyEl.innerHTML = sections || '<div class="mine-detail-text">暂无详细数据</div>';
+      } catch (e) {
+        bodyEl.innerHTML = '<div class="mine-detail-text">加载失败：' + escapeHtml(e.message) + '</div>';
+      }
+    }
+
+    // 关闭详情弹窗
+    function closeMineDetail() {
+      document.getElementById('mineDetailOverlay').classList.remove('active');
+    }
+
+    // 昵称编辑
+    function openNicknameModal() {
+      var current = mirrorUser ? (mirrorUser.nickname || '') : '';
+      document.getElementById('nicknameInput').value = current;
+      document.getElementById('nicknameError').textContent = '';
+      document.getElementById('nicknameModal').classList.add('active');
+      setTimeout(function() { document.getElementById('nicknameInput').focus(); }, 100);
+    }
+    function closeNicknameModal() {
+      document.getElementById('nicknameModal').classList.remove('active');
+    }
+    async function submitNickname() {
+      var nickname = document.getElementById('nicknameInput').value.trim();
+      var errEl = document.getElementById('nicknameError');
+      errEl.textContent = '';
+
+      if (!nickname || nickname.length < 1 || nickname.length > 20) {
+        errEl.textContent = '昵称长度需1-20个字符';
+        return;
+      }
+
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/nickname', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + mirrorToken },
+          body: JSON.stringify({ nickname: nickname })
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        // 更新本地用户信息
+        mirrorUser.nickname = nickname;
+        localStorage.setItem('mirror_user', JSON.stringify(mirrorUser));
+        renderMineProfile();
+        closeNicknameModal();
+      } catch (e) {
+        errEl.textContent = e.message || '修改失败';
+      }
+    }
+
+    // 密码修改
+    function openPasswordModal() {
+      document.getElementById('oldPasswordInput').value = '';
+      document.getElementById('newPasswordInput').value = '';
+      document.getElementById('passwordError').textContent = '';
+      document.getElementById('passwordModal').classList.add('active');
+      setTimeout(function() { document.getElementById('oldPasswordInput').focus(); }, 100);
+    }
+    function closePasswordModal() {
+      document.getElementById('passwordModal').classList.remove('active');
+    }
+    async function submitPassword() {
+      var oldPwd = document.getElementById('oldPasswordInput').value;
+      var newPwd = document.getElementById('newPasswordInput').value;
+      var errEl = document.getElementById('passwordError');
+      errEl.textContent = '';
+
+      if (!oldPwd) { errEl.textContent = '请输入当前密码'; return; }
+      if (!newPwd || newPwd.length < 4 || newPwd.length > 32) {
+        errEl.textContent = '新密码长度需4-32位';
+        return;
+      }
+
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/password', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + mirrorToken },
+          body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd })
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        closePasswordModal();
+        // 更新密码提示
+        var pwdHint = document.getElementById('minePasswordHint');
+        if (pwdHint) pwdHint.textContent = '已修改';
+      } catch (e) {
+        errEl.textContent = e.message || '修改失败';
+      }
+    }
+
+    // 退出登录
+    function handleLogout() {
+      if (!confirm('确定退出登录吗？\n退出后本地数据将清除，登录后可恢复。')) return;
+      mirrorToken = '';
+      mirrorUser = null;
+      localStorage.removeItem('mirror_token');
+      localStorage.removeItem('mirror_user');
+      localStorage.removeItem('mirror_banner_dismissed');
+      // 刷新页面回到主页
+      switchTab('home');
+      setTimeout(function() { location.reload(); }, 200);
+    }
+
+    // 点击遮罩关闭弹窗
+    document.addEventListener('DOMContentLoaded', function() {
+      var nicknameModal = document.getElementById('nicknameModal');
+      var passwordModal = document.getElementById('passwordModal');
+      var detailOverlay = document.getElementById('mineDetailOverlay');
+
+      if (nicknameModal) {
+        nicknameModal.addEventListener('click', function(e) {
+          if (e.target === this) closeNicknameModal();
+        });
+      }
+      if (passwordModal) {
+        passwordModal.addEventListener('click', function(e) {
+          if (e.target === this) closePasswordModal();
+        });
+      }
+      if (detailOverlay) {
+        detailOverlay.addEventListener('click', function(e) {
+          if (e.target === this) closeMineDetail();
+        });
+      }
+    });
+
+    // 发现页子 Tab 切换
+    function switchDiscoverSub(subName) {
+      document.querySelectorAll('.sub-tab').forEach(function(tab) {
+        tab.classList.toggle('active', tab.dataset.sub === subName);
+      });
+      var panels = { codex: 'discoverCodex', docs: 'discoverDocs', faq: 'discoverFaq' };
+      Object.keys(panels).forEach(function(key) {
+        var el = document.getElementById(panels[key]);
+        if (el) el.style.display = (key === subName) ? 'block' : 'none';
+      });
+      if (subName === 'codex') renderCodexGrid();
+      var tabDiscover = document.getElementById('tabDiscover');
+      if (tabDiscover) tabDiscover.scrollTop = 0;
+    }
+
+    // 渲染图鉴网格（16 种 MIRA 原型）
+    function renderCodexGrid() {
+      var grid = document.getElementById('codexGrid');
+      if (!grid) return;
+      if (grid.children.length > 0) return; // 已渲染
+      var types = window.MIRA_TYPES || [];
+      if (!types.length) return;
+      types.forEach(function(t) {
+        var card = document.createElement('div');
+        card.className = 'codex-card';
+        card.innerHTML =
+          '<img src="mira-images/' + t.code + '.jpg" alt="' + t.name + '" loading="lazy">' +
+          '<div class="codex-overlay">' +
+            '<div class="codex-code">' + t.code + '</div>' +
+            '<div class="codex-name">' + t.name + '</div>' +
+          '</div>';
+        card.onclick = function() {
+          if (typeof window.openMiraOverlay === 'function') {
+            window.openMiraOverlay(t);
+          }
+        };
+        grid.appendChild(card);
+      });
+    }
+
+    // FAQ 手风琴展开/收起
+    function toggleFaq(el) {
+      var item = el.parentElement;
+      if (item) item.classList.toggle('open');
+    }
   </script>
 
   <script>
@@ -4261,6 +5106,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       buildGrid();
       var miraView = document.getElementById('miraView');
       miraView.style.display = 'flex';
+      showBottomNav();
       // Responsive grid
       function updateGridCols() {
         var grid = document.getElementById('miraGrid');
@@ -4275,11 +5121,17 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     };
 
     window.closeMiraView = function() {
-      document.getElementById('miraView').style.display = 'none';
+      var miraView = document.getElementById('miraView');
+      // 仅当 miraView 当前可见时才隐藏并收起导航栏，避免在发现页等场景误触
+      if (miraView && miraView.style.display !== 'none') {
+        miraView.style.display = 'none';
+        hideBottomNav();
+      }
     };
 
     window.closeMiraOverlay = function() {
       document.getElementById('miraOverlay').style.display = 'none';
+      showBottomNav();
     };
 
     document.addEventListener('keydown', function(e) {
@@ -4293,6 +5145,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     document.getElementById('miraOverlay').addEventListener('click', function(e) {
       if (e.target === this) closeMiraOverlay();
     });
+
+    // 暴露到全局，供「发现页 - 图鉴」复用
+    window.MIRA_TYPES = miraTypes;
+    window.openMiraOverlay = openMiraOverlay;
   })();
   </script>
 
@@ -4409,5 +5265,269 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       </div>
     </div>
   </div>
+
+  <!-- ══════════════════════════════════════════ 发现页（Tab） ══════════════════════════════════════════ -->
+  <div class="tab-page" id="tabDiscover" style="display:none;">
+    <div class="discover-sticky-top">
+      <div class="discover-title">发现</div>
+      <div class="discover-sub-tabs">
+        <div class="sub-tab active" data-sub="codex" onclick="switchDiscoverSub('codex')">图鉴</div>
+        <div class="sub-tab" data-sub="docs" onclick="switchDiscoverSub('docs')">产品说明</div>
+        <div class="sub-tab" data-sub="faq" onclick="switchDiscoverSub('faq')">新手教程</div>
+      </div>
+    </div>
+    <div class="discover-body">
+
+      <!-- 图鉴 -->
+      <div class="discover-panel" id="discoverCodex">
+        <div class="codex-intro">MIRA · 16 种关系原型，点击卡片查看详情</div>
+        <div class="codex-grid" id="codexGrid"></div>
+      </div>
+
+      <!-- 产品说明 -->
+      <div class="discover-panel" id="discoverDocs" style="display:none;">
+        <div class="docs-section">
+          <div class="docs-section-num">01</div>
+          <div class="docs-section-title">Mirror 是什么</div>
+          <div class="docs-section-text">Mirror 帮你看清关系中的真实需求——你说了什么，对方听到了什么，你们各自真正需要什么。它不是判断对错的工具，而是照映需求的镜子。</div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-num">02</div>
+          <div class="docs-section-title">MIRA 框架介绍</div>
+          <div class="docs-section-text">MIRA 框架融合依恋理论（Bowlby）与非暴力沟通（Rosenberg），基于亲密关系咨询实践经验。它将人际关系模式分为4个维度（稳定/依赖/独立/疏离）× 4种表达风格（内敛/中立/外放/张力），共16种关系原型。MIRA 不是临床诊断工具，而是帮助你认识自己在关系中行为模式的参考框架。</div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-num">03</div>
+          <div class="docs-section-title">三大核心功能</div>
+          <div class="docs-section-text">镜像对话分析：输入一段对话或争吵，AI从5个层面拆解——事实、情绪、需求、误读、行动建议。<br><br>双人房间：生成房间码分享给对方，双方各自输入视角，AI生成你们的关系报告。<br><br>MIRA人格测试：30题测量，定位你的关系原型，了解自己在亲密关系中的模式。</div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-num">04</div>
+          <div class="docs-section-title">安全边界</div>
+          <div class="docs-section-text">你输入的内容默认仅本人可见。Mirror 不判断谁对谁错，不站队。它是关系探索工具，不替代心理咨询，不做临床诊断。数据采用加密存储，不会泄露。</div>
+        </div>
+        <div class="docs-section">
+          <div class="docs-section-num">05</div>
+          <div class="docs-section-title">适合谁用</div>
+          <div class="docs-section-text">吵完架想弄清楚发生了什么的人。觉得"对方总是不理解我"的人。想了解自己在关系中是什么模式的人。两个人想一起看清关系模式的人。</div>
+        </div>
+      </div>
+
+      <!-- 新手教程 FAQ -->
+      <div class="discover-panel" id="discoverFaq" style="display:none;">
+        <div class="faq-list">
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q1：第一次使用 Mirror，该从哪里开始？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：进入主页后，选择「镜像对话分析」模式，输入一段你想理解的关系对话，AI会帮你拆解5个层面。也可以先做「MIRA人格测试」了解自己的关系原型。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q2：镜像对话分析怎么用？输入什么内容？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：输入一段真实发生过的对话或争吵（最多10000字），比如"他说我总是不理解他，我说..."。AI会分析事实、情绪、需求、误读和行动建议。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q3：双人房间怎么和伴侣一起用？房间码怎么分享？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：在主页选择「双人房间」，系统会生成一个6位房间码。把房间码告诉对方，对方在主页选择「双人房间」并输入房间码加入。双方各自输入自己的视角后，AI生成共同关系报告。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q4：MIRA 人格测试需要多久？测完能看到什么？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：30道选择题，约5-8分钟。测完你会看到自己的关系原型（16种之一）、维度雷达图、以及详细的人格分析报告。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q5：我的数据安全吗？别人能看到我输入的内容吗？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：你输入的内容默认仅你自己可见。双人房间中，对方只能看到AI生成的洞察摘要，看不到你的原文。数据加密存储，不会泄露。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q6：不登录能用吗？游客模式和登录有什么区别？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：可以用游客模式体验所有功能，数据暂存在本地。登录后数据会关联到你的账户，换设备也能查看。建议登录以永久保存分析结果。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q7：分析报告可以保存或分享吗？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：可以。分析完成后可以导出为图片保存。MIRA测试结果也生成分享卡片。登录用户的报告会自动保存到「我的」页面，可随时回看。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q8：AI 的分析结果靠谱吗？它基于什么逻辑？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：AI 基于 MIRA 框架（依恋理论+非暴力沟通）进行分析，不是随意生成。它会从事实、情绪、需求、误读、行动5个层面拆解你的对话。但它是辅助工具，不能替代专业心理咨询。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q9：房间24小时后过期怎么办？能延长吗？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：房间有效期24小时，过期后无法延长。但已完成的共同报告会自动保存到双方的「我的-房间记录」中，永久可回看。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Q10：遇到问题或想提建议怎么联系？</div>
+            <div class="faq-a"><div class="faq-a-inner">A：在主页的功能介绍区域有「专属顾问一对一解读」入口，可以提交联系方式。也可以通过页面底部的联系方式提交反馈。</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ 我的页（Tab） ══════════════════════════════════════════ -->
+  <div class="tab-page" id="tabMine" style="display:none;">
+    <!-- 未登录状态 -->
+    <div class="mine-login-prompt" id="mineLoginPrompt" style="display:none;">
+      <div class="prompt-icon">🔐</div>
+      <div class="prompt-title">登录后查看</div>
+      <div class="prompt-hint">登录后可查看你的MIRA人格、分析记录和房间记录，数据永久保存。</div>
+      <button class="prompt-btn" onclick="openAuthOverlay()">立即登录</button>
+    </div>
+
+    <!-- 已登录内容 -->
+    <div id="mineContent" style="display:none;">
+      <div class="mine-sticky-top">
+        <div class="mine-title">我的</div>
+      </div>
+      <div class="mine-body">
+        <!-- 用户卡片 -->
+        <div class="mine-user-card">
+          <div class="mine-avatar" id="mineAvatar">M</div>
+          <div class="mine-user-info">
+            <div class="mine-user-name">
+              <span id="mineNickname">用户</span>
+              <span class="edit-icon" onclick="openNicknameModal()">✏️</span>
+            </div>
+            <div class="mine-user-meta" id="mineUserMeta">游客用户</div>
+          </div>
+        </div>
+
+        <!-- 统计条 -->
+        <div class="mine-stats">
+          <div class="mine-stat-item">
+            <div class="mine-stat-num" id="mineStatMira">-</div>
+            <div class="mine-stat-label">MIRA类型</div>
+          </div>
+          <div class="mine-stat-item">
+            <div class="mine-stat-num" id="mineStatAnalyses">0</div>
+            <div class="mine-stat-label">分析记录</div>
+          </div>
+          <div class="mine-stat-item">
+            <div class="mine-stat-num" id="mineStatRooms">0</div>
+            <div class="mine-stat-label">房间记录</div>
+          </div>
+        </div>
+
+        <!-- MIRA 人格 -->
+        <div class="mine-section">
+          <div class="mine-section-header">
+            <div class="mine-section-title">MIRA 人格</div>
+          </div>
+          <div id="mineMiraContainer">
+            <div class="mine-loading">
+              <div class="quiz-spinner"></div>
+              <div class="mine-loading-text">加载中...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分析记录 -->
+        <div class="mine-section">
+          <div class="mine-section-header">
+            <div class="mine-section-title">镜像分析记录</div>
+            <div class="mine-section-count" id="mineAnalysesCount"></div>
+          </div>
+          <div id="mineAnalysesContainer">
+            <div class="mine-loading">
+              <div class="quiz-spinner"></div>
+              <div class="mine-loading-text">加载中...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 房间记录 -->
+        <div class="mine-section">
+          <div class="mine-section-header">
+            <div class="mine-section-title">双人房间记录</div>
+            <div class="mine-section-count" id="mineRoomsCount"></div>
+          </div>
+          <div id="mineRoomsContainer">
+            <div class="mine-loading">
+              <div class="quiz-spinner"></div>
+              <div class="mine-loading-text">加载中...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 设置 -->
+        <div class="mine-settings">
+          <div class="mine-section-header">
+            <div class="mine-section-title">账号设置</div>
+          </div>
+          <div class="mine-setting-item" onclick="openNicknameModal()">
+            <span class="mine-setting-label">修改昵称</span>
+            <span class="mine-setting-arrow">›</span>
+          </div>
+          <div class="mine-setting-item" onclick="openPasswordModal()">
+            <span class="mine-setting-label">修改密码</span>
+            <span class="mine-setting-value" id="minePasswordHint">初始密码1234</span>
+            <span class="mine-setting-arrow">›</span>
+          </div>
+          <div class="mine-setting-item" onclick="switchTab('home')">
+            <span class="mine-setting-label">返回主页</span>
+            <span class="mine-setting-arrow">›</span>
+          </div>
+        </div>
+
+        <!-- 退出登录 -->
+        <div class="mine-logout" onclick="handleLogout()">退出登录</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 昵称编辑弹窗 -->
+  <div class="mine-modal-overlay" id="nicknameModal">
+    <div class="mine-modal-card">
+      <div class="mine-modal-title">修改昵称</div>
+      <input type="text" class="mine-modal-input" id="nicknameInput" placeholder="输入新昵称（1-20字）" maxlength="20" />
+      <div class="mine-modal-hint">昵称将显示在你的个人主页</div>
+      <div class="mine-modal-error" id="nicknameError"></div>
+      <div class="mine-modal-btns">
+        <button class="mine-modal-btn cancel" onclick="closeNicknameModal()">取消</button>
+        <button class="mine-modal-btn confirm" onclick="submitNickname()">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 密码修改弹窗 -->
+  <div class="mine-modal-overlay" id="passwordModal">
+    <div class="mine-modal-card">
+      <div class="mine-modal-title">修改密码</div>
+      <input type="password" class="mine-modal-input" id="oldPasswordInput" placeholder="当前密码" />
+      <input type="password" class="mine-modal-input" id="newPasswordInput" placeholder="新密码（4-32位）" />
+      <div class="mine-modal-hint">手机号登录用户初始密码为1234</div>
+      <div class="mine-modal-error" id="passwordError"></div>
+      <div class="mine-modal-btns">
+        <button class="mine-modal-btn cancel" onclick="closePasswordModal()">取消</button>
+        <button class="mine-modal-btn confirm" onclick="submitPassword()">确认修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 记录详情弹窗 -->
+  <div class="mine-detail-overlay" id="mineDetailOverlay">
+    <div class="mine-detail-card">
+      <div class="mine-detail-header">
+        <div class="mine-detail-title" id="mineDetailTitle">详情</div>
+        <div class="mine-detail-close" onclick="closeMineDetail()">✕</div>
+      </div>
+      <div class="mine-detail-body" id="mineDetailBody"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ 底部导航栏 ══════════════════════════════════════════ -->
+  <nav class="bottom-nav hidden" id="bottomNav">
+    <div class="nav-item active" data-tab="home" onclick="switchTab('home')">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">主页</span>
+    </div>
+    <div class="nav-item" data-tab="discover" onclick="switchTab('discover')">
+      <span class="nav-icon">📖</span>
+      <span class="nav-label">发现</span>
+    </div>
+    <div class="nav-item" data-tab="mine" onclick="switchTab('mine')">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">我的</span>
+    </div>
+  </nav>
+
 </body>
 </html>
