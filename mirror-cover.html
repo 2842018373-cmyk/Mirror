@@ -3494,7 +3494,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
       fetch(WORKER_API_BASE + '/api/mira-quiz', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(mirrorToken ? { 'Authorization': 'Bearer ' + mirrorToken } : {})
+        },
         body: JSON.stringify({ miraType: miraType, scores: scores, prompt: prompt }),
         signal: controller ? controller.signal : undefined
       })

@@ -1010,7 +1010,7 @@ export default {
         let body;
         try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
 
-        const { prompt, scores, answers } = body;
+        const { prompt, scores, answers, miraType: clientMiraType } = body;
         if (!prompt || typeof prompt !== 'string') return jsonResponse({ error: 'prompt 不能为空' }, 400, origin);
         if (prompt.length > 15000) return jsonResponse({ error: 'prompt 过长' }, 400, origin);
 
@@ -1023,8 +1023,11 @@ export default {
 
         const result = await callAI(env, prompt, 'quiz', []);
 
-        // AI 返回成功且有 uid，异步保存到 mira_tests 表 + 更新 users.mira_type
-        if (uid && !result.error && result.miraType) {
+        // 确定最终 miraType：优先用 AI 返回的，否则用前端计分系统确定的
+        const finalMiraType = (result && !result.error && result.miraType) ? result.miraType : (clientMiraType || '');
+
+        // 有 uid 且有 miraType 就保存（即使 AI 失败也保存基础数据）
+        if (uid && finalMiraType) {
           ctx.waitUntil((async () => {
             try {
               let scoresJson = '{}';
@@ -1036,22 +1039,26 @@ export default {
                 'INSERT INTO mira_tests (user_id, mira_type, expression, focus, portrait, scores_json, answers_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"))'
               ).bind(
                 uid,
-                result.miraType || '',
-                result.expression || '',
-                result.focus || '',
-                result.portrait || '',
+                finalMiraType,
+                (result && result.expression) || '',
+                (result && result.focus) || '',
+                (result && result.portrait) || '',
                 scoresJson,
                 answersJson,
               ).run();
 
               // 同时更新 users.mira_type
-              await env.DB.prepare('UPDATE users SET mira_type = ? WHERE id = ?').bind(result.miraType || '', uid).run();
+              await env.DB.prepare('UPDATE users SET mira_type = ? WHERE id = ?').bind(finalMiraType, uid).run();
             } catch (err) {
               console.error('saveMiraTest error:', err.message);
             }
           })());
         }
 
+        // 即使 AI 失败，也确保返回 miraType 给前端
+        if (result.error && clientMiraType) {
+          return jsonResponse({ miraType: clientMiraType, expression: '', focus: '', portrait: '', insight: '', suggest: '' }, 200, origin);
+        }
         return jsonResponse(result, result.error ? 500 : 200, origin);
       }
 
