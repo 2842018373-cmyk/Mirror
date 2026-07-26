@@ -511,17 +511,17 @@ export default {
         }
 
         // 查找或创建用户
-        let user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, created_at FROM users WHERE guest_id = ?').bind(guestId).first();
+        let user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, avatar, created_at FROM users WHERE guest_id = ?').bind(guestId).first();
 
         if (!user) {
           await env.DB.prepare('INSERT INTO users (guest_id, created_at, last_login_at) VALUES (?, datetime("now"), datetime("now"))').bind(guestId).run();
-          user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, created_at FROM users WHERE guest_id = ?').bind(guestId).first();
+          user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, avatar, created_at FROM users WHERE guest_id = ?').bind(guestId).first();
         } else {
           await env.DB.prepare('UPDATE users SET last_login_at = datetime("now") WHERE id = ?').bind(user.id).run();
         }
 
         const token = await createJWT(env, { uid: user.id, gid: guestId, phone: null });
-        return jsonResponse({ success: true, token, isGuest: true, user: { id: user.id, phone: null, nickname: user.nickname } }, 200, origin);
+        return jsonResponse({ success: true, token, isGuest: true, user: { id: user.id, phone: null, nickname: user.nickname, avatar: user.avatar || '' } }, 200, origin);
       }
 
       // 密码登录（POST /api/auth/password-login）
@@ -542,13 +542,13 @@ export default {
         }
 
         // 查找用户，不存在则自动注册
-        let user = await env.DB.prepare('SELECT id, phone, password_hash, password_salt, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
+        let user = await env.DB.prepare('SELECT id, phone, password_hash, password_salt, nickname, mira_type, avatar, guest_id FROM users WHERE phone = ?').bind(phone).first();
         if (!user) {
           // 自动注册：创建用户并设置默认密码
           const salt = generateSalt();
           const hash = await hashPassword(DEFAULT_PASSWORD, salt);
           await env.DB.prepare('INSERT INTO users (phone, password_hash, password_salt, created_at, last_login_at) VALUES (?, ?, ?, datetime("now"), datetime("now"))').bind(phone, hash, salt).run();
-          user = await env.DB.prepare('SELECT id, phone, password_hash, password_salt, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
+          user = await env.DB.prepare('SELECT id, phone, password_hash, password_salt, nickname, mira_type, avatar, guest_id FROM users WHERE phone = ?').bind(phone).first();
         }
 
         // 如果用户没有密码（老用户），初始化默认密码
@@ -575,7 +575,7 @@ export default {
           success: true,
           token,
           isGuest: false,
-          user: { id: user.id, phone: user.phone, nickname: user.nickname }
+          user: { id: user.id, phone: user.phone, nickname: user.nickname, avatar: user.avatar || '' }
         }, 200, origin);
       }
 
@@ -696,11 +696,11 @@ export default {
         await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(phone).run();
 
         // 查找或创建用户
-        let user = await env.DB.prepare('SELECT id, phone, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
+        let user = await env.DB.prepare('SELECT id, phone, nickname, mira_type, avatar, guest_id FROM users WHERE phone = ?').bind(phone).first();
         if (!user) {
           // 新用户：自动注册
           await env.DB.prepare('INSERT INTO users (phone, created_at, last_login_at) VALUES (?, datetime("now"), datetime("now"))').bind(phone).run();
-          user = await env.DB.prepare('SELECT id, phone, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
+          user = await env.DB.prepare('SELECT id, phone, nickname, mira_type, avatar, guest_id FROM users WHERE phone = ?').bind(phone).first();
         } else {
           // 更新最后登录时间
           await env.DB.prepare('UPDATE users SET last_login_at = datetime("now") WHERE id = ?').bind(user.id).run();
@@ -713,7 +713,7 @@ export default {
           success: true,
           token,
           isNewUser: !user.nickname, // 新注册用户无昵称
-          user: { id: user.id, phone: user.phone, nickname: user.nickname, miraType: user.mira_type, isGuest: false }
+          user: { id: user.id, phone: user.phone, nickname: user.nickname, miraType: user.mira_type, avatar: user.avatar || '', isGuest: false }
         }, 200, origin);
       }
 
@@ -785,11 +785,11 @@ export default {
         }
         try {
           const payload = await verifyJWT(env, token);
-          const user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, created_at FROM users WHERE id = ?').bind(payload.uid).first();
+          const user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, avatar, created_at FROM users WHERE id = ?').bind(payload.uid).first();
           if (!user) {
             return jsonResponse({ error: '用户不存在' }, 404, origin);
           }
-          return jsonResponse({ success: true, user: { id: user.id, phone: user.phone, nickname: user.nickname, miraType: user.mira_type, isGuest: !user.phone } }, 200, origin);
+          return jsonResponse({ success: true, user: { id: user.id, phone: user.phone, nickname: user.nickname, miraType: user.mira_type, avatar: user.avatar || '', isGuest: !user.phone } }, 200, origin);
         } catch (e) {
           return jsonResponse({ error: 'Token已过期' }, 401, origin);
         }
@@ -1200,6 +1200,8 @@ export default {
           // 为老 users 表添加密码字段（如果不存在）
           try { await env.DB.prepare('ALTER TABLE users ADD COLUMN password_hash TEXT').run(); } catch(e) { /* 字段已存在 */ }
           try { await env.DB.prepare('ALTER TABLE users ADD COLUMN password_salt TEXT').run(); } catch(e) { /* 字段已存在 */ }
+          // 为 users 表添加 avatar 字段（预设头像标识）
+          try { await env.DB.prepare('ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT ""').run(); } catch(e) { /* 字段已存在 */ }
 
           return jsonResponse({ success: true, message: '数据库表创建/验证完成' }, 200, origin);
         } catch (err) {
@@ -1225,6 +1227,28 @@ export default {
 
         await env.DB.prepare('UPDATE users SET nickname = ? WHERE id = ?').bind(nickname.trim(), auth.uid).run();
         return jsonResponse({ success: true, user: { nickname: nickname.trim() } }, 200, origin);
+      }
+
+      // 修改头像（PUT /api/user/avatar）
+      if (path === '/api/user/avatar' && request.method === 'PUT') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { avatar } = body;
+        // avatar 是预设头像标识符，如 "aurora"、"ember" 等，限制长度防止滥用
+        if (!avatar || typeof avatar !== 'string' || avatar.length < 1 || avatar.length > 30) {
+          return jsonResponse({ error: '头像标识无效' }, 400, origin);
+        }
+        // 仅允许字母数字下划线
+        if (!/^[a-zA-Z0-9_]+$/.test(avatar)) {
+          return jsonResponse({ error: '头像标识格式错误' }, 400, origin);
+        }
+
+        await env.DB.prepare('UPDATE users SET avatar = ? WHERE id = ?').bind(avatar, auth.uid).run();
+        return jsonResponse({ success: true, user: { avatar: avatar } }, 200, origin);
       }
 
       // 修改密码（PUT /api/user/password）

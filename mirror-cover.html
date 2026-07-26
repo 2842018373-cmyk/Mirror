@@ -99,6 +99,23 @@
     .mode-card-title { font-size: 1.2rem; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
     .mode-card-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
 
+    /* 主页 MIRA 结果卡片 */
+    .home-mira-card { width:100%; max-width:480px; background: linear-gradient(135deg, rgba(200,184,160,0.08), rgba(126,167,255,0.06)); border: 1px solid rgba(200,184,160,0.25); border-radius: 20px; padding: 20px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: all 0.3s var(--ease); }
+    .home-mira-card:active { transform: scale(0.98); }
+    .home-mira-card:hover { border-color: rgba(200,184,160,0.45); box-shadow: 0 8px 30px rgba(200,184,160,0.1); }
+    .home-mira-img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(212,175,55,0.3); flex-shrink: 0; background: var(--surface); }
+    .home-mira-info { flex: 1; min-width: 0; }
+    .home-mira-label { font-size: 0.7rem; color: var(--faint); letter-spacing: 0.1em; margin-bottom: 4px; }
+    .home-mira-code { font-size: 1.3rem; font-weight: 700; color: #D4AF37; letter-spacing: 2px; margin-bottom: 2px; }
+    .home-mira-name { font-size: 0.92rem; color: var(--ink); margin-bottom: 4px; font-weight: 500; }
+    .home-mira-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .home-mira-arrow { color: var(--faint); font-size: 1.5rem; flex-shrink: 0; }
+    .home-mira-empty { width:100%; max-width:480px; background: var(--surface-glass); border: 1px dashed var(--rule); border-radius: 20px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.3s var(--ease); }
+    .home-mira-empty:hover { border-color: rgba(200,184,160,0.3); }
+    .home-mira-empty-icon { font-size: 2rem; margin-bottom: 8px; }
+    .home-mira-empty-text { font-size: 0.9rem; color: var(--ink); margin-bottom: 4px; font-weight: 500; }
+    .home-mira-empty-hint { font-size: 0.78rem; color: var(--muted); }
+
     /* 顶部进度条 */
     .chat-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(126,167,255,0.1); z-index: 10; }
     .chat-progress-fill { height: 100%; background: linear-gradient(90deg, var(--blue), var(--cyan)); transition: width 0.5s var(--ease); width: 0%; }
@@ -612,23 +629,41 @@
       margin: 0 16px 16px; padding: 20px; border-radius: 16px;
       background: var(--surface-glass); border: 1px solid var(--rule);
       display: flex; align-items: center; gap: 14px;
+      cursor: pointer; transition: all 0.3s var(--ease);
     }
+    .mine-user-card:active { transform: scale(0.98); border-color: rgba(126,167,255,0.3); }
     .mine-avatar {
       width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
       background: linear-gradient(135deg, var(--blue), var(--cyan));
       display: flex; align-items: center; justify-content: center;
       font-size: 1.4rem; font-weight: 600; color: var(--bg);
+      position: relative; overflow: hidden;
     }
+    .mine-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .mine-avatar.has-image { background: none; }
     .mine-user-info { flex: 1; min-width: 0; }
     .mine-user-name { font-size: 1.05rem; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
-    .mine-user-name .edit-icon { font-size: 0.85rem; color: var(--faint); cursor: pointer; transition: color 0.2s; }
-    .mine-user-name .edit-icon:active { color: var(--blue); }
+    .mine-user-name .edit-icon { font-size: 0.85rem; color: var(--faint); transition: color 0.2s; }
     .mine-user-meta { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
     .mine-user-badge {
       display: inline-block; font-size: 0.68rem; padding: 2px 8px; border-radius: 999px;
       background: var(--surface); border: 1px solid var(--rule); color: var(--faint); margin-left: 6px;
     }
     .mine-user-badge.phone { color: var(--cyan); border-color: rgba(154,230,255,0.2); }
+
+    /* 头像/昵称编辑弹窗 */
+    .profile-edit-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0 16px;
+    }
+    .avatar-option {
+      aspect-ratio: 1; border-radius: 50%; cursor: pointer; border: 2px solid transparent;
+      transition: all 0.2s var(--ease); display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; position: relative; overflow: hidden;
+    }
+    .avatar-option:active { transform: scale(0.9); }
+    .avatar-option.selected { border-color: #D4AF37; box-shadow: 0 0 12px rgba(212,175,55,0.3); }
+    .avatar-option img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-option .avatar-emoji { font-size: 1.6rem; }
 
     /* 统计条 */
     .mine-stats {
@@ -876,6 +911,8 @@
       </div>
     </div>
     <div class="chat-thread" style="display:flex; flex-direction:column; align-items:center; padding:32px 24px; gap:20px; background:#08090B; overflow-y:auto; flex:1;">
+      <!-- 主页 MIRA 结果卡片（登录用户动态加载） -->
+      <div id="homeMiraContainer"></div>
       <!-- 单人模式 -->
       <div class="mode-card" id="modeSingle" style="cursor:pointer; width:100%; max-width:480px;">
         <div class="mode-card-icon" style="font-size:2.5rem; margin-bottom:16px;">&#129489;</div>
@@ -3737,11 +3774,11 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var ctaBtn = document.getElementById('profileCtaBtn');
       if (closeBtn && !closeBtn._bound) {
         closeBtn._bound = true;
-        closeBtn.onclick = function() { overlay.classList.remove('active'); showBottomNav(); };
+        closeBtn.onclick = function() { overlay.classList.remove('active'); showBottomNav(); loadHomeMira(); };
       }
       if (overlay && !overlay._bound) {
         overlay._bound = true;
-        overlay.onclick = function(e) { if (e.target === overlay) { overlay.classList.remove('active'); showBottomNav(); } };
+        overlay.onclick = function(e) { if (e.target === overlay) { overlay.classList.remove('active'); showBottomNav(); loadHomeMira(); } };
       }
       if (restartBtn && !restartBtn._bound) {
         restartBtn._bound = true;
@@ -3939,6 +3976,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           document.getElementById('modeSelectView').style.display = 'flex';
           document.getElementById('modeSelectView').classList.add('active');
           showBottomNav();
+          // 进入主页时加载 MIRA 结果卡片
+          loadHomeMira();
         }, 800);
       }, 600);
     };
@@ -4520,6 +4559,56 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // 底部导航栏 & 发现页（阶段 E / F）
     // ════════════════════════════════════════════════════════════════════════════════════════════
 
+    // 主页 MIRA 结果卡片加载
+    async function loadHomeMira() {
+      var container = document.getElementById('homeMiraContainer');
+      if (!container) return;
+      // 未登录用户不显示主页 MIRA 卡片
+      if (!mirrorToken) { container.innerHTML = ''; return; }
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/mira', {
+          headers: { 'Authorization': 'Bearer ' + mirrorToken }
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        if (!data.mira) {
+          // 未测试：显示引导卡片
+          container.innerHTML =
+            '<div class="home-mira-empty" onclick="startQuiz()">' +
+              '<div class="home-mira-empty-icon">🎨</div>' +
+              '<div class="home-mira-empty-text">测测你的 MIRA 人格</div>' +
+              '<div class="home-mira-empty-hint">30道题，看见你在关系中的真实站位</div>' +
+            '</div>';
+          return;
+        }
+        var mira = data.mira;
+        var info = getMiraTypeInfo(mira.mira_type) || { name: '未知类型', desc: '' };
+        container.innerHTML =
+          '<div class="home-mira-card" onclick="showHomeMiraDetail(\'' + escapeHtml(mira.mira_type || '') + '\')">' +
+            '<img class="home-mira-img" src="mira-images/' + encodeURIComponent(mira.mira_type || '') + '.jpg" alt="' + escapeHtml(info.name) + '" onerror="this.style.opacity=0.2" />' +
+            '<div class="home-mira-info">' +
+              '<div class="home-mira-label">你的 MIRA 人格</div>' +
+              '<div class="home-mira-code">' + escapeHtml(mira.mira_type || '') + '</div>' +
+              '<div class="home-mira-name">' + escapeHtml(info.name) + '</div>' +
+              '<div class="home-mira-desc">' + escapeHtml(info.desc || '') + '</div>' +
+            '</div>' +
+            '<div class="home-mira-arrow">›</div>' +
+          '</div>';
+      } catch (e) {
+        // 静默失败，不影响主页其他功能
+        container.innerHTML = '';
+      }
+    }
+
+    // 主页 MIRA 卡片点击查看详情
+    function showHomeMiraDetail(typeCode) {
+      var info = getMiraTypeInfo(typeCode);
+      if (!info) return;
+      if (window.openMiraOverlay) {
+        window.openMiraOverlay(info);
+      }
+    }
+
     // 切换底部 Tab
     function switchTab(tabName) {
       var tabDiscover = document.getElementById('tabDiscover');
@@ -4536,6 +4625,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       } else if (tabName === 'mine') {
         if (tabMine) tabMine.style.display = 'block';
         initMinePage();
+      } else if (tabName === 'home') {
+        // 回到主页时刷新 MIRA 卡片（测试完成后能立即看到结果）
+        loadHomeMira();
       }
 
       // 更新导航栏激活状态
@@ -4610,7 +4702,19 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var u = mirrorUser || {};
       var nickname = u.nickname || (u.phone ? u.phone.slice(-4) + '用户' : 'Mirror用户');
       document.getElementById('mineNickname').textContent = nickname;
-      document.getElementById('mineAvatar').textContent = nickname.charAt(0).toUpperCase();
+
+      // 头像渲染：优先用预设头像，否则用昵称首字母
+      var avatarEl = document.getElementById('mineAvatar');
+      var avatarInfo = getAvatarInfo(u.avatar);
+      if (avatarInfo.type === 'emoji') {
+        avatarEl.innerHTML = '<span style="font-size:1.6rem;">' + avatarInfo.value + '</span>';
+        avatarEl.classList.remove('has-image');
+        avatarEl.style.background = avatarInfo.bg || 'linear-gradient(135deg, var(--blue), var(--cyan))';
+      } else {
+        avatarEl.textContent = nickname.charAt(0).toUpperCase();
+        avatarEl.classList.remove('has-image');
+        avatarEl.style.background = 'linear-gradient(135deg, var(--blue), var(--cyan))';
+      }
 
       var metaEl = document.getElementById('mineUserMeta');
       if (u.phone) {
@@ -4901,18 +5005,76 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       document.getElementById('mineDetailOverlay').classList.remove('active');
     }
 
-    // 昵称编辑
-    function openNicknameModal() {
+    // 预设头像列表（emoji 风格，无需文件存储）
+    var AVATAR_PRESETS = [
+      { id: 'aurora', emoji: '🌙', bg: 'linear-gradient(135deg,#1a1a3e,#4a4a8e)' },
+      { id: 'ember',  emoji: '🔥', bg: 'linear-gradient(135deg,#3e1a1a,#8e4a4a)' },
+      { id: 'ocean',  emoji: '🌊', bg: 'linear-gradient(135deg,#1a2e3e,#4a6a8e)' },
+      { id: 'forest', emoji: '🌿', bg: 'linear-gradient(135deg,#1a3e1a,#4a8e4a)' },
+      { id: 'sun',    emoji: '☀️', bg: 'linear-gradient(135deg,#3e3e1a,#8e8e4a)' },
+      { id: 'bloom',  emoji: '🌸', bg: 'linear-gradient(135deg,#3e1a3e,#8e4a8e)' },
+      { id: 'crystal',emoji: '💎', bg: 'linear-gradient(135deg,#1a3e3e,#4a8e8e)' },
+      { id: 'star',   emoji: '⭐', bg: 'linear-gradient(135deg,#3e2a1a,#8e6a4a)' },
+      { id: 'cloud',  emoji: '☁️', bg: 'linear-gradient(135deg,#2a2a3e,#6a6a8e)' },
+      { id: 'leaf',   emoji: '🍃', bg: 'linear-gradient(135deg,#1a3e2a,#4a8e6a)' },
+      { id: 'rain',   emoji: '🌧️', bg: 'linear-gradient(135deg,#1a2a3e,#4a6a8e)' },
+      { id: 'snow',   emoji: '❄️', bg: 'linear-gradient(135deg,#2a3e4a,#6a8ea0)' },
+    ];
+
+    // 根据 avatar 标识获取头像信息
+    function getAvatarInfo(avatarId) {
+      if (!avatarId) return { type: 'initial' };
+      for (var i = 0; i < AVATAR_PRESETS.length; i++) {
+        if (AVATAR_PRESETS[i].id === avatarId) {
+          return { type: 'emoji', value: AVATAR_PRESETS[i].emoji, bg: AVATAR_PRESETS[i].bg };
+        }
+      }
+      return { type: 'initial' };
+    }
+
+    // 当前编辑中选中的头像
+    var _editingAvatarId = '';
+
+    // 打开个人资料编辑弹窗（头像+昵称）
+    function openProfileEditModal() {
       var current = mirrorUser ? (mirrorUser.nickname || '') : '';
       document.getElementById('nicknameInput').value = current;
       document.getElementById('nicknameError').textContent = '';
+      _editingAvatarId = (mirrorUser && mirrorUser.avatar) || '';
+
+      // 渲染头像选择网格
+      var grid = document.getElementById('avatarGrid');
+      var html = '';
+      AVATAR_PRESETS.forEach(function(a) {
+        var selected = a.id === _editingAvatarId ? ' selected' : '';
+        html += '<div class="avatar-option' + selected + '" style="background:' + a.bg + ';" onclick="selectAvatar(\'' + a.id + '\')">' +
+          '<span class="avatar-emoji">' + a.emoji + '</span>' +
+        '</div>';
+      });
+      grid.innerHTML = html;
+
       document.getElementById('nicknameModal').classList.add('active');
       setTimeout(function() { document.getElementById('nicknameInput').focus(); }, 100);
     }
+
+    // 兼容旧调用
+    function openNicknameModal() { openProfileEditModal(); }
+
+    // 选择头像
+    function selectAvatar(id) {
+      _editingAvatarId = id;
+      document.querySelectorAll('.avatar-option').forEach(function(el) {
+        el.classList.remove('selected');
+      });
+      event.currentTarget.classList.add('selected');
+    }
+
     function closeNicknameModal() {
       document.getElementById('nicknameModal').classList.remove('active');
     }
-    async function submitNickname() {
+
+    // 提交个人资料编辑（头像+昵称）
+    async function submitProfileEdit() {
       var nickname = document.getElementById('nicknameInput').value.trim();
       var errEl = document.getElementById('nicknameError');
       errEl.textContent = '';
@@ -4923,6 +5085,20 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       }
 
       try {
+        // 如果头像有变化，先更新头像
+        var avatarChanged = _editingAvatarId && (!mirrorUser.avatar || mirrorUser.avatar !== _editingAvatarId);
+        if (avatarChanged) {
+          var avatarResp = await fetch(WORKER_API_BASE + '/api/user/avatar', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + mirrorToken },
+            body: JSON.stringify({ avatar: _editingAvatarId })
+          });
+          var avatarData = await avatarResp.json();
+          if (avatarData.error) throw new Error(avatarData.error);
+          mirrorUser.avatar = _editingAvatarId;
+        }
+
+        // 更新昵称
         var resp = await fetch(WORKER_API_BASE + '/api/user/nickname', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + mirrorToken },
@@ -4940,6 +5116,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         errEl.textContent = e.message || '修改失败';
       }
     }
+
+    // 兼容旧调用
+    async function submitNickname() { return submitProfileEdit(); }
 
     // 密码修改
     function openPasswordModal() {
@@ -5498,12 +5677,12 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       </div>
       <div class="mine-body">
         <!-- 用户卡片 -->
-        <div class="mine-user-card">
+        <div class="mine-user-card" onclick="openProfileEditModal()">
           <div class="mine-avatar" id="mineAvatar">M</div>
           <div class="mine-user-info">
             <div class="mine-user-name">
               <span id="mineNickname">用户</span>
-              <span class="edit-icon" onclick="openNicknameModal()">✏️</span>
+              <span class="edit-icon">✏️</span>
             </div>
             <div class="mine-user-meta" id="mineUserMeta">游客用户</div>
           </div>
@@ -5592,16 +5771,18 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     </div>
   </div>
 
-  <!-- 昵称编辑弹窗 -->
+  <!-- 个人资料编辑弹窗（头像+昵称） -->
   <div class="mine-modal-overlay" id="nicknameModal">
     <div class="mine-modal-card">
-      <div class="mine-modal-title">修改昵称</div>
+      <div class="mine-modal-title">编辑资料</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px;">选择头像</div>
+      <div class="profile-edit-grid" id="avatarGrid"></div>
       <input type="text" class="mine-modal-input" id="nicknameInput" placeholder="输入新昵称（1-20字）" maxlength="20" />
-      <div class="mine-modal-hint">昵称将显示在你的个人主页</div>
+      <div class="mine-modal-hint">头像和昵称将显示在你的个人主页</div>
       <div class="mine-modal-error" id="nicknameError"></div>
       <div class="mine-modal-btns">
         <button class="mine-modal-btn cancel" onclick="closeNicknameModal()">取消</button>
-        <button class="mine-modal-btn confirm" onclick="submitNickname()">确认</button>
+        <button class="mine-modal-btn confirm" onclick="submitProfileEdit()">保存</button>
       </div>
     </div>
   </div>
