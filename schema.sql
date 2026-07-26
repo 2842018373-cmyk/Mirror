@@ -62,3 +62,36 @@ CREATE TABLE IF NOT EXISTS sms_send_log (
 CREATE INDEX IF NOT EXISTS idx_sms_log_phone_time ON sms_send_log(phone, created_at);
 CREATE INDEX IF NOT EXISTS idx_sms_log_ip_time ON sms_send_log(ip, created_at_ms);
 CREATE INDEX IF NOT EXISTS idx_sms_log_ip_date ON sms_send_log(ip, created_at);
+
+-- ══════════════════════════════════════════ 个人中心相关表 ══════════════════════════════════════════
+
+-- 镜像对话分析记录表（新增 user_id + report_json 字段，通过 ALTER 增量添加）
+-- ALTER TABLE single_analyses ADD COLUMN user_id INTEGER;
+-- ALTER TABLE single_analyses ADD COLUMN report_json TEXT DEFAULT '{}';
+CREATE INDEX IF NOT EXISTS idx_single_analyses_user ON single_analyses(user_id, created_at);
+
+-- MIRA 测试记录表（新增 user_id + deep_text 字段，通过 ALTER 增量添加）
+-- ALTER TABLE mira_tests ADD COLUMN user_id INTEGER;
+-- ALTER TABLE mira_tests ADD COLUMN deep_text TEXT DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_mira_tests_user ON mira_tests(user_id, created_at);
+
+-- 房间表新增用户关联字段（通过 ALTER 增量添加）
+-- ALTER TABLE rooms ADD COLUMN a_uid INTEGER;
+-- ALTER TABLE rooms ADD COLUMN b_uid INTEGER;
+
+-- 双人房间记录副本表（永久保存，房间24h过期后仍可回看）
+CREATE TABLE IF NOT EXISTS user_room_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,              -- 归属用户
+  room_code TEXT NOT NULL,               -- 原房间码（快照）
+  role TEXT NOT NULL,                    -- 该用户在房间中的角色 'a'/'b'
+  partner_mira_type TEXT,                -- 对方的 MIRA 类型
+  my_mira_type TEXT,                     -- 自己的 MIRA 类型
+  shared_report_json TEXT,               -- 共同报告完整 JSON
+  my_insight_json TEXT,                  -- 自己的洞察 JSON
+  partner_insight_json TEXT,             -- 对方的洞察 JSON（已授权可见）
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  source_room_expires_at DATETIME        -- 原房间过期时间（仅记录用）
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_room_records_user ON user_room_records(user_id, created_at);

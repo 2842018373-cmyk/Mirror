@@ -17,7 +17,7 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(origin) {
   const headers = {
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
   if (ALLOWED_ORIGINS.includes(origin)) {
@@ -90,8 +90,8 @@ function securityCheck(request, env) {
     return { blocked: true, status: 429, reason: 'Too many requests' };
   }
 
-  // 5. 只允许 GET/POST/OPTIONS
-  if (!['GET', 'POST', 'OPTIONS'].includes(method)) {
+  // 5. 只允许 GET/POST/PUT/OPTIONS
+  if (!['GET', 'POST', 'PUT', 'OPTIONS'].includes(method)) {
     return { blocked: true, status: 405, reason: 'Method not allowed' };
   }
 
@@ -447,6 +447,21 @@ async function verifyJWT(env, token) {
   if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Token expired');
 
   return payload;
+}
+
+// 统一鉴权辅助函数：从请求头提取 JWT，返回 {uid, user, error}
+async function getAuthUser(request, env) {
+  const authHeader = request.headers.get('Authorization') || '';
+  const token = authHeader.replace('Bearer ', '').trim();
+  if (!token) return { error: '未登录', code: 'NO_TOKEN' };
+  try {
+    const payload = await verifyJWT(env, token);
+    const user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type FROM users WHERE id = ?').bind(payload.uid).first();
+    if (!user) return { error: '用户不存在', code: 'USER_NOT_FOUND' };
+    return { uid: payload.uid, user, payload };
+  } catch (e) {
+    return { error: 'Token无效或已过期', code: 'INVALID_TOKEN' };
+  }
 }
 
 // ══════════════════════════════════════════ 主处理函数 ══════════════════════════════════════════
@@ -954,10 +969,17 @@ export default {
         if (!prompt || typeof prompt !== 'string') return jsonResponse({ error: 'prompt 不能为空' }, 400, origin);
         if (prompt.length > 10000) return jsonResponse({ error: 'prompt 过长' }, 400, origin);
 
+        // 尝试从请求头拿 uid（无 token 则 uid=null，兼容游客）
+        let uid = null;
+        try {
+          const auth = await getAuthUser(request, env);
+          if (!auth.error && auth.uid) uid = auth.uid;
+        } catch (e) { /* 游客模式 */ }
+
         const result = await callAI(env, prompt, mode || 'single', history || []);
 
         if (!result.error && (mode || 'single') === 'single') {
-          ctx.waitUntil(saveSingleAnalysis(env, prompt, result));
+          ctx.waitUntil(saveSingleAnalysis(env, prompt, result, uid));
         }
 
         return jsonResponse(result, result.error ? 500 : 200, origin);
@@ -988,11 +1010,48 @@ export default {
         let body;
         try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
 
-        const { prompt } = body;
+        const { prompt, scores, answers } = body;
         if (!prompt || typeof prompt !== 'string') return jsonResponse({ error: 'prompt 不能为空' }, 400, origin);
         if (prompt.length > 15000) return jsonResponse({ error: 'prompt 过长' }, 400, origin);
 
+        // 尝试从请求头拿 uid
+        let uid = null;
+        try {
+          const auth = await getAuthUser(request, env);
+          if (!auth.error && auth.uid) uid = auth.uid;
+        } catch (e) { /* 游客模式 */ }
+
         const result = await callAI(env, prompt, 'quiz', []);
+
+        // AI 返回成功且有 uid，异步保存到 mira_tests 表 + 更新 users.mira_type
+        if (uid && !result.error && result.miraType) {
+          ctx.waitUntil((async () => {
+            try {
+              let scoresJson = '{}';
+              let answersJson = '{}';
+              try { scoresJson = JSON.stringify(scores || {}); } catch (e) { scoresJson = '{}'; }
+              try { answersJson = JSON.stringify(answers || {}); } catch (e) { answersJson = '{}'; }
+
+              await env.DB.prepare(
+                'INSERT INTO mira_tests (user_id, mira_type, expression, focus, portrait, scores_json, answers_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"))'
+              ).bind(
+                uid,
+                result.miraType || '',
+                result.expression || '',
+                result.focus || '',
+                result.portrait || '',
+                scoresJson,
+                answersJson,
+              ).run();
+
+              // 同时更新 users.mira_type
+              await env.DB.prepare('UPDATE users SET mira_type = ? WHERE id = ?').bind(result.miraType || '', uid).run();
+            } catch (err) {
+              console.error('saveMiraTest error:', err.message);
+            }
+          })());
+        }
+
         return jsonResponse(result, result.error ? 500 : 200, origin);
       }
 
@@ -1102,6 +1161,42 @@ export default {
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sms_log_ip_time ON sms_send_log(ip, created_at_ms)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sms_log_ip_date ON sms_send_log(ip, created_at)').run();
 
+          // ═══ 个人中心相关表 ═══
+
+          // 双人房间记录副本表（永久保存）
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS user_room_records (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              room_code TEXT NOT NULL,
+              role TEXT NOT NULL,
+              partner_mira_type TEXT,
+              my_mira_type TEXT,
+              shared_report_json TEXT,
+              my_insight_json TEXT,
+              partner_insight_json TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              source_room_expires_at DATETIME
+            )
+          `).run();
+
+          // 为 single_analyses 增加 user_id + report_json
+          try { await env.DB.prepare('ALTER TABLE single_analyses ADD COLUMN user_id INTEGER').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare("ALTER TABLE single_analyses ADD COLUMN report_json TEXT DEFAULT '{}'").run(); } catch(e) { /* 已存在 */ }
+
+          // 为 mira_tests 增加 user_id + deep_text
+          try { await env.DB.prepare('ALTER TABLE mira_tests ADD COLUMN user_id INTEGER').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare("ALTER TABLE mira_tests ADD COLUMN deep_text TEXT DEFAULT ''").run(); } catch(e) { /* 已存在 */ }
+
+          // 为 rooms 增加 a_uid + b_uid
+          try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN a_uid INTEGER').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN b_uid INTEGER').run(); } catch(e) { /* 已存在 */ }
+
+          // 个人中心索引
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_single_analyses_user ON single_analyses(user_id, created_at)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_mira_tests_user ON mira_tests(user_id, created_at)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_user_room_records_user ON user_room_records(user_id, created_at)').run();
+
           // 为老 users 表添加密码字段（如果不存在）
           try { await env.DB.prepare('ALTER TABLE users ADD COLUMN password_hash TEXT').run(); } catch(e) { /* 字段已存在 */ }
           try { await env.DB.prepare('ALTER TABLE users ADD COLUMN password_salt TEXT').run(); } catch(e) { /* 字段已存在 */ }
@@ -1111,6 +1206,358 @@ export default {
           console.error('init-db error:', err.message);
           return jsonResponse({ error: '数据库初始化失败' }, 500, origin);
         }
+      }
+
+      // ══════════════════════════════════════════ 个人中心 API（阶段B：账号管理） ══════════════════════════════════════════
+
+      // 修改昵称（PUT /api/user/nickname）
+      if (path === '/api/user/nickname' && request.method === 'PUT') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { nickname } = body;
+        if (!nickname || typeof nickname !== 'string' || nickname.trim().length === 0 || nickname.length > 20) {
+          return jsonResponse({ error: '昵称长度需为1-20个字符' }, 400, origin);
+        }
+
+        await env.DB.prepare('UPDATE users SET nickname = ? WHERE id = ?').bind(nickname.trim(), auth.uid).run();
+        return jsonResponse({ success: true, user: { nickname: nickname.trim() } }, 200, origin);
+      }
+
+      // 修改密码（PUT /api/user/password）
+      if (path === '/api/user/password' && request.method === 'PUT') {
+        if (!checkRateLimit(clientIP, 'change_password', 5, 60000)) {
+          return jsonResponse({ error: '操作过于频繁，请稍后再试' }, 429, origin);
+        }
+
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { oldPassword, newPassword } = body;
+        if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 4 || newPassword.length > 32) {
+          return jsonResponse({ error: '新密码长度需为4-32个字符' }, 400, origin);
+        }
+        if (!oldPassword || typeof oldPassword !== 'string') {
+          return jsonResponse({ error: '请输入旧密码' }, 400, origin);
+        }
+
+        // 查询用户密码
+        const userRow = await env.DB.prepare('SELECT password_hash, password_salt FROM users WHERE id = ?').bind(auth.uid).first();
+        if (!userRow) return jsonResponse({ error: '用户不存在' }, 404, origin);
+
+        // 若无密码（手机号登录用户从未设过密码），先用默认密码1234初始化
+        let storedHash = userRow.password_hash;
+        let storedSalt = userRow.password_salt;
+        if (!storedHash || !storedSalt) {
+          const initResult = await initUserPassword(env, auth.uid);
+          storedHash = initResult.hash;
+          storedSalt = initResult.salt;
+        }
+
+        // 校验旧密码
+        const oldHash = await hashPassword(oldPassword, storedSalt);
+        if (oldHash !== storedHash) {
+          return jsonResponse({ error: '旧密码错误' }, 400, origin);
+        }
+
+        // 生成新salt + hash 并更新
+        const newSalt = generateSalt();
+        const newHash = await hashPassword(newPassword, newSalt);
+        await env.DB.prepare('UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?').bind(newHash, newSalt, auth.uid).run();
+
+        return jsonResponse({ success: true }, 200, origin);
+      }
+
+      // 更换手机号 - 发送验证码（POST /api/user/phone/send-code）
+      if (path === '/api/user/phone/send-code' && request.method === 'POST') {
+        if (!checkRateLimit(clientIP, 'phone_send_code', 5, 60000)) {
+          return jsonResponse({ error: '操作过于频繁，请稍后再试' }, 429, origin);
+        }
+
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { newPhone, turnstileToken } = body;
+        if (!newPhone || !/^1[3-9]\d{9}$/.test(newPhone)) {
+          return jsonResponse({ error: '手机号格式不正确' }, 400, origin);
+        }
+
+        // 不能与当前手机号相同
+        if (auth.user.phone && auth.user.phone === newPhone) {
+          return jsonResponse({ error: '新手机号不能与当前手机号相同' }, 400, origin);
+        }
+
+        // Turnstile 人机验证
+        const turnstileResult = await verifyTurnstile(env, turnstileToken, clientIP);
+        if (!turnstileResult.success) {
+          return jsonResponse({ error: turnstileResult.error, needTurnstile: true }, 400, origin);
+        }
+
+        // 检查 newPhone 是否已被其他用户占用
+        const existUser = await env.DB.prepare('SELECT id FROM users WHERE phone = ? AND id != ?').bind(newPhone, auth.uid).first();
+        if (existUser) {
+          return jsonResponse({ error: '该手机号已被其他账号绑定' }, 400, origin);
+        }
+
+        // D1 持久化限流
+        const rateResult = await checkSmsRateLimit(env, newPhone, clientIP);
+        if (!rateResult.allowed) {
+          return jsonResponse({ error: rateResult.reason, code: rateResult.code }, 429, origin);
+        }
+
+        // 60秒冷却（基于 verify_codes 表）
+        const existing = await env.DB.prepare('SELECT created_at FROM verify_codes WHERE phone = ?').bind(newPhone).first();
+        if (existing) {
+          const elapsed = Date.now() - new Date(existing.created_at).getTime();
+          if (elapsed < 60000) {
+            return jsonResponse({ error: '请稍后再试', remainSeconds: Math.ceil((60000 - elapsed) / 1000) }, 429, origin);
+          }
+        }
+
+        // 生成6位验证码
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        const expireAt = Date.now() + 5 * 60 * 1000;
+
+        try {
+          await env.DB.prepare(
+            'INSERT OR REPLACE INTO verify_codes (phone, code, expire_at, attempts, created_at) VALUES (?, ?, ?, 0, datetime("now"))'
+          ).bind(newPhone, code, expireAt).run();
+        } catch (dbErr) {
+          console.error('D1 Insert error:', dbErr.message, 'Phone:', newPhone);
+          return jsonResponse({ error: '系统繁忙，请稍后重试' }, 500, origin);
+        }
+
+        // 调用阿里云短信API发送
+        const smsResult = await sendAliyunSms(env, newPhone, { code });
+        if (!smsResult.success) {
+          console.error('SMS send failed:', smsResult.error, 'Phone:', newPhone);
+          if (smsResult.error === '短信服务未配置') {
+            console.log(`[SMS-DEV] 换号验证码: ${code}, 手机号: ${newPhone}`);
+            return jsonResponse({ success: true, expireIn: 300, devCode: code }, 200, origin);
+          }
+          return jsonResponse({ error: '短信发送失败，请稍后重试' }, 500, origin);
+        }
+
+        try { await logSmsSend(env, newPhone, clientIP); } catch (logErr) { console.error('SMS log error:', logErr.message); }
+
+        return jsonResponse({ success: true, expireIn: 300 }, 200, origin);
+      }
+
+      // 更换手机号 - 验证并更换（PUT /api/user/phone）
+      if (path === '/api/user/phone' && request.method === 'PUT') {
+        if (!checkRateLimit(clientIP, 'phone_change', 5, 60000)) {
+          return jsonResponse({ error: '操作过于频繁，请稍后再试' }, 429, origin);
+        }
+
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { newPhone, code } = body;
+        if (!newPhone || !/^1[3-9]\d{9}$/.test(newPhone)) {
+          return jsonResponse({ error: '手机号格式不正确' }, 400, origin);
+        }
+        if (!code || code.length !== 6) {
+          return jsonResponse({ error: '请输入6位验证码' }, 400, origin);
+        }
+
+        // 查验证码
+        const record = await env.DB.prepare('SELECT * FROM verify_codes WHERE phone = ?').bind(newPhone).first();
+        if (!record) {
+          return jsonResponse({ error: '请先获取验证码' }, 400, origin);
+        }
+
+        if (Date.now() > record.expire_at) {
+          await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(newPhone).run();
+          return jsonResponse({ error: '验证码已过期，请重新获取' }, 400, origin);
+        }
+
+        // 错误次数检查（5次错误失效）
+        const newAttempts = (record.attempts || 0) + 1;
+        if (newAttempts > 5) {
+          await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(newPhone).run();
+          return jsonResponse({ error: '尝试次数过多，请重新获取验证码' }, 400, origin);
+        }
+
+        await env.DB.prepare('UPDATE verify_codes SET attempts = ? WHERE phone = ?').bind(newAttempts, newPhone).run();
+
+        if (record.code !== code) {
+          return jsonResponse({ error: '验证码错误' }, 400, origin);
+        }
+
+        // 再次确认 newPhone 未被占用（防并发）
+        const existUser = await env.DB.prepare('SELECT id FROM users WHERE phone = ? AND id != ?').bind(newPhone, auth.uid).first();
+        if (existUser) {
+          await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(newPhone).run();
+          return jsonResponse({ error: '该手机号已被其他账号绑定' }, 400, origin);
+        }
+
+        // 更新手机号，删除验证码记录
+        await env.DB.prepare('UPDATE users SET phone = ? WHERE id = ?').bind(newPhone, auth.uid).run();
+        await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(newPhone).run();
+
+        // 签发新JWT（含新phone）
+        const newToken = await createJWT(env, { uid: auth.uid, gid: auth.user.guest_id || null, phone: newPhone });
+        return jsonResponse({ success: true, token: newToken }, 200, origin);
+      }
+
+      // 退出登录（POST /api/auth/logout）
+      if (path === '/api/auth/logout' && request.method === 'POST') {
+        // 速率限制
+        if (!checkRateLimit(clientIP, 'logout', 5, 60000)) {
+          return jsonResponse({ error: '操作过于频繁，请稍后再试' }, 429, origin);
+        }
+
+        // 鉴权可选：有token则验证，无token也返回成功
+        const authHeader = request.headers.get('Authorization') || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+        if (token) {
+          try { await verifyJWT(env, token); } catch (e) { /* token 无效也允许退出 */ }
+        }
+
+        // JWT 无状态，后端无需特殊处理，前端清 localStorage
+        return jsonResponse({ success: true }, 200, origin);
+      }
+
+      // ══════════════════════════════════════════ 个人中心 API（阶段C：数据查询） ══════════════════════════════════════════
+
+      // 分析记录列表（GET /api/user/analyses）
+      if (path === '/api/user/analyses' && request.method === 'GET') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        let page = parseInt(url.searchParams.get('page') || '1', 10);
+        let size = parseInt(url.searchParams.get('size') || '20', 10);
+        if (!page || page < 1) page = 1;
+        if (!size || size < 1) size = 20;
+        if (size > 50) size = 50;
+        const offset = (page - 1) * size;
+
+        const [listRes, countRes] = await Promise.all([
+          env.DB.prepare('SELECT id, status, mira_type, insight, created_at FROM single_analyses WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?').bind(auth.uid, size, offset).all(),
+          env.DB.prepare('SELECT COUNT(*) as total FROM single_analyses WHERE user_id = ?').bind(auth.uid).first(),
+        ]);
+
+        return jsonResponse({ list: listRes.results || [], total: (countRes && countRes.total) || 0, page }, 200, origin);
+      }
+
+      // 单条分析完整报告（GET /api/user/analyses/:id）
+      if (path.startsWith('/api/user/analyses/') && !path.endsWith('/api/user/analyses/') && request.method === 'GET') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        const idStr = path.split('/').pop();
+        const id = parseInt(idStr, 10);
+        if (!id) return jsonResponse({ error: '无效的记录ID' }, 400, origin);
+
+        const row = await env.DB.prepare('SELECT * FROM single_analyses WHERE id = ? AND user_id = ?').bind(id, auth.uid).first();
+        if (!row) return jsonResponse({ error: '记录不存在' }, 404, origin);
+
+        let reportJson = null;
+        try { reportJson = row.report_json ? JSON.parse(row.report_json) : null; } catch (e) { reportJson = null; }
+
+        return jsonResponse({
+          id: row.id,
+          user_input: row.user_input,
+          fact: row.fact,
+          emotion: row.emotion,
+          need: row.need,
+          misread: row.misread,
+          status: row.status,
+          insight: row.insight,
+          suggest: row.suggest,
+          mira_type: row.mira_type,
+          created_at: row.created_at,
+          report: reportJson,
+        }, 200, origin);
+      }
+
+      // 最新 MIRA 结果（GET /api/user/mira）
+      if (path === '/api/user/mira' && request.method === 'GET') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        const row = await env.DB.prepare('SELECT * FROM mira_tests WHERE user_id = ? ORDER BY created_at DESC LIMIT 1').bind(auth.uid).first();
+        if (!row) return jsonResponse({ mira: null }, 200, origin);
+
+        let scoresJson = null, answersJson = null;
+        try { scoresJson = row.scores_json ? JSON.parse(row.scores_json) : null; } catch (e) { scoresJson = null; }
+        try { answersJson = row.answers_json ? JSON.parse(row.answers_json) : null; } catch (e) { answersJson = null; }
+
+        return jsonResponse({
+          mira: {
+            id: row.id,
+            mira_type: row.mira_type,
+            expression: row.expression,
+            focus: row.focus,
+            portrait: row.portrait,
+            deep_text: row.deep_text || '',
+            scores: scoresJson,
+            answers: answersJson,
+            created_at: row.created_at,
+          }
+        }, 200, origin);
+      }
+
+      // 房间记录列表（GET /api/user/rooms）
+      if (path === '/api/user/rooms' && request.method === 'GET') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        let page = parseInt(url.searchParams.get('page') || '1', 10);
+        let size = parseInt(url.searchParams.get('size') || '20', 10);
+        if (!page || page < 1) page = 1;
+        if (!size || size < 1) size = 20;
+        if (size > 50) size = 50;
+        const offset = (page - 1) * size;
+
+        const [listRes, countRes] = await Promise.all([
+          env.DB.prepare('SELECT id, room_code, role, my_mira_type, partner_mira_type, created_at FROM user_room_records WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?').bind(auth.uid, size, offset).all(),
+          env.DB.prepare('SELECT COUNT(*) as total FROM user_room_records WHERE user_id = ?').bind(auth.uid).first(),
+        ]);
+
+        return jsonResponse({ list: listRes.results || [], total: (countRes && countRes.total) || 0, page }, 200, origin);
+      }
+
+      // 单条房间记录详情（GET /api/user/rooms/:id）
+      if (path.startsWith('/api/user/rooms/') && !path.endsWith('/api/user/rooms/') && request.method === 'GET') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        const idStr = path.split('/').pop();
+        const id = parseInt(idStr, 10);
+        if (!id) return jsonResponse({ error: '无效的记录ID' }, 400, origin);
+
+        const row = await env.DB.prepare('SELECT * FROM user_room_records WHERE id = ? AND user_id = ?').bind(id, auth.uid).first();
+        if (!row) return jsonResponse({ error: '记录不存在' }, 404, origin);
+
+        let sharedReportJson = null, myInsightJson = null, partnerInsightJson = null;
+        try { sharedReportJson = row.shared_report_json ? JSON.parse(row.shared_report_json) : null; } catch (e) { sharedReportJson = null; }
+        try { myInsightJson = row.my_insight_json ? JSON.parse(row.my_insight_json) : null; } catch (e) { myInsightJson = null; }
+        try { partnerInsightJson = row.partner_insight_json ? JSON.parse(row.partner_insight_json) : null; } catch (e) { partnerInsightJson = null; }
+
+        return jsonResponse({
+          id: row.id,
+          room_code: row.room_code,
+          role: row.role,
+          my_mira_type: row.my_mira_type,
+          partner_mira_type: row.partner_mira_type,
+          created_at: row.created_at,
+          shared_report: sharedReportJson,
+          my_insight: myInsightJson,
+          partner_insight: partnerInsightJson,
+        }, 200, origin);
       }
 
       // ══════════════════════════════════════════ 联系方式提交 API ══════════════════════════════════════════
@@ -1381,6 +1828,13 @@ B的MIRA类型：${bInsight.miraType || 'BO'}
     await env.DB.prepare(
       'UPDATE rooms SET shared_report = ?, status = ? WHERE id = ?'
     ).bind(JSON.stringify(result), 'completed', code).run();
+
+    // 报告生成成功后，复制房间记录到 a/b 双方的 user_room_records（永久保存）
+    try {
+      await copyRoomToUserRecords(env, code);
+    } catch (copyErr) {
+      console.error('copyRoomToUserRecords error:', copyErr.message);
+    }
   } catch (err) {
     console.error('generateSharedReport error:', err.message);
     await env.DB.prepare("UPDATE rooms SET status = 'error' WHERE id = ? AND status = 'analyzed'").bind(code).run();
@@ -1388,11 +1842,14 @@ B的MIRA类型：${bInsight.miraType || 'BO'}
 }
 
 // 异步保存单人分析结果到 single_analyses 表
-async function saveSingleAnalysis(env, prompt, result) {
+async function saveSingleAnalysis(env, prompt, result, uid = null) {
   try {
     const userInput = (prompt || '').substring(0, 500);
+    // 把完整 AI 结果 JSON 序列化存入 report_json
+    let reportJson = '{}';
+    try { reportJson = JSON.stringify(result); } catch (e) { reportJson = '{}'; }
     await env.DB.prepare(
-      'INSERT INTO single_analyses (user_input, fact, emotion, need, misread, status, insight, suggest, mira_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))'
+      'INSERT INTO single_analyses (user_input, fact, emotion, need, misread, status, insight, suggest, mira_type, user_id, report_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))'
     ).bind(
       userInput,
       result.fact || '',
@@ -1403,8 +1860,64 @@ async function saveSingleAnalysis(env, prompt, result) {
       result.insight || '',
       result.suggest || '',
       result.miraType || '',
+      uid,
+      reportJson,
     ).run();
   } catch (err) {
     console.error('saveSingleAnalysis error:', err.message);
+  }
+}
+
+// 复制房间记录到 a/b 双方的 user_room_records（永久保存，防重复）
+async function copyRoomToUserRecords(env, code) {
+  const room = await env.DB.prepare('SELECT a_uid, b_uid, a_insight, b_insight, shared_report, expires_at FROM rooms WHERE id = ?').bind(code).first();
+  if (!room) return;
+
+  const sharedReport = room.shared_report || '{}';
+  let aInsight = null, bInsight = null;
+  try { aInsight = room.a_insight ? JSON.parse(room.a_insight) : null; } catch (e) { aInsight = null; }
+  try { bInsight = room.b_insight ? JSON.parse(room.b_insight) : null; } catch (e) { bInsight = null; }
+
+  const aInsightRaw = room.a_insight || '{}';
+  const bInsightRaw = room.b_insight || '{}';
+
+  // 为 A 端复制
+  if (room.a_uid) {
+    const existA = await env.DB.prepare('SELECT id FROM user_room_records WHERE room_code = ? AND user_id = ?').bind(code, room.a_uid).first();
+    if (!existA) {
+      await env.DB.prepare(
+        'INSERT INTO user_room_records (user_id, room_code, role, my_mira_type, partner_mira_type, shared_report_json, my_insight_json, partner_insight_json, created_at, source_room_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), ?)'
+      ).bind(
+        room.a_uid,
+        code,
+        'a',
+        (aInsight && aInsight.miraType) || '',
+        (bInsight && bInsight.miraType) || '',
+        sharedReport,
+        aInsightRaw,
+        bInsightRaw,
+        room.expires_at || null,
+      ).run();
+    }
+  }
+
+  // 为 B 端复制
+  if (room.b_uid) {
+    const existB = await env.DB.prepare('SELECT id FROM user_room_records WHERE room_code = ? AND user_id = ?').bind(code, room.b_uid).first();
+    if (!existB) {
+      await env.DB.prepare(
+        'INSERT INTO user_room_records (user_id, room_code, role, my_mira_type, partner_mira_type, shared_report_json, my_insight_json, partner_insight_json, created_at, source_room_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), ?)'
+      ).bind(
+        room.b_uid,
+        code,
+        'b',
+        (bInsight && bInsight.miraType) || '',
+        (aInsight && aInsight.miraType) || '',
+        sharedReport,
+        bInsightRaw,
+        aInsightRaw,
+        room.expires_at || null,
+      ).run();
+    }
   }
 }
