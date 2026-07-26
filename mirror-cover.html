@@ -562,6 +562,45 @@
     .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.3s var(--ease); }
     .faq-a-inner { padding: 0 20px 16px; font-size: 0.84rem; line-height: 1.85; color: var(--muted); }
 
+    /* 教程卡片 */
+    .tutorial-list { padding: 12px 16px 8px; }
+    .tutorial-card {
+      background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 16px;
+      padding: 18px 16px; margin-bottom: 12px;
+    }
+    .tutorial-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .tutorial-icon {
+      width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+      background: var(--surface); border: 1px solid var(--rule);
+    }
+    .tutorial-title { font-size: 0.95rem; font-weight: 600; color: var(--ink); }
+    .tutorial-scene { font-size: 0.74rem; color: var(--blue); margin-top: 2px; }
+    .tutorial-steps { display: flex; flex-direction: column; gap: 10px; }
+    .tutorial-step {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 0.84rem; color: var(--muted); line-height: 1.6;
+    }
+    .step-num {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(126,167,255,0.15); color: var(--blue);
+      font-size: 0.72rem; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+    .tutorial-tip {
+      margin-top: 12px; padding: 8px 12px; border-radius: 10px;
+      background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.12);
+      font-size: 0.76rem; color: #C8B8A0; line-height: 1.5;
+    }
+    .tutorial-sep {
+      text-align: center; font-size: 0.7rem; color: var(--faint);
+      letter-spacing: 1px; padding: 16px 0 8px;
+    }
+    .faq-mini-title {
+      padding: 0 20px 8px; font-size: 0.82rem; font-weight: 600; color: var(--ink);
+    }
+
     /* ══════════════════════════════════════════ 我的页 ══════════════════════════════════════════ */
     .mine-sticky-top { position: sticky; top: 0; z-index: 10; background: var(--bg); }
     .mine-title { padding: 20px 20px 10px; font-size: 1.35rem; font-weight: 600; color: var(--ink); letter-spacing: 0.02em; }
@@ -5353,51 +5392,89 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         </div>
       </div>
 
-      <!-- 新手教程 FAQ -->
+      <!-- 新手教程 -->
       <div class="discover-panel" id="discoverFaq" style="display:none;">
-        <div class="faq-list">
 
-          <div class="faq-item">
-            <div class="faq-q" onclick="toggleFaq(this)">我和人吵架了，想搞清楚怎么回事</div>
-            <div class="faq-a"><div class="faq-a-inner">用「单人模式 → 对话分析」。<br><br>把那段对话原样写下来——你说的话、对方说的话，越完整越好。不用组织语言，想到什么写什么。<br><br>Mirror 会帮你拆成5层：事实是什么、双方情绪、各自需求、哪里误读了、可以怎么做。<br><br>比如："他说你怎么总不管我，我说我每天加班到很晚你还要我怎样，然后他就不说话了。"</div></div>
+        <!-- 功能教程卡片 -->
+        <div class="tutorial-list">
+
+          <!-- 卡片1：单人对话分析 -->
+          <div class="tutorial-card">
+            <div class="tutorial-card-head">
+              <div class="tutorial-icon">🔍</div>
+              <div>
+                <div class="tutorial-title">镜像对话分析</div>
+                <div class="tutorial-scene">适合：搞懂一段对话或争吵</div>
+              </div>
+            </div>
+            <div class="tutorial-steps">
+              <div class="tutorial-step"><span class="step-num">1</span><span>主页选「单人模式 → 对话分析」</span></div>
+              <div class="tutorial-step"><span class="step-num">2</span><span>写下那段对话——你说的话、对方说的话，越完整越好</span></div>
+              <div class="tutorial-step"><span class="step-num">3</span><span>等10秒，Mirror 拆成5层：事实、情绪、需求、误读、建议</span></div>
+            </div>
+            <div class="tutorial-tip">💡 不用组织语言，想到什么写什么。比如："他说我总不管他，我说我加班到很晚你还要我怎样，然后他就不说话了。"</div>
           </div>
 
-          <div class="faq-item">
-            <div class="faq-q" onclick="toggleFaq(this)">我想和对方一起看清我们的关系模式</div>
-            <div class="faq-a"><div class="faq-a-inner">用「双人模式 → 对话分析」。<br><br>创建房间后会得到一个6位房间码，微信发给对方就行。对方打开 mirrorsoul.top，输入码就能加入，不用注册。<br><br>你们各自写自己的视角，互相看不到原文。两人都写完后，Mirror 生成一份共同关系报告。<br><br>房间24小时有效，但报告会永久保存在「我的」里。</div></div>
+          <!-- 卡片2：双人房间 -->
+          <div class="tutorial-card">
+            <div class="tutorial-card-head">
+              <div class="tutorial-icon">🚪</div>
+              <div>
+                <div class="tutorial-title">双人房间</div>
+                <div class="tutorial-scene">适合：两个人想一起看清关系模式</div>
+              </div>
+            </div>
+            <div class="tutorial-steps">
+              <div class="tutorial-step"><span class="step-num">1</span><span>主页选「双人模式 → 对话分析」，创建房间得到6位房间码</span></div>
+              <div class="tutorial-step"><span class="step-num">2</span><span>把房间码微信发给对方，对方打开 mirrorsoul.top 输入码加入</span></div>
+              <div class="tutorial-step"><span class="step-num">3</span><span>双方各自写自己的视角，互相看不到原文</span></div>
+              <div class="tutorial-step"><span class="step-num">4</span><span>两人都写完后，Mirror 生成共同关系报告</span></div>
+            </div>
+            <div class="tutorial-tip">💡 对方不用注册，用浏览器打开网页输码就行。房间24小时有效，报告永久保存在「我的」里。</div>
           </div>
 
-          <div class="faq-item">
-            <div class="faq-q" onclick="toggleFaq(this)">我想知道自己是什么类型的人</div>
-            <div class="faq-a"><div class="faq-a-inner">做「MIRA 人格测试」。<br><br>30道选择题，5-8分钟。凭第一直觉选，别想太多。测完你会看到自己属于16种关系原型中的哪一种，附带详细分析。<br><br>没有好坏之分，每种类型都有自己的特点和成长方向。</div></div>
-          </div>
-
-          <div class="faq-item">
-            <div class="faq-q" onclick="toggleFaq(this)">输入的内容别人能看到吗？</div>
-            <div class="faq-a"><div class="faq-a-inner">单人模式：只有你自己可见。<br><br>双人模式：对方只能看到 AI 生成的洞察摘要，看不到你的原文。<br><br>所有数据加密存储，不会泄露。</div></div>
-          </div>
-
-          <div class="faq-item">
-            <div class="faq-q" onclick="toggleFaq(this)">不登录能用吗？</div>
-            <div class="faq-a"><div class="faq-a-inner">能用。游客模式可以体验所有功能，但数据存在本地，清浏览器缓存会丢。<br><br>登录后数据永久保存，换设备也能看。建议登录。</div></div>
-          </div>
-
-          <div class="faq-item">
-            <div class="faq-q" onclick="toggleFaq(this)">报告能保存或分享吗？</div>
-            <div class="faq-a"><div class="faq-a-inner">能。分析完可以导出为图片。MIRA 测试结果能生成分享卡片。<br><br>登录用户的报告会自动存到「我的」页面，随时回看。</div></div>
-          </div>
-
-          <div class="faq-item">
-            <div class="faq-q" onclick="toggleFaq(this)">AI 分析靠谱吗？</div>
-            <div class="faq-a"><div class="faq-a-inner">基于 MIRA 框架（依恋理论 + 非暴力沟通），从事实、情绪、需求、误读、行动5个层面拆解，不是随意生成。<br><br>但它是辅助工具，不能替代专业心理咨询。</div></div>
-          </div>
-
-          <div class="faq-item">
-            <div class="faq-q" onclick="toggleFaq(this)">遇到问题怎么联系？</div>
-            <div class="faq-a"><div class="faq-a-inner">主页有「专属顾问一对一解读」入口，可以提交联系方式。也可以通过页面底部反馈。</div></div>
+          <!-- 卡片3：MIRA测试 -->
+          <div class="tutorial-card">
+            <div class="tutorial-card-head">
+              <div class="tutorial-icon">🔮</div>
+              <div>
+                <div class="tutorial-title">MIRA 人格测试</div>
+                <div class="tutorial-scene">适合：想知道自己在关系中是什么类型</div>
+              </div>
+            </div>
+            <div class="tutorial-steps">
+              <div class="tutorial-step"><span class="step-num">1</span><span>主页选「测测你的 MIRA → 开始测试」</span></div>
+              <div class="tutorial-step"><span class="step-num">2</span><span>30道选择题，5-8分钟，凭第一直觉选</span></div>
+              <div class="tutorial-step"><span class="step-num">3</span><span>查看你的关系原型（16种之一）+ 详细分析报告</span></div>
+            </div>
+            <div class="tutorial-tip">💡 没有好坏之分，每种类型都有自己的特点和成长方向。测完去「发现→图鉴」能看到所有类型。</div>
           </div>
 
         </div>
+
+        <!-- 分隔线 -->
+        <div class="tutorial-sep">— 常见问题 —</div>
+
+        <!-- 常见问题（精简） -->
+        <div class="faq-list">
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">输入的内容别人能看到吗？</div>
+            <div class="faq-a"><div class="faq-a-inner">单人模式：只有你自己可见。双人模式：对方只能看到 AI 生成的洞察摘要，看不到你的原文。所有数据加密存储。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">不登录能用吗？</div>
+            <div class="faq-a"><div class="faq-a-inner">能用，游客模式可以体验所有功能。但数据存在本地，清缓存会丢。登录后永久保存，换设备也能看。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">报告能保存或分享吗？</div>
+            <div class="faq-a"><div class="faq-a-inner">能。分析完可导出为图片，MIRA 测试结果能生成分享卡片。登录用户的报告自动存到「我的」页面。</div></div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">AI 分析靠谱吗？</div>
+            <div class="faq-a"><div class="faq-a-inner">基于 MIRA 框架（依恋理论 + 非暴力沟通），从5个层面拆解对话，不是随意生成。但它是辅助工具，不替代专业心理咨询。</div></div>
+          </div>
+        </div>
+
       </div>
 
     </div>
