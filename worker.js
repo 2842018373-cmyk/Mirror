@@ -103,6 +103,85 @@ function securityCheck(request, env) {
   return { blocked: false };
 }
 
+// ══════════════════════════════════════════ Cloudflare Turnstile 人机验证 ══════════════════════════════════════════
+
+// 校验 Turnstile token（服务端向 Cloudflare 验证）
+async function verifyTurnstile(env, token, ip) {
+  const secret = env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    // 未配置 secret key 时，跳过校验（降级，便于逐步上线）
+    return { success: true, skipped: true };
+  }
+  if (!token) {
+    return { success: false, error: '请先完成人机验证' };
+  }
+  try {
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: secret,
+        response: token,
+        remoteip: ip || '',
+      }),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      return { success: true };
+    }
+    return { success: false, error: '人机验证失败，请重试' };
+  } catch (e) {
+    console.error('Turnstile verify error:', e.message);
+    return { success: false, error: '人机验证服务异常' };
+  }
+}
+
+// ══════════════════════════════════════════ D1 持久化限流（短信发送） ══════════════════════════════════════════
+
+// 检查短信发送频率（基于 D1 持久化，防多实例绕过）
+// 限制：同一手机号 60秒冷却 + 每天10次；同一IP 每分钟3次 + 每天20次
+async function checkSmsRateLimit(env, phone, ip) {
+  const now = Date.now();
+  const oneMinAgo = now - 60000;
+  const oneDayAgoMs = now - 24 * 60 * 60 * 1000;
+  // D1 用 datetime 字符串存储 created_at，转毫秒比较
+  const oneDayAgoDate = new Date(oneDayAgoMs).toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+
+  // 1. 手机号维度
+  const phoneToday = await env.DB.prepare(
+    "SELECT COUNT(*) as cnt FROM sms_send_log WHERE phone = ? AND created_at >= ?"
+  ).bind(phone, oneDayAgoDate).first();
+  if (phoneToday && phoneToday.cnt >= 10) {
+    return { allowed: false, reason: '该手机号今日获取验证码次数已达上限（10次），请明日再试', code: 'PHONE_DAILY_LIMIT' };
+  }
+
+  // 2. IP 维度 - 每分钟3次
+  const ipMin = await env.DB.prepare(
+    "SELECT COUNT(*) as cnt FROM sms_send_log WHERE ip = ? AND created_at_ms >= ?"
+  ).bind(ip, oneMinAgo).first();
+  if (ipMin && ipMin.cnt >= 3) {
+    return { allowed: false, reason: '操作过于频繁，请稍后再试', code: 'IP_MINUTE_LIMIT' };
+  }
+
+  // 3. IP 维度 - 每天20次
+  const ipToday = await env.DB.prepare(
+    "SELECT COUNT(*) as cnt FROM sms_send_log WHERE ip = ? AND created_at >= ?"
+  ).bind(ip, oneDayAgoDate).first();
+  if (ipToday && ipToday.cnt >= 20) {
+    return { allowed: false, reason: '今日请求次数过多，请明日再试', code: 'IP_DAILY_LIMIT' };
+  }
+
+  return { allowed: true };
+}
+
+// 记录短信发送日志（用于持久化限流）
+async function logSmsSend(env, phone, ip) {
+  const now = Date.now();
+  await env.DB.prepare(
+    "INSERT INTO sms_send_log (phone, ip, created_at, created_at_ms) VALUES (?, ?, datetime('now'), ?)"
+  ).bind(phone, ip, now).run();
+}
+
 // ══════════════════════════════════════════ 服务端验证码 ══════════════════════════════════════════
 
 // 验证码存储（替代前端生成，防机器人刷短信）
@@ -239,6 +318,76 @@ function validateRole(role) {
 function isExpired(room) {
   if (!room.expires_at) return true;
   return new Date(room.expires_at) < new Date();
+}
+
+// ══════════════════════════════════════════ 阿里云短信工具 ══════════════════════════════════════════
+
+// 阿里云短信 API 签名（HMAC-SHA1，RPC 风格）
+async function aliyunSmsSign(params, accessKeySecret) {
+  const sortedKeys = Object.keys(params).sort();
+  const canonicalizedQueryString = sortedKeys
+    .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+    .join('&');
+
+  const stringToSign = 'GET&%2F&' + encodeURIComponent(canonicalizedQueryString);
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(accessKeySecret + '&'),
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(stringToSign));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+// 发送阿里云短信
+async function sendAliyunSms(env, phone, templateParam) {
+  const accessKeyId = env.ALIYUN_ACCESS_KEY_ID;
+  const accessKeySecret = env.ALIYUN_ACCESS_KEY_SECRET;
+  const signName = env.SMS_SIGN_NAME;
+  const templateCode = env.SMS_TEMPLATE_CODE;
+
+  if (!accessKeyId || !accessKeySecret || !signName || !templateCode) {
+    return { success: false, error: '短信服务未配置' };
+  }
+
+  const params = {
+    Action: 'SendSms',
+    Version: '2017-05-25',
+    Format: 'JSON',
+    AccessKeyId: accessKeyId,
+    SignatureMethod: 'HMAC-SHA1',
+    SignatureVersion: '1.0',
+    SignatureNonce: Math.random().toString(36).slice(2, 16) + Date.now(),
+    Timestamp: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+    PhoneNumbers: phone,
+    SignName: signName,
+    TemplateCode: templateCode,
+    TemplateParam: JSON.stringify(templateParam),
+    RegionId: 'cn-hangzhou',
+  };
+
+  const signature = await aliyunSmsSign(params, accessKeySecret);
+  params.Signature = signature;
+
+  const queryString = Object.keys(params)
+    .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+    .join('&');
+
+  const url = 'https://dysmsapi.aliyuncs.com/?' + queryString;
+
+  try {
+    const resp = await fetch(url, { method: 'GET' });
+    const data = await resp.json();
+    if (data.Code === 'OK') {
+      return { success: true, bizId: data.BizId };
+    }
+    return { success: false, error: data.Message || data.Code };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 }
 
 // ══════════════════════════════════════════ JWT 工具函数 ══════════════════════════════════════════
@@ -424,22 +573,25 @@ export default {
         let body;
         try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
 
-        const { phone, captchaId, captchaAnswer } = body;
-
-        // 服务端验证码校验（防机器人刷短信）
-        // TODO: 阿里云FC短信服务部署后启用验证码校验
-        // if (!captchaId || !captchaAnswer) {
-        //   return jsonResponse({ error: '请先完成验证码', needCaptcha: true }, 400, origin);
-        // }
-        // if (!verifyCaptcha(captchaId, captchaAnswer)) {
-        //   return jsonResponse({ error: '验证码错误或已过期', needCaptcha: true }, 400, origin);
-        // }
+        const { phone, turnstileToken } = body;
 
         if (!/^1[3-9]\d{9}$/.test(phone)) {
           return jsonResponse({ error: '手机号格式不正确' }, 400, origin);
         }
 
-        // 检查60秒冷却
+        // ① Turnstile 人机验证（配置了 secret key 才强制校验）
+        const turnstileResult = await verifyTurnstile(env, turnstileToken, clientIP);
+        if (!turnstileResult.success) {
+          return jsonResponse({ error: turnstileResult.error, needTurnstile: true }, 400, origin);
+        }
+
+        // ② D1 持久化限流（手机号每天10次 + IP每分钟3次/每天20次，防多实例绕过）
+        const rateResult = await checkSmsRateLimit(env, phone, clientIP);
+        if (!rateResult.allowed) {
+          return jsonResponse({ error: rateResult.reason, code: rateResult.code }, 429, origin);
+        }
+
+        // ③ 检查60秒冷却（基于 verify_codes 表）
         const existing = await env.DB.prepare('SELECT created_at FROM verify_codes WHERE phone = ?').bind(phone).first();
         if (existing) {
           const elapsed = Date.now() - new Date(existing.created_at).getTime();
@@ -452,7 +604,7 @@ export default {
         const code = String(Math.floor(100000 + Math.random() * 900000));
         const expireAt = Date.now() + 5 * 60 * 1000; // 5分钟
 
-        // 写入D1（加错误捕获）
+        // 写入D1
         try {
           await env.DB.prepare(
             'INSERT OR REPLACE INTO verify_codes (phone, code, expire_at, attempts, created_at) VALUES (?, ?, ?, 0, datetime("now"))'
@@ -462,25 +614,92 @@ export default {
           return jsonResponse({ error: '系统繁忙，请稍后重试' }, 500, origin);
         }
 
-        // 调用阿里云FC发送短信
-        const fcUrl = env.FC_SMS_URL || '';
-        try {
-          if (fcUrl) {
-            await fetch(fcUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'sendCode', phone, code }),
-            });
-          } else {
-            // FC未配置时，验证码写日志（开发模式）
+        // 调用阿里云短信API发送
+        const smsResult = await sendAliyunSms(env, phone, { code });
+        if (!smsResult.success) {
+          console.error('SMS send failed:', smsResult.error, 'Phone:', phone);
+          if (smsResult.error === '短信服务未配置') {
             console.log(`[SMS-DEV] 验证码: ${code}, 手机号: ${phone}`);
+            return jsonResponse({ success: true, expireIn: 300, devCode: code }, 200, origin);
           }
-        } catch (e) {
-          console.error('FC SMS call failed:', e.message);
           return jsonResponse({ error: '短信发送失败，请稍后重试' }, 500, origin);
         }
 
-        return jsonResponse({ success: true, expireIn: 300, devCode: fcUrl ? undefined : code }, 200, origin);
+        // ④ 记录发送日志（用于持久化限流统计）
+        try {
+          await logSmsSend(env, phone, clientIP);
+        } catch (logErr) {
+          console.error('SMS log error:', logErr.message);
+        }
+
+        return jsonResponse({ success: true, expireIn: 300 }, 200, origin);
+      }
+
+      // 短信验证码登录/注册（POST /api/auth/sms-login）
+      if (path === '/api/auth/sms-login' && request.method === 'POST') {
+        if (!checkRateLimit(clientIP, 'sms_login', 10, 60000)) {
+          return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
+        }
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { phone, code } = body;
+        if (!/^1[3-9]\d{9}$/.test(phone)) {
+          return jsonResponse({ error: '手机号格式不正确' }, 400, origin);
+        }
+        if (!code || code.length !== 6) {
+          return jsonResponse({ error: '请输入6位验证码' }, 400, origin);
+        }
+
+        // 查验证码
+        const record = await env.DB.prepare('SELECT * FROM verify_codes WHERE phone = ?').bind(phone).first();
+        if (!record) {
+          return jsonResponse({ error: '请先获取验证码' }, 400, origin);
+        }
+
+        if (Date.now() > record.expire_at) {
+          await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(phone).run();
+          return jsonResponse({ error: '验证码已过期，请重新获取' }, 400, origin);
+        }
+
+        // 错误次数检查
+        const newAttempts = (record.attempts || 0) + 1;
+        if (newAttempts > 5) {
+          await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(phone).run();
+          return jsonResponse({ error: '尝试次数过多，请重新获取验证码' }, 400, origin);
+        }
+
+        // 更新尝试次数
+        await env.DB.prepare('UPDATE verify_codes SET attempts = ? WHERE phone = ?').bind(newAttempts, phone).run();
+
+        if (record.code !== code) {
+          return jsonResponse({ error: '验证码错误' }, 400, origin);
+        }
+
+        // 验证成功，删除验证码
+        await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(phone).run();
+
+        // 查找或创建用户
+        let user = await env.DB.prepare('SELECT id, phone, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
+        if (!user) {
+          // 新用户：自动注册
+          await env.DB.prepare('INSERT INTO users (phone, created_at, last_login_at) VALUES (?, datetime("now"), datetime("now"))').bind(phone).run();
+          user = await env.DB.prepare('SELECT id, phone, nickname, mira_type, guest_id FROM users WHERE phone = ?').bind(phone).first();
+        } else {
+          // 更新最后登录时间
+          await env.DB.prepare('UPDATE users SET last_login_at = datetime("now") WHERE id = ?').bind(user.id).run();
+        }
+
+        // 生成 JWT
+        const token = await createJWT(env, { uid: user.id, gid: user.guest_id || null, phone: user.phone });
+
+        return jsonResponse({
+          success: true,
+          token,
+          isNewUser: !user.nickname, // 新注册用户无昵称
+          user: { id: user.id, phone: user.phone, nickname: user.nickname, miraType: user.mira_type, isGuest: false }
+        }, 200, origin);
       }
 
       // 绑定手机号（POST /api/auth/bind-phone）
@@ -863,11 +1082,25 @@ export default {
             )
           `).run();
 
+          // 短信发送日志表（持久化限流，防多实例绕过）
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS sms_send_log (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              phone TEXT NOT NULL,
+              ip TEXT NOT NULL,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              created_at_ms INTEGER NOT NULL
+            )
+          `).run();
+
           // 创建索引优化查询
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_rooms_expires ON rooms(expires_at)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_users_guest ON users(guest_id)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sms_log_phone_time ON sms_send_log(phone, created_at)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sms_log_ip_time ON sms_send_log(ip, created_at_ms)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sms_log_ip_date ON sms_send_log(ip, created_at)').run();
 
           // 为老 users 表添加密码字段（如果不存在）
           try { await env.DB.prepare('ALTER TABLE users ADD COLUMN password_hash TEXT').run(); } catch(e) { /* 字段已存在 */ }

@@ -252,10 +252,7 @@
     .auth-input { width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--rule); background: var(--surface-glass); color: var(--ink); font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.3s var(--ease); box-sizing: border-box; }
     .auth-input:focus { border-color: rgba(126,167,255,0.4); }
     .auth-input::placeholder { color: var(--faint); }
-    .auth-captcha { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-    .auth-captcha-label { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
-    .auth-captcha-answer { width: 60px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--surface-glass); color: var(--ink); font-size: 0.88rem; font-family: inherit; text-align: center; outline: none; transition: border-color 0.3s var(--ease); }
-    .auth-captcha-answer:focus { border-color: rgba(126,167,255,0.4); }
+    .auth-turnstile-wrap { display: flex; justify-content: center; margin-bottom: 14px; min-height: 65px; }
     .auth-btn { width: 100%; padding: 14px; border-radius: 14px; border: none; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: all 0.3s var(--ease); font-family: inherit; }
     .auth-btn-primary { background: linear-gradient(135deg,#7EA7FF,#5A8AEE); color: #08090B; }
     .auth-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(126,167,255,0.3); }
@@ -815,6 +812,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <!-- Cloudflare Turnstile 人机验证 SDK -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script>
     // ════════════════════════════════════════════════════════════════════════════════════════════
     // 核心数据
@@ -958,23 +957,41 @@
     // ══════════════════════════════════════════ 登录系统 ══════════════════════════════════════════
     var mirrorToken = localStorage.getItem('mirror_token') || '';
     var mirrorUser = JSON.parse(localStorage.getItem('mirror_user') || 'null');
-    var serverCaptchaId = '';
+    // Cloudflare Turnstile sitekey（创建站点后替换）
+    var TURNSTILE_SITEKEY = '0x4XXXXXXXXXXXXXXXXX'; // TODO: 替换为真实 sitekey
+    var turnstileToken = ''; // Turnstile 验证通过后的 token
+    var turnstileWidgetId = null;
 
-    async function generateCaptcha() {
-      var el = document.getElementById('authCaptchaQ');
-      if (el) el.textContent = '加载中...';
-      try {
-        var resp = await fetch(WORKER_API_BASE + '/api/captcha');
-        var data = await resp.json();
-        serverCaptchaId = data.captchaId;
-        if (el) el.textContent = data.question;
-      } catch (e) {
-        if (el) el.textContent = '点击刷新';
+    // 渲染 Turnstile 人机验证组件
+    function renderTurnstile() {
+      var container = document.getElementById('turnstileWidget');
+      if (!container) return;
+      container.innerHTML = '';
+      turnstileToken = '';
+      if (typeof turnstile === 'undefined') {
+        // SDK 未加载完成，500ms 后重试
+        container.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:0.8rem;">人机验证加载中...</div>';
+        setTimeout(renderTurnstile, 500);
+        return;
+      }
+      turnstileWidgetId = turnstile.render('#turnstileWidget', {
+        sitekey: TURNSTILE_SITEKEY,
+        callback: function(token) { turnstileToken = token; },
+        'expired-callback': function() { turnstileToken = ''; },
+        'error-callback': function() { turnstileToken = ''; },
+        theme: 'light',
+      });
+    }
+
+    // 重置 Turnstile（发送验证码失败后调用）
+    function resetTurnstile() {
+      turnstileToken = '';
+      if (turnstileWidgetId !== null && typeof turnstile !== 'undefined') {
+        turnstile.reset(turnstileWidgetId);
       }
     }
 
     function openAuthOverlay() {
-      generateCaptcha();
       switchAuthTab('sms');
       document.getElementById('authOverlay').classList.add('active');
       document.getElementById('authError').textContent = '';
@@ -985,6 +1002,7 @@
       document.getElementById('authCodeInput').value = '';
       document.getElementById('authPwdPhoneInput').value = '';
       document.getElementById('authPwdInput').value = '';
+      renderTurnstile();
     }
 
     function closeAuthOverlay() {
@@ -1092,7 +1110,6 @@
 
     async function handleSendCode() {
       var phone = document.getElementById('authPhoneInput').value.trim();
-      var captchaAnswer = document.getElementById('authCaptchaA') ? document.getElementById('authCaptchaA').value.trim() : '';
       var errorEl = document.getElementById('authError');
       errorEl.textContent = '';
 
@@ -1109,7 +1126,7 @@
         var resp = await fetch(WORKER_API_BASE + '/api/auth/send-code', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: phone, captchaId: serverCaptchaId, captchaAnswer: captchaAnswer ? parseInt(captchaAnswer) : null })
+          body: JSON.stringify({ phone: phone, turnstileToken: turnstileToken })
         });
         var data = await resp.json();
         if (data.success) {
@@ -1134,13 +1151,13 @@
           errorEl.textContent = data.error || '发送失败';
           btn.disabled = false;
           btn.textContent = '获取验证码';
-          generateCaptcha();
-          if (document.getElementById('authCaptchaA')) document.getElementById('authCaptchaA').value = '';
+          resetTurnstile();
         }
       } catch (e) {
         errorEl.textContent = '网络错误，请重试';
         btn.disabled = false;
         btn.textContent = '获取验证码';
+        resetTurnstile();
       }
     }
 
@@ -4295,9 +4312,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         <div class="auth-input-group">
           <input type="tel" class="auth-input" id="authPhoneInput" placeholder="请输入手机号" maxlength="11">
         </div>
-        <div class="auth-captcha">
-          <span class="auth-captcha-label" id="authCaptchaQ"></span>
-          <input type="number" class="auth-captcha-answer" id="authCaptchaA" placeholder="?" maxlength="2">
+        <!-- Cloudflare Turnstile 人机验证 -->
+        <div class="auth-turnstile-wrap">
+          <div id="turnstileWidget"></div>
         </div>
         <div class="auth-input-group">
           <button class="auth-btn auth-btn-primary" id="authSendCodeBtn" onclick="handleSendCode()">获取验证码</button>

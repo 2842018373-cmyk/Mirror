@@ -48,3 +48,17 @@ CREATE TABLE IF NOT EXISTS verify_codes (
   attempts INTEGER DEFAULT 0,      -- 已尝试错误次数
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 短信发送日志表（D1持久化限流，防多实例绕过）
+-- 限制：同一手机号每天最多10次；同一IP每分钟最多3次、每天最多20次
+CREATE TABLE IF NOT EXISTS sms_send_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  phone TEXT NOT NULL,             -- 发送目标手机号
+  ip TEXT NOT NULL,                -- 请求来源IP
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,  -- 发送时间（datetime字符串，用于日限额查询）
+  created_at_ms INTEGER NOT NULL   -- 发送时间戳（毫秒，用于分钟级限额查询）
+);
+
+CREATE INDEX IF NOT EXISTS idx_sms_log_phone_time ON sms_send_log(phone, created_at);
+CREATE INDEX IF NOT EXISTS idx_sms_log_ip_time ON sms_send_log(ip, created_at_ms);
+CREATE INDEX IF NOT EXISTS idx_sms_log_ip_date ON sms_send_log(ip, created_at);
