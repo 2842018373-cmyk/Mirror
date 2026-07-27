@@ -3211,7 +3211,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       }
     }
 
-    // 手机端分享预览弹层（含三按钮操作区）
+    // 手机端分享预览弹层（含三按钮操作区 + 导流入口）
     function showSharePreview(imgUrl, miraType, mode) {
       mode = mode || 'save';
       var preview = document.createElement('div');
@@ -3277,6 +3277,84 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
       actionWrap.appendChild(primaryBtn);
       actionWrap.appendChild(btnRow);
+
+      // 导流按钮：保存分析报告，添加专属顾问（折叠展开）
+      var ctaWrap = document.createElement('div');
+      ctaWrap.style.cssText = 'margin-top:14px;text-align:center;';
+
+      var ctaBtn = document.createElement('button');
+      ctaBtn.style.cssText = 'background:linear-gradient(135deg,rgba(126,167,255,0.12),rgba(200,184,160,0.08));border:1px solid rgba(126,167,255,0.35);color:#7EA7FF;font-size:0.82rem;padding:10px 24px;border-radius:999px;cursor:pointer;font-family:inherit;font-weight:500;display:inline-block;';
+      ctaBtn.textContent = '保存分析报告，添加专属顾问一对一解读';
+
+      var ctaDetail = document.createElement('div');
+      ctaDetail.style.cssText = 'max-height:0;overflow:hidden;transition:all 0.4s ease;opacity:0;';
+      ctaDetail.innerHTML =
+        '<div style="width:32px;height:1px;background:rgba(255,255,255,0.1);margin:12px auto;"></div>' +
+        '<div style="font-size:0.75rem;color:#8892A0;margin-bottom:8px;">添加 Mirror 伙伴</div>' +
+        '<div style="font-size:1.15rem;font-weight:700;color:#F0EDE6;letter-spacing:0.08em;font-family:Courier New,monospace;cursor:pointer;user-select:all;">S420S421</div>' +
+        '<div style="font-size:0.68rem;color:#5A6270;margin-top:6px;">长按复制</div>' +
+        '<div style="width:32px;height:1px;background:rgba(255,255,255,0.1);margin:12px auto;"></div>' +
+        '<div style="font-size:0.75rem;color:#8892A0;margin-bottom:10px;">留下联系方式，获取更多服务</div>' +
+        '<div style="display:flex;gap:8px;margin-bottom:8px;max-width:320px;margin-left:auto;margin-right:auto;">' +
+        '<select id="shareContactType" style="flex:0 0 auto;width:80px;background:#1a1a1f;border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#E8EDF5;font-size:0.78rem;padding:8px 6px;font-family:inherit;outline:none;">' +
+        '<option value="wechat">微信号</option><option value="phone">手机号</option><option value="email">邮箱</option></select>' +
+        '<input id="shareContactValue" type="text" placeholder="请输入" style="flex:1;background:#1a1a1f;border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#E8EDF5;font-size:0.78rem;padding:8px 12px;font-family:inherit;outline:none;" /></div>' +
+        '<button id="shareContactSubmit" style="background:linear-gradient(135deg,rgba(126,167,255,0.12),rgba(200,184,160,0.08));border:1px solid rgba(126,167,255,0.35);color:#7EA7FF;font-size:0.78rem;padding:8px 20px;border-radius:999px;cursor:pointer;font-family:inherit;font-weight:500;">提交联系方式</button>' +
+        '<div id="shareContactMsg" style="font-size:0.7rem;color:#7EA7FF;margin-top:6px;min-height:16px;"></div>';
+
+      ctaBtn.onclick = function() {
+        var isOpen = ctaDetail.style.maxHeight !== '0px' && ctaDetail.style.maxHeight !== '';
+        if (isOpen) {
+          ctaDetail.style.maxHeight = '0px';
+          ctaDetail.style.opacity = '0';
+          ctaBtn.textContent = '保存分析报告，添加专属顾问一对一解读';
+        } else {
+          ctaDetail.style.maxHeight = '400px';
+          ctaDetail.style.opacity = '1';
+          ctaBtn.textContent = '收起';
+        }
+      };
+
+      // 提交联系方式绑定
+      ctaDetail.querySelector('#shareContactSubmit').onclick = function() {
+        var typeEl = ctaDetail.querySelector('#shareContactType');
+        var valueEl = ctaDetail.querySelector('#shareContactValue');
+        var msgEl = ctaDetail.querySelector('#shareContactMsg');
+        var contactValue = valueEl.value.trim();
+        if (!contactValue) {
+          msgEl.style.color = '#FF6B6B';
+          msgEl.textContent = '请输入联系方式';
+          return;
+        }
+        msgEl.style.color = '#7EA7FF';
+        msgEl.textContent = '提交中...';
+        fetch(WORKER_API_BASE + '/api/submit-contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contact_type: typeEl.value,
+            contact_value: contactValue,
+            source: 'share_preview',
+            mira_type: miraType
+          })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.success) {
+            msgEl.style.color = '#7EA7FF';
+            msgEl.textContent = '已提交，感谢信任';
+            valueEl.value = '';
+          } else {
+            msgEl.style.color = '#FF6B6B';
+            msgEl.textContent = data.error || '提交失败';
+          }
+        }).catch(function() {
+          msgEl.style.color = '#FF6B6B';
+          msgEl.textContent = '网络错误';
+        });
+      };
+
+      ctaWrap.appendChild(ctaBtn);
+      ctaWrap.appendChild(ctaDetail);
+      actionWrap.appendChild(ctaWrap);
 
       preview.appendChild(closeBtn);
       preview.appendChild(tipBar);
