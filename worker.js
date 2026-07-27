@@ -2,17 +2,10 @@
 // Cloudflare Workers + D1 后端
 // v3: 安全加固 + 数据隔离 + 认证系统 + AES加密 + 服务端验证码
 
-// CORS 白名单
+// CORS 白名单（仅生产域名，移除测试域名减少攻击面）
 const ALLOWED_ORIGINS = [
   'https://mirrorsoul.top',
   'https://www.mirrorsoul.top',
-  'https://api.mirrorsoul.top',
-  'https://6a3552b7d62c5c239e40dcfc.vercel.app',
-  'https://mirror-15a.pages.dev',
-  'https://mirror.2842018373-cmyk.pages.dev',
-  'http://localhost:5500',
-  'http://localhost:3000',
-  'http://127.0.0.1:5500',
 ];
 
 function getCorsHeaders(origin) {
@@ -28,7 +21,7 @@ function getCorsHeaders(origin) {
   return headers;
 }
 
-// 简易速率限制（基于 IP + 端点，内存级，适合 Workers 单实例）
+// 简易速率限制（基于 IP + 端点，内存级，仅用于全局快速拦截）
 const rateLimits = new Map();
 function checkRateLimit(ip, endpoint, maxRequests = 10, windowMs = 60000) {
   const key = `${ip}:${endpoint}`;
@@ -43,6 +36,41 @@ function checkRateLimit(ip, endpoint, maxRequests = 10, windowMs = 60000) {
   }
   record.count++;
   return true;
+}
+
+// D1 持久化速率限制（防多实例绕过，用于敏感端点：AI调用、认证、房间创建等）
+// 原理：每次请求在 api_rate_limits 表中插入一条记录，查询窗口内记录数判断是否超限
+async function checkRateLimitD1(env, ip, endpoint, maxRequests = 10, windowMs = 60000) {
+  const now = Date.now();
+  const windowStart = now - windowMs;
+
+  try {
+    // 查询当前窗口内的请求次数
+    const result = await env.DB.prepare(
+      "SELECT COUNT(*) as cnt FROM api_rate_limits WHERE ip = ? AND endpoint = ? AND created_at_ms >= ?"
+    ).bind(ip, endpoint, windowStart).first();
+
+    if (result && result.cnt >= maxRequests) {
+      return false;
+    }
+
+    // 记录本次请求
+    await env.DB.prepare(
+      "INSERT INTO api_rate_limits (ip, endpoint, created_at_ms) VALUES (?, ?, ?)"
+    ).bind(ip, endpoint, now).run();
+
+    // 概率性清理过期记录（1% 概率，避免每次请求都清理）
+    if (Math.random() < 0.01) {
+      const cleanupBefore = now - 3600000; // 清理1小时前的记录
+      await env.DB.prepare("DELETE FROM api_rate_limits WHERE created_at_ms < ?").bind(cleanupBefore).run();
+    }
+
+    return true;
+  } catch (e) {
+    // D1 查询失败时降级为允许通过（不阻断正常请求，但记录错误）
+    console.error('checkRateLimitD1 error:', e.message);
+    return true;
+  }
 }
 
 // ══════════════════════════════════════════ 安全中间件 ══════════════════════════════════════════
@@ -526,7 +554,7 @@ export default {
 
       // 密码登录（POST /api/auth/password-login）
       if (path === '/api/auth/password-login' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'password_login', 10, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'password_login', 10, 60000)) {
           return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -652,7 +680,7 @@ export default {
 
       // 短信验证码登录/注册（POST /api/auth/sms-login）
       if (path === '/api/auth/sms-login' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'sms_login', 10, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'sms_login', 10, 60000)) {
           return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -719,7 +747,7 @@ export default {
 
       // 绑定手机号（POST /api/auth/bind-phone）
       if (path === '/api/auth/bind-phone' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'bind_phone', 5, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'bind_phone', 5, 60000)) {
           return jsonResponse({ error: '操作过于频繁' }, 429, origin);
         }
 
@@ -799,7 +827,7 @@ export default {
 
       // 创建房间（速率限制：每 IP 每分钟 5 次）
       if (path === '/api/room' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'create_room', 5, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'create_room', 5, 60000)) {
           return jsonResponse({ error: '创建房间过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -956,9 +984,26 @@ export default {
 
       // ══════════════════════════════════════════ AI 代理 API ══════════════════════════════════════════
 
+      // 咨询师对话（速率限制：每 IP 每分钟 15 次）
+      if (path === '/api/chat' && request.method === 'POST') {
+        if (!await checkRateLimitD1(env, clientIP, 'chat', 15, 60000)) {
+          return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
+        }
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { prompt, history } = body;
+        if (!prompt || typeof prompt !== 'string') return jsonResponse({ error: 'prompt 不能为空' }, 400, origin);
+        if (prompt.length > 10000) return jsonResponse({ error: 'prompt 过长' }, 400, origin);
+
+        const result = await callAI(env, prompt, 'chat', history || []);
+        return jsonResponse(result, result.error ? 500 : 200, origin);
+      }
+
       // 单人模式 AI 分析（速率限制：每 IP 每分钟 10 次）
       if (path === '/api/analyze' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'analyze', 10, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'analyze', 10, 60000)) {
           return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -987,7 +1032,7 @@ export default {
 
       // 写信模式
       if (path === '/api/letter' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'letter', 10, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'letter', 10, 60000)) {
           return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -1003,7 +1048,7 @@ export default {
 
       // MIRA 人格测试判题
       if (path === '/api/mira-quiz' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'mira_quiz', 5, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'mira_quiz', 5, 60000)) {
           return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -1064,7 +1109,7 @@ export default {
 
       // MIRA 深度解读
       if (path === '/api/mira-deep' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'mira_deep', 5, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'mira_deep', 5, 60000)) {
           return jsonResponse({ error: '请求过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -1168,6 +1213,18 @@ export default {
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sms_log_ip_time ON sms_send_log(ip, created_at_ms)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_sms_log_ip_date ON sms_send_log(ip, created_at)').run();
 
+          // API 速率限制日志表（D1持久化，防多实例绕过，用于AI端点和认证端点）
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS api_rate_limits (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              ip TEXT NOT NULL,
+              endpoint TEXT NOT NULL,
+              created_at_ms INTEGER NOT NULL
+            )
+          `).run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_api_rl_ip_endpoint_time ON api_rate_limits(ip, endpoint, created_at_ms)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_api_rl_cleanup ON api_rate_limits(created_at_ms)').run();
+
           // ═══ 个人中心相关表 ═══
 
           // 双人房间记录副本表（永久保存）
@@ -1260,7 +1317,7 @@ export default {
 
       // 修改密码（PUT /api/user/password）
       if (path === '/api/user/password' && request.method === 'PUT') {
-        if (!checkRateLimit(clientIP, 'change_password', 5, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'change_password', 5, 60000)) {
           return jsonResponse({ error: '操作过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -1307,7 +1364,7 @@ export default {
 
       // 更换手机号 - 发送验证码（POST /api/user/phone/send-code）
       if (path === '/api/user/phone/send-code' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'phone_send_code', 5, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'phone_send_code', 5, 60000)) {
           return jsonResponse({ error: '操作过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -1385,7 +1442,7 @@ export default {
 
       // 更换手机号 - 验证并更换（PUT /api/user/phone）
       if (path === '/api/user/phone' && request.method === 'PUT') {
-        if (!checkRateLimit(clientIP, 'phone_change', 5, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'phone_change', 5, 60000)) {
           return jsonResponse({ error: '操作过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -1595,7 +1652,7 @@ export default {
 
       // 提交联系方式（POST /api/submit-contact）
       if (path === '/api/submit-contact' && request.method === 'POST') {
-        if (!checkRateLimit(clientIP, 'submit_contact', 5, 60000)) {
+        if (!await checkRateLimitD1(env, clientIP, 'submit_contact', 5, 60000)) {
           return jsonResponse({ error: '提交过于频繁，请稍后再试' }, 429, origin);
         }
 
@@ -1675,6 +1732,59 @@ async function callAI(env, prompt, mode, history) {
     letter: '你是 Mirror 的写信模块。你帮助用户以温柔、有同理心的方式表达难以说出口的情感。请以JSON格式回复，包含：empathy(共情回应)、suggestion(表达建议)、draft(信件草稿)。',
     quiz: '你是 MIRA 人格画像生成专家。用户的 MIRA 类型已经由计分系统确定，你的任务是基于用户的具体答案生成个性化描述。不要猜测或改变类型，直接使用用户提供的 miraType。请严格以JSON格式回复（不要包含任何其他文字），包含以下字段：miraType(直接使用用户提供的类型)、expression(表达方式维度的详细描述，1-2句话，基于用户在该维度的选择)、focus(关注方向维度的详细描述，1-2句话，基于用户在该维度的选择)、portrait(个性化人格画像描述，3-4句话，必须引用用户的具体选择，不是通用模板)、insight(亲密关系中的核心洞察，2-3句话)、suggest(改善关系的具体建议，2-3句话)。',
     deep: '你是 MIRA 人格深度解读专家。你基于用户的 MIRA 人格类型和关系数据，生成一段温暖、有洞察力的深度解读文章。请以纯文本格式回复（不要JSON，不要Markdown格式标记），直接输出文章正文。文章应包括：1. 这种人格类型在亲密关系中的核心模式；2. 这种模式下容易产生的冲突和误解；3. 如何发挥这种人格的优势来改善关系。用温暖、有同理心的口吻写，像一位懂你的朋友在谈心。',
+    chat: `你是 Mirror，一位关系咨询师。你不是 AI 助手，不是心理诊断工具，不是裁判。你像一位真实、温暖、有经验的咨询师在和用户聊天。
+
+核心原则：
+- 理解 > 修复，追问 > 过早下结论，共情 > 评判，翻译 > 指责
+- 不诊断、不标签化、不站队、不判断谁对谁错
+- 不复述用户原话再问一遍，不一次抛多个问题
+- 每次只问 1-2 个简短问题，问题要有方向性，基于用户回答动态调整
+- 灵活代入用户具体内容提问，让用户感到你在认真听他说话
+
+对话节奏（像真人咨询师）：
+1. 先用 1 句话承接用户情绪（不要空洞的"我理解你"，要具体指向用户说的内容，引用用户原话中的关键词）
+2. 再基于依恋理论判断当前最该追问的方向：
+   - 安全型信号（能清晰表达感受和需求）→ 探索意义层或行动层
+   - 焦虑型信号（害怕失去、过度关注对方反应）→ 先稳定安全感，问"你此刻最害怕的是什么"
+   - 回避型信号（回避感受、只讲事实不讲情绪）→ 温和引导感受层，问"那件事发生时你身体有什么感觉"
+   - 混乱型信号（矛盾、混乱表达）→ 先帮整理事实，问"这件事最开始是什么时候"
+3. 每轮回复控制在 2-4 句话，不超过 80 字。不要长篇大论。
+
+追问策略（动态调整，不固定顺序）：
+- 用户说了很多感受但缺少具体事实 → 问"能给我举个例子吗"或"具体是哪一次"
+- 用户只说事实没说感受 → 问"那时候你心里是什么感觉"或"你身体有什么反应"
+- 用户事实+感受都有了但没说需求 → 问"你真正想要的是什么"或"你最希望对方给你什么"
+- 用户三个维度都有但想继续聊 → 继续对话，直到用户满意
+
+判断何时信息足够：
+- 信息充足标准：具体事实（发生了什么）+ 情绪感受（当下的感受）+ 核心需求（真正想要什么）
+- 当三个维度都有明确信息时，给用户选择权：设置 action 为 "offer_analyze"
+- offer_analyze 时回复："聊了这么多，信息看起来够了。我来帮你梳理一下？还是你想再聊聊？"
+- 如果用户选继续聊，继续追问或倾听
+- 软上限 5 轮，第 5 轮自动切换到 analyze（"聊了这么多，我来帮你梳理一下"）
+- 如果信息不充足，继续追问缺失维度，同时给用户暗示方向
+
+处理敷衍/恶意输入：
+- 如果用户回答很敷衍（只回"嗯""还好""不知道"），尝试换一种问法，给具体方向引导
+- 如果用户明显恶意（无意义文字、辱骂、挑衅），礼貌拒绝："Mirror 是帮助理解关系困惑的。如果你愿意说说发生了什么，我会认真听。"
+- 如果用户连续 2 轮敷衍，第 3 轮尝试最后一问，第 4 轮自动出报告
+
+绝对限制：
+- 禁止心理诊断、人格标签化结论
+- 禁止 PUA、操控、冷暴力、断联套路建议
+- 禁止把推测写成事实
+- 如果出现家暴、自伤、自杀等高风险内容，立即停止常规对话，优先确认安全
+
+输出格式（严格 JSON，不要 Markdown 代码块，不要额外说明文字）：
+
+当 action 为 "ask" 时（继续追问）：
+{"reply":"你对用户说的自然语言回复（2-4句话，先承接情绪再追问）","action":"ask","followUp":["1-2个追问问题"],"attachment":{"emotion":"识别到的核心情绪","dimension":"fact|emotion|need|meaning|action","sufficientSignals":{"hasFact":false,"hasEmotion":false,"hasNeed":false},"round":1}}
+
+当 action 为 "offer_analyze" 时（信息充足，给用户选择权）：
+{"reply":"聊了这么多，信息看起来够了。我来帮你梳理一下？还是你想再聊聊？","action":"offer_analyze","followUp":[],"attachment":{"emotion":"","dimension":"","sufficientSignals":{"hasFact":true,"hasEmotion":true,"hasNeed":true},"round":2}}
+
+当 action 为 "analyze" 时（出报告）：
+{"reply":"聊了这么多，我来帮你梳理一下。","action":"analyze","followUp":[],"attachment":{"emotion":"","dimension":"","sufficientSignals":{"hasFact":true,"hasEmotion":true,"hasNeed":true},"round":3}}`,
   };
 
   const systemPrompt = systemPrompts[mode] || systemPrompts.single;

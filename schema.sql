@@ -63,6 +63,19 @@ CREATE INDEX IF NOT EXISTS idx_sms_log_phone_time ON sms_send_log(phone, created
 CREATE INDEX IF NOT EXISTS idx_sms_log_ip_time ON sms_send_log(ip, created_at_ms);
 CREATE INDEX IF NOT EXISTS idx_sms_log_ip_date ON sms_send_log(ip, created_at);
 
+-- API 速率限制日志表（D1持久化，防多实例绕过）
+-- 用于AI端点（chat/analyze/letter/mira_quiz/mira_deep）和认证端点（password_login/sms_login/bind_phone/create_room等）
+-- 每次请求插入一条记录，查询窗口内记录数判断是否超限
+CREATE TABLE IF NOT EXISTS api_rate_limits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ip TEXT NOT NULL,                   -- 请求来源IP
+  endpoint TEXT NOT NULL,             -- 端点标识（如 chat/analyze/password_login）
+  created_at_ms INTEGER NOT NULL      -- 请求时间戳（毫秒）
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_rl_ip_endpoint_time ON api_rate_limits(ip, endpoint, created_at_ms);
+CREATE INDEX IF NOT EXISTS idx_api_rl_cleanup ON api_rate_limits(created_at_ms);
+
 -- ══════════════════════════════════════════ 个人中心相关表 ══════════════════════════════════════════
 
 -- 镜像对话分析记录表（新增 user_id + report_json 字段，通过 ALTER 增量添加）
