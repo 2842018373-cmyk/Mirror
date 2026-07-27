@@ -3612,6 +3612,11 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         if (quizFinished) return;
         quizFinished = true;
         try {
+          // 保存测试数据到 userData.aiData，供 generateShareCard 使用
+          if (data) {
+            userData.aiData = data;
+            if (data.miraType) window._currentMiraType = data.miraType;
+          }
           var ov = document.getElementById('quizOverlay');
           var ld = document.getElementById('quizLoading');
           if (ov) ov.classList.remove('active');
@@ -3944,6 +3949,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var overlay = document.getElementById('profileOverlay');
       var restartBtn = document.getElementById('profileRestartBtn');
       var ctaBtn = document.getElementById('profileCtaBtn');
+      var shareCardBtn = document.getElementById('profileShareCardBtn');
       if (closeBtn && !closeBtn._bound) {
         closeBtn._bound = true;
         closeBtn.onclick = function() { overlay.classList.remove('active'); showBottomNav(); loadHomeMira(); };
@@ -3955,6 +3961,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       if (restartBtn && !restartBtn._bound) {
         restartBtn._bound = true;
         restartBtn.onclick = function() { overlay.classList.remove('active'); restartExperience(); };
+      }
+      if (shareCardBtn && !shareCardBtn._bound) {
+        shareCardBtn._bound = true;
+        shareCardBtn.onclick = function() { generateShareCard('share'); };
       }
       if (ctaBtn && !ctaBtn._bound) {
         ctaBtn._bound = true;
@@ -5708,6 +5718,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         <!-- 内容由 JS 动态生成 -->
       </div>
       <div class="profile-actions">
+        <button class="btn btn-primary" id="profileShareCardBtn">一键分享到微信</button>
         <button class="btn btn-primary" id="profileShareBtn">&#128247; 保存长图</button>
         <button class="btn btn-secondary" id="profileRestartBtn">&#128260; 重新开始</button>
       </div>
