@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror Admin - 后台管理</title>
+<style>
+:root{--bg:#0c0c0e;--bg2:#141417;--bg3:#1a1a1f;--border:#2a2a30;--text:#e0e0e5;--text2:#888892;--gold:#c9a96e;--gold2:#a08050;--green:#4caf50;--red:#f44336;--blue:#2196f3;--orange:#ff9800}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:48px;width:100%;max-width:400px;text-align:center}
+.login-box h1{font-size:28px;margin-bottom:8px;color:var(--gold)}
+.login-box p{color:var(--text2);margin-bottom:32px;font-size:14px}
+.login-box input{width:100%;padding:14px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;margin-bottom:16px;outline:none}
+.login-box input:focus{border-color:var(--gold)}
+.login-box button{width:100%;padding:14px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:10px;color:#000;font-size:16px;font-weight:600;cursor:pointer}
+.login-box button:hover{opacity:.9}
+.login-box .error{color:var(--red);margin-top:12px;font-size:14px}
+.login-box .ip-info{color:var(--text2);margin-top:16px;font-size:12px}
+.app{display:none;min-height:100vh}
+.sidebar{position:fixed;left:0;top:0;width:220px;height:100vh;background:var(--bg2);border-right:1px solid var(--border);padding:24px 0;overflow-y:auto;z-index:100}
+.sidebar h2{font-size:18px;color:var(--gold);padding:0 24px 20px}
+.sidebar nav a{display:block;padding:12px 24px;color:var(--text2);text-decoration:none;font-size:14px;border-left:3px solid transparent;transition:.2s}
+.sidebar nav a:hover,.sidebar nav a.active{color:var(--text);background:rgba(201,169,110,.1);border-left-color:var(--gold)}
+.sidebar nav a svg{width:18px;height:18px;vertical-align:middle;margin-right:10px;fill:currentColor}
+.sidebar .logout{position:absolute;bottom:24px;left:24px;right:24px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;font-size:14px;text-align:center}
+.sidebar .logout:hover{color:var(--red);border-color:var(--red)}
+.main{margin-left:220px;padding:32px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px}
+.header h1{font-size:24px}
+.header .refresh-btn{padding:8px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:14px}
+.header .refresh-btn:hover{border-color:var(--gold)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:32px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px}
+.stat-card .label{font-size:12px;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.stat-card .value{font-size:28px;font-weight:700;color:var(--gold)}
+.stat-card .sub{font-size:12px;color:var(--text2);margin-top:4px}
+.section{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px}
+.section h3{font-size:16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.section h3 .actions{display:flex;gap:8px}
+.btn{padding:6px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px;text-decoration:none;display:inline-block}
+.btn:hover{border-color:var(--gold)}
+.btn-primary{background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;color:#000}
+.btn-danger{color:var(--red);border-color:var(--red)}
+.btn-danger:hover{background:rgba(244,67,54,.1)}
+.filters{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.filters input,.filters select{padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none}
+.filters input:focus,.filters select:focus{border-color:var(--gold)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:12px;color:var(--text2);font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:12px;border-bottom:1px solid var(--border)}
+tr:hover td{background:rgba(201,169,110,.03)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.badge-normal{background:rgba(76,175,80,.15);color:var(--green)}
+.badge-banned{background:rgba(244,67,54,.15);color:var(--red)}
+.badge-guest{background:rgba(33,150,243,.15);color:var(--blue)}
+.pagination{display:flex;justify-content:center;gap:8px;margin-top:20px}
+.pagination button{padding:6px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px}
+.pagination button:hover{border-color:var(--gold)}
+.pagination button:disabled{opacity:.4;cursor:not-allowed}
+.pagination .active{background:var(--gold);color:#000;border-color:var(--gold)}
+.chart-bar{display:flex;align-items:center;margin-bottom:8px}
+.chart-bar .label{width:60px;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chart-bar .bar{flex:1;height:20px;background:var(--bg3);border-radius:4px;overflow:hidden;margin:0 8px}
+.chart-bar .bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:4px;transition:width .3s}
+.chart-bar .count{font-size:12px;color:var(--text2);min-width:30px;text-align:right}
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px}
+.tab-btn{padding:8px 16px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;border-radius:6px}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--gold);background:rgba(201,169,110,.1)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:200}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto}
+.modal h3{margin-bottom:20px}
+.modal .close{float:right;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer}
+.modal .close:hover{color:var(--text)}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.detail-item{background:var(--bg3);padding:12px;border-radius:8px}
+.detail-item .label{font-size:11px;color:var(--text2);margin-bottom:4px}
+.detail-item .value{font-size:14px}
+.logs-filters{display:flex;gap:8px;margin-bottom:16px}
+.log-type-btn{padding:4px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;color:var(--text2);cursor:pointer;font-size:12px}
+.log-type-btn:hover,.log-type-btn.active{border-color:var(--gold);color:var(--gold)}
+.empty{text-align:center;padding:40px;color:var(--text2);font-size:14px}
+.loading{text-align:center;padding:40px;color:var(--gold)}
+.toast{position:fixed;top:20px;right:20px;padding:12px 20px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);z-index:300;transform:translateX(120%);transition:.3s}
+.toast.show{transform:translateX(0)}
+.toast.success{border-color:var(--green)}
+.toast.error{border-color:var(--red)}
+@media(max-width:768px){.sidebar{width:100%;height:auto;position:relative;border-right:none;border-bottom:1px solid var(--border);padding:16px}.main{margin-left:0;padding:16px}.stats-grid{grid-template-columns:repeat(2,1fr)}.detail-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="loginPage" class="login-page">
+  <div class="login-box">
+    <h1>Mirror Admin</h1>
+    <p>后台管理系统</p>
+    <input type="text" id="loginUser" placeholder="用户名" value="admin" readonly>
+    <input type="password" id="loginPass" placeholder="密码" autofocus>
+    <button onclick="doLogin()">登录</button>
+    <div id="loginError" class="error"></div>
+    <div id="loginIP" class="ip-info"></div>
+  </div>
+</div>
+<div id="app" class="app">
+  <aside class="sidebar">
+    <h2>Mirror Admin</h2>
+    <nav>
+      <a href="#" class="active" data-page="dashboard"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>仪表盘</a>
+      <a href="#" data-page="users"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>用户管理</a>
+      <a href="#" data-page="reports"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>数据统计</a>
+      <a href="#" data-page="security"><svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>安全日志</a>
+      <a href="#" data-page="config"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L5.12 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.58 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>系统配置</a>
+    </nav>
+    <button class="logout" onclick="doLogout()">退出登录</button>
+  </aside>
+  <main class="main" id="main">
+    <div class="header">
+      <h1 id="pageTitle">仪表盘</h1>
+      <button class="refresh-btn" onclick="refreshCurrent()">刷新数据</button>
+    </div>
+    <div id="pageContent"></div>
+  </main>
+</div>
+<div id="modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBody"></div>
+</div>
+<div id="toast" class="toast"></div>
+<script>
+const API_BASE='/api/admin';
+let adminToken=localStorage.getItem('admin_token');
+let currentPage='dashboard';
+let pageData={};
+
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
+function formatDate(d){if(!d)return'-';return new Date(d).toLocaleString('zh-CN')}
+function formatNumber(n){return n?n.toLocaleString('zh-CN'):0}
+
+async function api(path,opts={}){
+  opts.headers=opts.headers||{};
+  if(adminToken)opts.headers['Authorization']='Bearer '+adminToken;
+  opts.headers['Content-Type']=opts.headers['Content-Type']||'application/json';
+  const r=await fetch(API_BASE+path,opts);
+  if(r.status===401){localStorage.removeItem('admin_token');location.reload();return null}
+  return r.status===204?null:await r.json();
+}
+
+async function doLogin(){
+  const u=document.getElementById('loginUser').value;
+  const p=document.getElementById('loginPass').value;
+  const e=document.getElementById('loginError');
+  e.textContent='';
+  const res=await fetch(API_BASE+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+  const data=await res.json();
+  if(data.success){adminToken=data.token;localStorage.setItem('admin_token',adminToken);showApp()}else{e.textContent=data.error||'登录失败'}
+}
+
+function showApp(){
+  document.getElementById('loginPage').style.display='none';
+  document.getElementById('app').style.display='block';
+  loadPage('dashboard');
+}
+
+function doLogout(){localStorage.removeItem('admin_token');location.reload()}
+
+function refreshCurrent(){loadPage(currentPage)}
+
+async function loadPage(page){
+  currentPage=page;
+  document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===page));
+  document.getElementById('pageTitle').textContent={dashboard:'仪表盘',users:'用户管理',reports:'数据统计',security:'安全日志',config:'系统配置'}[page];
+  const pc=document.getElementById('pageContent');
+  pc.innerHTML='<div class="loading">加载中...</div>';
+  try{
+    if(page==='dashboard')await loadDashboard(pc);
+    else if(page==='users')await loadUsers(pc);
+    else if(page==='reports')await loadReports(pc);
+    else if(page==='security')await loadSecurity(pc);
+    else if(page==='config')await loadConfig(pc);
+  }catch(e){pc.innerHTML='<div class="empty">加载失败: '+e.message+'</div>'}
+}
+
+async function loadDashboard(el){
+  const d=await api('/dashboard');
+  if(!d)return;
+  pageData.dashboard=d;
+  let h='<div class="stats-grid">';
+  h+='<div class="stat-card"><div class="label">总用户数</div><div class="value">'+formatNumber(d.users.total)+'</div><div class="sub">手机: '+formatNumber(d.users.phone)+' | 游客: '+formatNumber(d.users.guest)+'</div></div>';
+  h+='<div class="stat-card"><div class="label">今日新增</div><div class="value">'+formatNumber(d.users.todayNew)+'</div><div class="sub">7日: '+formatNumber(d.users.sevenDayNew)+' | 30日: '+formatNumber(d.users.thirtyDayNew)+'</div></div>';
+  h+='<div class="stat-card"><div class="label">AI总调用</div><div class="value">'+formatNumber(d.ai.total)+'</div><div class="sub">24h内各端点合计</div></div>';
+  h+='<div class="stat-card"><div class="label">本月短信</div><div class="value">'+formatNumber(d.sms.month)+'</div><div class="sub">预估费用: &yen;'+d.sms.cost+'</div></div>';
+  h+='<div class="stat-card"><div class="label">今日短信</div><div class="value">'+formatNumber(d.sms.today)+'</div></div>';
+  h+='<div class="stat-card"><div class="label">24h限流</div><div class="value">'+formatNumber(d.security.rateLimit24h)+'</div><div class="sub">被拦截的请求数</div></div>';
+  h+='</div>';
+  h+='<div class="section"><h3>MIRA人格类型 TOP5</h3>';
+  if(d.miraTop5&&d.miraTop5.length){
+    const max=Math.max(...d.miraTop5.map(x=>x.cnt));
+    for(const t of d.miraTop5){
+      const pct=(t.cnt/max*100).toFixed(1);
+      h+='<div class="chart-bar"><div class="label">'+t.mira_type+'</div><div class="bar"><div class="bar-fill" style="width:'+pct+'%"></div></div><div class="count">'+t.cnt+'</div></div>';
+    }
+  }else{h+='<div class="empty">暂无数据</div>'}
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+async function loadUsers(el){
+  if(!pageData.users)pageData.users={page:1,limit:20,keyword:'',miraType:'',status:''};
+  const p=pageData.users;
+  const d=await api('/users?page='+p.page+'&limit='+p.limit+'&keyword='+encodeURIComponent(p.keyword)+'&miraType='+p.miraType+'&status='+p.status);
+  if(!d)return;
+  let h='<div class="section">';
+  h+='<h3>用户列表 <span class="actions"><button class="btn" onclick="exportUsers()">导出CSV</button></span></h3>';
+  h+='<div class="filters">';
+  h+='<input type="text" placeholder="搜索昵称/手机号/GuestID" value="'+p.keyword+'" onchange="pageData.users.keyword=this.value;pageData.users.page=1;loadUsers(document.getElementById(\'pageContent\'))">';
+  h+='<select onchange="pageData.users.miraType=this.value;pageData.users.page=1;loadUsers(document.getElementById(\'pageContent\'))"><option value="">全部MIRA类型</option>';
+  const miraTypes=['DO','DT','DI','DN','SO','ST','SI','SN','BO','BT','BI','BN','RO','RT','RI','RN'];
+  for(const t of miraTypes)h+='<option value="'+t+'"'+(p.miraType===t?' selected':'')+'>'+t+'</option>';
+  h+='</select>';
+  h+='<select onchange="pageData.users.status=this.value;pageData.users.page=1;loadUsers(document.getElementById(\'pageContent\'))"><option value="">全部状态</option><option value="normal">正常</option><option value="banned">已封禁</option></select>';
+  h+='</div>';
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>ID</th><th>昵称</th><th>手机号</th><th>MIRA</th><th>状态</th><th>注册时间</th><th>操作</th></tr></thead><tbody>';
+  for(const u of d.users){
+    const phone=u.phone?(u.phone.substring(0,3)+'****'+u.phone.substring(7)):'(游客)';
+    h+='<tr><td>'+u.id+'</td><td>'+(u.nickname||'-')+'</td><td>'+phone+'</td><td>'+(u.mira_type||'-')+'</td><td><span class="badge badge-'+(u.status==='banned'?'banned':'normal')+'">'+(u.status==='banned'?'已封禁':'正常')+'</span></td><td>'+formatDate(u.created_at)+'</td>';
+    h+='<td><button class="btn" onclick="showUserDetail('+u.id+')">详情</button></td></tr>';
+  }
+  h+='</tbody></table></div>';
+  if(d.pagination.totalPages>1){
+    h+='<div class="pagination">';
+    h+='<button '+(d.pagination.page===1?'disabled':'')+' onclick="pageData.users.page=1;loadUsers(document.getElementById(\'pageContent\'))">首页</button>';
+    h+='<button '+(d.pagination.page===1?'disabled':'')+' onclick="pageData.users.page--;loadUsers(document.getElementById(\'pageContent\'))">上一页</button>';
+    for(let i=Math.max(1,d.pagination.page-2);i<=Math.min(d.pagination.totalPages,d.pagination.page+2);i++){
+      h+='<button class="'+(i===d.pagination.page?'active':'')+'" onclick="pageData.users.page='+i+';loadUsers(document.getElementById(\'pageContent\'))">'+i+'</button>';
+    }
+    h+='<button '+(d.pagination.page===d.pagination.totalPages?'disabled':'')+' onclick="pageData.users.page++;loadUsers(document.getElementById(\'pageContent\'))">下一页</button>';
+    h+='<button '+(d.pagination.page===d.pagination.totalPages?'disabled':'')+' onclick="pageData.users.page='+d.pagination.totalPages+';loadUsers(document.getElementById(\'pageContent\'))">末页</button>';
+    h+='</div>';
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+async function showUserDetail(userId){
+  const d=await api('/users/'+userId);
+  if(!d)return;
+  let h='<button class="close" onclick="closeModal()">&times;</button><h3>用户详情 #'+d.user.id+'</h3>';
+  h+='<div class="detail-grid">';
+  h+='<div class="detail-item"><div class="label">昵称</div><div class="value">'+(d.user.nickname||'-')+'</div></div>';
+  h+='<div class="detail-item"><div class="label">GuestID</div><div class="value">'+(d.user.guest_id||'-')+'</div></div>';
+  h+='<div class="detail-item"><div class="label">手机号</div><div class="value">'+(d.user.displayPhone||'-')+'</div></div>';
+  h+='<div class="detail-item"><div class="label">MIRA类型</div><div class="value">'+(d.user.mira_type||'-')+'</div></div>';
+  h+='<div class="detail-item"><div class="label">状态</div><div class="value"><span class="badge badge-'+(d.user.status==='banned'?'banned':'normal')+'">'+(d.user.status==='banned'?'已封禁':'正常')+'</span></div></div>';
+  h+='<div class="detail-item"><div class="label">注册时间</div><div class="value">'+formatDate(d.user.created_at)+'</div></div>';
+  h+='</div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:20px">';
+  h+='<button class="btn btn-danger" onclick="banUser('+userId+\',\''+(d.user.status==='banned'?'normal':'banned')+'\')">'+(d.user.status==='banned'?'解封用户':'封禁用户')+'</button>';
+  h+='<button class="btn" onclick="resetPassword('+userId+')">重置密码</button>';
+  h+='</div>';
+  h+='<h4 style="margin-bottom:12px;font-size:14px">分析记录 ('+d.analyses.length+')</h4>';
+  if(d.analyses.length){
+    h+='<table><thead><tr><th>ID</th><th>MIRA</th><th>时间</th></tr></thead><tbody>';
+    for(const a of d.analyses)h+='<tr><td>'+a.id+'</td><td>'+(a.mira_type||'-')+'</td><td>'+formatDate(a.created_at)+'</td></tr>';
+    h+='</tbody></table>';
+  }else{h+='<div class="empty">无分析记录</div>'}
+  h+='<h4 style="margin:20px 0 12px;font-size:14px">MIRA测试 ('+d.tests.length+')</h4>';
+  if(d.tests.length){
+    h+='<table><thead><tr><th>ID</th><th>MIRA</th><th>时间</th></tr></thead><tbody>';
+    for(const t of d.tests)h+='<tr><td>'+t.id+'</td><td>'+(t.mira_type||'-')+'</td><td>'+formatDate(t.created_at)+'</td></tr>';
+    h+='</tbody></table>';
+  }else{h+='<div class="empty">无测试记录</div>'}
+  document.getElementById('modalBody').innerHTML=h;
+  document.getElementById('modal').classList.add('show');
+}
+
+async function banUser(id,status){
+  const d=await api('/users/'+id+'/ban',{method:'PUT',body:JSON.stringify({status})});
+  if(d&&d.success){showToast(d.message,'success');closeModal();loadUsers(document.getElementById('pageContent'))}
+  else{showToast(d&&d.error||'操作失败','error')}
+}
+
+async function resetPassword(id){
+  if(!confirm('确定重置用户 #'+id+' 的密码为 1234 吗？'))return;
+  const d=await api('/users/'+id+'/reset-pw',{method:'PUT'});
+  if(d&&d.success){showToast(d.message,'success');closeModal()}
+  else{showToast(d&&d.error||'操作失败','error')}
+}
+
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+
+async function loadReports(el){
+  let h='<div class="tabs"><button class="tab-btn active" onclick="showReportTab(this,\'ai\')">AI调用</button><button class="tab-btn" onclick="showReportTab(this,\'sms\')">短信费用</button><button class="tab-btn" onclick="showReportTab(this,\'mira\')">报告排行</button></div>';
+  h+='<div id="report-ai" class="report-tab">';
+  const ai=await api('/ai-stats?days=7');
+  h+='<div class="section"><h3>AI调用统计（近7天）</h3>';
+  if(ai&&ai.stats&&ai.stats.length){for(const s of ai.stats)h+='<div class="chart-bar"><div class="label">'+s.endpoint+'</div><div class="bar"><div class="bar-fill" style="width:100%"></div></div><div class="count">'+s.cnt+'</div></div>';}
+  else{h+='<div class="empty">暂无数据</div>'}
+  h+='</div></div>';
+  h+='<div id="report-sms" class="report-tab" style="display:none">';
+  const sms=await api('/sms-stats?days=30');
+  h+='<div class="section"><h3>短信发送统计（近30天）<span style="float:right;font-size:14px;color:var(--text2)">总计: '+formatNumber(sms?sms.total:0)+'条 / &yen;'+(sms?sms.cost:0)+'</span></h3>';
+  if(sms&&sms.daily&&sms.daily.length){for(const d of sms.daily)h+='<div class="chart-bar"><div class="label">'+d.date.substring(5)+'</div><div class="bar"><div class="bar-fill" style="width:100%"></div></div><div class="count">'+d.cnt+'</div></div>';}
+  else{h+='<div class="empty">暂无数据</div>'}
+  h+='</div></div>';
+  h+='<div id="report-mira" class="report-tab" style="display:none">';
+  const rep=await api('/report-stats?days=30');
+  h+='<div class="section"><h3>MIRA测试报告排行（近30天） 共'+formatNumber(rep?rep.totals.miraTests:0)+'份</h3>';
+  if(rep&&rep.miraTestRank&&rep.miraTestRank.length){const max=Math.max(...rep.miraTestRank.map(x=>x.cnt));for(const r of rep.miraTestRank){const pct=(r.cnt/max*100).toFixed(1);h+='<div class="chart-bar"><div class="label">'+r.mira_type+'</div><div class="bar"><div class="bar-fill" style="width:'+pct+'%"></div></div><div class="count">'+r.cnt+'</div></div>';}}
+  else{h+='<div class="empty">暂无数据</div>'}
+  h+='</div>';
+  h+='<div class="section"><h3>对话分析报告排行（近30天） 共'+formatNumber(rep?rep.totals.singleAnalyses:0)+'份</h3>';
+  if(rep&&rep.singleAnalysisRank&&rep.singleAnalysisRank.length){const max=Math.max(...rep.singleAnalysisRank.map(x=>x.cnt));for(const r of rep.singleAnalysisRank){const pct=(r.cnt/max*100).toFixed(1);h+='<div class="chart-bar"><div class="label">'+r.mira_type+'</div><div class="bar"><div class="bar-fill" style="width:'+pct+'%"></div></div><div class="count">'+r.cnt+'</div></div>';}}
+  else{h+='<div class="empty">暂无数据</div>'}
+  h+='</div></div>';
+  el.innerHTML=h;
+}
+
+function showReportTab(btn,type){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('.report-tab').forEach(t=>t.style.display='none');document.getElementById('report-'+type).style.display='block';
+}
+
+async function loadSecurity(el){
+  if(!pageData.security)pageData.security={page:1,limit:50,type:''};
+  const p=pageData.security;
+  const d=await api('/security-logs?page='+p.page+'&limit='+p.limit+'&type='+p.type);
+  if(!d)return;
+  let h='<div class="section"><h3>安全日志 <span class="actions"><button class="btn" onclick="exportSecurity()">导出CSV</button></span></h3>';
+  h+='<div class="logs-filters">';
+  const types=[{k:'',l:'全部'},{k:'admin_login',l:'管理员登录'},{k:'admin_action',l:'管理员操作'},{k:'rate_limit',l:'限流触发'},{k:'login_fail',l:'登录失败'},{k:'malicious_request',l:'恶意请求'}];
+  for(const t of types)h+='<button class="log-type-btn '+(p.type===t.k?'active':'')+'" onclick="pageData.security.type=\''+t.k+'\';pageData.security.page=1;loadSecurity(document.getElementById(\'pageContent\'))">'+t.l+'</button>';
+  h+='</div>';
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>ID</th><th>类型</th><th>详情</th><th>IP</th><th>端点</th><th>时间</th></tr></thead><tbody>';
+  for(const l of d.logs){
+    let detail='';
+    try{const obj=JSON.parse(l.event_detail||'{}');detail=Object.entries(obj).map(([k,v])=>k+': '+v).join(', ')}catch(e){detail=l.event_detail||''}
+    h+='<tr><td>'+l.id+'</td><td><span class="badge badge-'+(l.event_type==='admin_login'?'normal':l.event_type==='admin_action'?'guest':l.event_type==='rate_limit'?'banned':l.event_type==='login_fail'?'banned':'normal')+'">'+l.event_type+'</span></td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">'+detail+'</td><td>'+l.ip+'</td><td>'+(l.endpoint||'-')+'</td><td>'+formatDate(l.created_at)+'</td></tr>';
+  }
+  h+='</tbody></table></div>';
+  if(d.pagination.totalPages>1){
+    h+='<div class="pagination">';
+    h+='<button '+(d.pagination.page===1?'disabled':'')+' onclick="pageData.security.page=1;loadSecurity(document.getElementById(\'pageContent\'))">首页</button>';
+    for(let i=Math.max(1,d.pagination.page-2);i<=Math.min(d.pagination.totalPages,d.pagination.page+2);i++){
+      h+='<button class="'+(i===d.pagination.page?'active':'')+'" onclick="pageData.security.page='+i+';loadSecurity(document.getElementById(\'pageContent\'))">'+i+'</button>';
+    }
+    h+='<button '+(d.pagination.page===d.pagination.totalPages?'disabled':'')+' onclick="pageData.security.page='+d.pagination.totalPages+';loadSecurity(document.getElementById(\'pageContent\'))">末页</button>';
+    h+='</div>';
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+async function loadConfig(el){
+  const d=await api('/config');
+  let h='<div class="section"><h3>IP白名单管理</h3>';
+  h+='<p style="color:var(--text2);font-size:13px;margin-bottom:16px">当前IP: <span id="currentIP" style="color:var(--gold)">加载中...</span>。只有白名单中的IP才能访问后台管理页面。</p>';
+  h+='<textarea id="ipWhitelist" rows="6" style="width:100%;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;resize:vertical" placeholder="每行一个IP地址">'+(d&&d.ipWhitelist?d.ipWhitelist.join('\n'):'')+'</textarea>';
+  h+='<div style="margin-top:16px"><button class="btn btn-primary" onclick="saveConfig()">保存配置</button></div>';
+  h+='</div>';
+  el.innerHTML=h;
+  fetch('/api/admin/config').then(r=>r.json()).then(d=>{
+    const ip=d&&d.ipWhitelist?d.ipWhitelist.join('\n'):'';
+    document.getElementById('ipWhitelist').value=ip;
+  });
+  fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{document.getElementById('currentIP').textContent=d.ip}).catch(()=>{document.getElementById('currentIP').textContent='无法获取'});
+}
+
+async function saveConfig(){
+  const ips=document.getElementById('ipWhitelist').value.split('\n').map(s=>s.trim()).filter(s=>s);
+  const d=await api('/config',{method:'PUT',body:JSON.stringify({ipWhitelist:ips})});
+  if(d&&d.success){showToast('配置已保存','success')}else{showToast(d&&d.error||'保存失败','error')}
+}
+
+function exportUsers(){window.open(API_BASE+'/export/users','_blank')}
+function exportSecurity(){window.open(API_BASE+'/export/security-logs','_blank')}
+
+document.querySelectorAll('.sidebar nav a').forEach(a=>{
+  a.addEventListener('click',e=>{e.preventDefault();loadPage(a.dataset.page)});
+});
+
+document.getElementById('loginPass').addEventListener('keypress',e=>{if(e.key==='Enter')doLogin()});
+
+// 检查登录状态
+fetch(API_BASE+'/dashboard',{headers:adminToken?{'Authorization':'Bearer '+adminToken}:{}}).then(r=>{
+  if(r.status===200){showApp()}else{document.getElementById('loginIP').textContent='请登录'}
+}).catch(()=>{document.getElementById('loginIP').textContent='请登录'});
+</script>
+</body>
+</html>

@@ -51,6 +51,8 @@ async function checkRateLimitD1(env, ip, endpoint, maxRequests = 10, windowMs = 
     ).bind(ip, endpoint, windowStart).first();
 
     if (result && result.cnt >= maxRequests) {
+      // 记录限流触发日志（异步，不阻塞）
+      logSecurityEvent(env, 'rate_limit', { endpoint, maxRequests, windowMs }, ip, endpoint, null, null).catch(() => {});
       return false;
     }
 
@@ -492,6 +494,99 @@ async function getAuthUser(request, env) {
   }
 }
 
+// ══════════════════════════════════════════ 管理员认证 ══════════════════════════════════════════
+
+// 生成管理员JWT（独立密钥，2小时过期）
+async function signAdminJWT(env, payload) {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const body = { ...payload, exp: Math.floor(Date.now() / 1000) + 7200, iat: Math.floor(Date.now() / 1000) };
+  const encodedHeader = base64urlEncode(JSON.stringify(header));
+  const encodedBody = base64urlEncode(JSON.stringify(body));
+  const data = new TextEncoder().encode(`${encodedHeader}.${encodedBody}`);
+  const secret = env.ADMIN_JWT_SECRET || env.JWT_SECRET;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, data);
+  return `${encodedHeader}.${encodedBody}.${base64urlEncode(sig)}`;
+}
+
+// 验证管理员JWT
+async function verifyAdminJWT(env, token) {
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Invalid token');
+  const secret = env.ADMIN_JWT_SECRET || env.JWT_SECRET;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  const sig = new Uint8Array([...base64urlDecode(parts[2])].map(c => c.charCodeAt(0)));
+  const valid = await crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
+  if (!valid) throw new Error('Invalid signature');
+  const payload = JSON.parse(base64urlDecode(parts[1]));
+  if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Token expired');
+  return payload;
+}
+
+// 检查管理员认证
+async function checkAdminAuth(request, env) {
+  const authHeader = request.headers.get('Authorization') || '';
+  const token = authHeader.replace('Bearer ', '').trim();
+  if (!token) return { error: '未登录', code: 'NO_TOKEN' };
+  try {
+    const payload = await verifyAdminJWT(env, token);
+    if (payload.role !== 'admin') return { error: '无权访问', code: 'FORBIDDEN' };
+    return { admin: payload.sub, payload };
+  } catch (e) {
+    return { error: '管理员Token无效或已过期', code: 'INVALID_TOKEN' };
+  }
+}
+
+// 检查IP白名单
+async function checkAdminIP(request, env) {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  try {
+    const config = await env.DB.prepare("SELECT config_value FROM admin_config WHERE config_key = 'ip_whitelist'").first();
+    if (!config) return { allowed: true, ip }; // 未配置白名单时允许访问
+    const whitelist = JSON.parse(config.config_value || '[]');
+    if (!Array.isArray(whitelist) || whitelist.length === 0) return { allowed: true, ip };
+    if (whitelist.includes(ip)) return { allowed: true, ip };
+    return { allowed: false, ip };
+  } catch (e) {
+    console.error('checkAdminIP error:', e.message);
+    return { allowed: true, ip }; // 出错时允许访问（降级）
+  }
+}
+
+// 获取管理员配置
+async function getAdminConfig(env, key, defaultValue) {
+  try {
+    const row = await env.DB.prepare('SELECT config_value FROM admin_config WHERE config_key = ?').bind(key).first();
+    return row ? JSON.parse(row.config_value) : defaultValue;
+  } catch (e) {
+    return defaultValue;
+  }
+}
+
+// 设置管理员配置
+async function setAdminConfig(env, key, value) {
+  const json = JSON.stringify(value);
+  await env.DB.prepare(
+    "INSERT INTO admin_config (config_key, config_value, updated_at) VALUES (?, ?, datetime('now')) " +
+    "ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value, updated_at = datetime('now')"
+  ).bind(key, json).run();
+}
+
+// ══════════════════════════════════════════ 安全日志 ══════════════════════════════════════════
+
+// 记录安全日志
+async function logSecurityEvent(env, eventType, eventDetail, ip, endpoint, userId, adminId) {
+  try {
+    const detailJson = typeof eventDetail === 'string' ? eventDetail : JSON.stringify(eventDetail);
+    await env.DB.prepare(
+      "INSERT INTO security_logs (event_type, event_detail, ip, endpoint, user_id, admin_id, created_at) " +
+      "VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
+    ).bind(eventType, detailJson, ip || '', endpoint || '', userId || null, adminId || null).run();
+  } catch (e) {
+    console.error('logSecurityEvent error:', e.message);
+  }
+}
+
 // ══════════════════════════════════════════ 主处理函数 ══════════════════════════════════════════
 
 export default {
@@ -511,6 +606,9 @@ export default {
     // ══════════════════════════════════════════ 全局安全检查 ══════════════════════════════════════════
     const security = securityCheck(request, env);
     if (security.blocked) {
+      // 记录恶意请求拦截日志
+      const logType = security.status === 429 ? 'rate_limit' : 'malicious_request';
+      logSecurityEvent(env, logType, { reason: security.reason, status: security.status, ua: request.headers.get('User-Agent') || '' }, clientIP, path, null, null).catch(() => {});
       return new Response(JSON.stringify({ error: security.reason }), {
         status: security.status,
         headers: { 'Content-Type': 'application/json', ...getCorsHeaders(origin) },
@@ -1225,6 +1323,39 @@ export default {
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_api_rl_ip_endpoint_time ON api_rate_limits(ip, endpoint, created_at_ms)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_api_rl_cleanup ON api_rate_limits(created_at_ms)').run();
 
+          // ═══ 后台管理相关表 ═══
+
+          // 管理员配置表（IP白名单等动态配置）
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS admin_config (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              config_key TEXT UNIQUE NOT NULL,
+              config_value TEXT NOT NULL,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+
+          // 安全日志表
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS security_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              event_type TEXT NOT NULL,
+              event_detail TEXT,
+              ip TEXT NOT NULL,
+              endpoint TEXT,
+              user_id INTEGER,
+              admin_id TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_security_logs_type ON security_logs(event_type, created_at)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_security_logs_ip ON security_logs(ip, created_at)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_security_logs_created ON security_logs(created_at)').run();
+
+          // 为 users 表添加状态字段（如果还没有）
+          try { await env.DB.prepare("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'normal'").run(); } catch(e) { /* 已存在 */ }
+
           // ═══ 个人中心相关表 ═══
 
           // 双人房间记录副本表（永久保存）
@@ -1699,6 +1830,380 @@ export default {
         } catch (err) {
           console.error('admin/records error:', err.message);
           return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
+      }
+
+      // ══════════════════════════════════════════ 后台管理 API ══════════════════════════════════════════
+
+      // 后台管理页面（GET /admin）- 重定向到独立部署的管理页面
+      if (path === '/admin' && request.method === 'GET') {
+        const ipCheck = await checkAdminIP(request, env);
+        if (!ipCheck.allowed) {
+          await logSecurityEvent(env, 'login_fail', { reason: 'IP not whitelisted', ip: ipCheck.ip }, ipCheck.ip, '/admin', null, null);
+          return new Response('Access Denied', { status: 403 });
+        }
+        return Response.redirect('https://mirrorsoul.top/admin.html', 302);
+      }
+
+      // 管理员登录（POST /api/admin/login）
+      if (path === '/api/admin/login' && request.method === 'POST') {
+        const ipCheck = await checkAdminIP(request, env);
+        const clientIP = ipCheck.ip;
+        if (!ipCheck.allowed) {
+          await logSecurityEvent(env, 'login_fail', { reason: 'IP not whitelisted' }, clientIP, '/api/admin/login', null, null);
+          return jsonResponse({ error: '访问被拒绝' }, 403, origin);
+        }
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+        const { username, password } = body;
+        if (username !== 'admin') {
+          await logSecurityEvent(env, 'login_fail', { reason: 'Invalid username', username }, clientIP, '/api/admin/login', null, null);
+          return jsonResponse({ error: '用户名或密码错误' }, 401, origin);
+        }
+        const adminPassword = env.ADMIN_PASSWORD;
+        if (!adminPassword) {
+          return jsonResponse({ error: '管理员密码未配置' }, 500, origin);
+        }
+        if (password !== adminPassword) {
+          await logSecurityEvent(env, 'login_fail', { reason: 'Invalid password' }, clientIP, '/api/admin/login', null, null);
+          return jsonResponse({ error: '用户名或密码错误' }, 401, origin);
+        }
+        const token = await signAdminJWT(env, { sub: 'admin', role: 'admin' });
+        await logSecurityEvent(env, 'admin_login', { success: true }, clientIP, '/api/admin/login', null, 'admin');
+        return jsonResponse({ success: true, token, expireIn: 7200 }, 200, origin);
+      }
+
+      // 仪表盘数据（GET /api/admin/dashboard）
+      if (path === '/api/admin/dashboard' && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const today = new Date(); today.setHours(0, 0, 0, 0);
+          const todayStr = today.toISOString().replace('T', ' ').substring(0, 19);
+          const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19);
+          const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19);
+
+          // 用户统计
+          const totalUsers = await env.DB.prepare('SELECT COUNT(*) as cnt FROM users').first();
+          const phoneUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE phone IS NOT NULL AND phone != ''").first();
+          const guestUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE phone IS NULL OR phone = ''").first();
+          const todayNewUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE created_at >= ?").bind(todayStr).first();
+          const sevenDayNewUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE created_at >= ?").bind(sevenDaysAgo).first();
+          const thirtyDayNewUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE created_at >= ?").bind(thirtyDaysAgo).first();
+
+          // AI调用统计
+          const aiCalls = await env.DB.prepare("SELECT endpoint, COUNT(*) as cnt FROM api_rate_limits WHERE endpoint IN ('chat','analyze','letter','mira_quiz','mira_deep') GROUP BY endpoint").all();
+          const totalAiCalls = aiCalls.results ? aiCalls.results.reduce((s, r) => s + r.cnt, 0) : 0;
+
+          // 短信统计
+          const todaySms = await env.DB.prepare("SELECT COUNT(*) as cnt FROM sms_send_log WHERE created_at >= ?").bind(todayStr).first();
+          const monthSms = await env.DB.prepare("SELECT COUNT(*) as cnt FROM sms_send_log WHERE created_at >= ?").bind(thirtyDaysAgo).first();
+          const smsCost = (monthSms ? monthSms.cnt : 0) * 0.045;
+
+          // 限流统计
+          const rateLimitHits = await env.DB.prepare("SELECT COUNT(*) as cnt FROM api_rate_limits WHERE created_at_ms >= ?").bind(Date.now() - 86400000).first();
+
+          // MIRA类型TOP5
+          const miraTypes = await env.DB.prepare("SELECT mira_type, COUNT(*) as cnt FROM users WHERE mira_type IS NOT NULL AND mira_type != '' GROUP BY mira_type ORDER BY cnt DESC LIMIT 5").all();
+
+          return jsonResponse({
+            users: {
+              total: totalUsers ? totalUsers.cnt : 0,
+              phone: phoneUsers ? phoneUsers.cnt : 0,
+              guest: guestUsers ? guestUsers.cnt : 0,
+              todayNew: todayNewUsers ? todayNewUsers.cnt : 0,
+              sevenDayNew: sevenDayNewUsers ? sevenDayNewUsers.cnt : 0,
+              thirtyDayNew: thirtyDayNewUsers ? thirtyDayNewUsers.cnt : 0
+            },
+            ai: {
+              total: totalAiCalls,
+              byEndpoint: aiCalls.results || []
+            },
+            sms: {
+              today: todaySms ? todaySms.cnt : 0,
+              month: monthSms ? monthSms.cnt : 0,
+              cost: Math.round(smsCost * 100) / 100
+            },
+            security: {
+              rateLimit24h: rateLimitHits ? rateLimitHits.cnt : 0
+            },
+            miraTop5: miraTypes.results || []
+          }, 200, origin);
+        } catch (e) {
+          console.error('dashboard error:', e.message);
+          return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
+      }
+
+      // 用户列表（GET /api/admin/users）
+      if (path === '/api/admin/users' && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const url = new URL(request.url);
+          const page = parseInt(url.searchParams.get('page') || '1');
+          const limit = parseInt(url.searchParams.get('limit') || '20');
+          const keyword = url.searchParams.get('keyword') || '';
+          const miraType = url.searchParams.get('miraType') || '';
+          const status = url.searchParams.get('status') || '';
+          const offset = (page - 1) * limit;
+
+          let where = 'WHERE 1=1';
+          const params = [];
+          if (keyword) { where += " AND (nickname LIKE ? OR phone LIKE ? OR guest_id LIKE ?)"; params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`); }
+          if (miraType) { where += " AND mira_type = ?"; params.push(miraType); }
+          if (status) { where += " AND status = ?"; params.push(status); }
+
+          const countResult = await env.DB.prepare(`SELECT COUNT(*) as cnt FROM users ${where}`).bind(...params).first();
+          const total = countResult ? countResult.cnt : 0;
+
+          const users = await env.DB.prepare(`SELECT id, guest_id, phone, nickname, mira_type, status, created_at, last_login_at FROM users ${where} ORDER BY id DESC LIMIT ? OFFSET ?`).bind(...params, limit, offset).all();
+
+          return jsonResponse({
+            users: users.results || [],
+            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+          }, 200, origin);
+        } catch (e) {
+          console.error('admin users error:', e.message);
+          return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
+      }
+
+      // 用户详情（GET /api/admin/users/:id）
+      if (path.startsWith('/api/admin/users/') && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const userId = path.split('/').pop();
+          const user = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, status, created_at, last_login_at FROM users WHERE id = ?').bind(userId).first();
+          if (!user) return jsonResponse({ error: '用户不存在' }, 404, origin);
+
+          // 脱敏手机号
+          const displayPhone = user.phone ? user.phone.substring(0, 3) + '****' + user.phone.substring(7) : null;
+
+          // 获取分析记录
+          const analyses = await env.DB.prepare('SELECT id, user_input, mira_type, created_at FROM single_analyses WHERE user_id = ? ORDER BY id DESC LIMIT 10').bind(userId).all();
+          // 获取MIRA测试记录
+          const tests = await env.DB.prepare('SELECT id, mira_type, deep_text, created_at FROM mira_tests WHERE user_id = ? ORDER BY id DESC LIMIT 10').bind(userId).all();
+          // 获取双人房间记录
+          const rooms = await env.DB.prepare('SELECT id, room_code, role, partner_mira_type, my_mira_type, created_at FROM user_room_records WHERE user_id = ? ORDER BY id DESC LIMIT 10').bind(userId).all();
+          // 获取联系方式提交
+          const contacts = await env.DB.prepare('SELECT id, contact_type, contact_value, created_at FROM user_contacts WHERE user_id = ? ORDER BY id DESC LIMIT 10').bind(userId).all();
+
+          await logSecurityEvent(env, 'admin_action', { action: 'view_user_detail', userId }, request.headers.get('CF-Connecting-IP') || 'unknown', path, parseInt(userId), 'admin');
+
+          return jsonResponse({
+            user: { ...user, displayPhone },
+            analyses: analyses.results || [],
+            tests: tests.results || [],
+            rooms: rooms.results || [],
+            contacts: contacts.results || []
+          }, 200, origin);
+        } catch (e) {
+          console.error('admin user detail error:', e.message);
+          return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
+      }
+
+      // 封禁/解封用户（PUT /api/admin/users/:id/ban）
+      if (path.match(/^\/api\/admin\/users\/\d+\/ban$/) && request.method === 'PUT') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const userId = path.split('/')[4];
+          let body;
+          try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+          const { status } = body;
+          if (status !== 'normal' && status !== 'banned') return jsonResponse({ error: '状态无效' }, 400, origin);
+          await env.DB.prepare("UPDATE users SET status = ? WHERE id = ?").bind(status, userId).run();
+          await logSecurityEvent(env, 'admin_action', { action: 'ban_user', userId, status }, request.headers.get('CF-Connecting-IP') || 'unknown', path, parseInt(userId), 'admin');
+          return jsonResponse({ success: true, message: status === 'banned' ? '用户已封禁' : '用户已解封' }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '操作失败' }, 500, origin);
+        }
+      }
+
+      // 重置用户密码（PUT /api/admin/users/:id/reset-pw）
+      if (path.match(/^\/api\/admin\/users\/\d+\/reset-pw$/) && request.method === 'PUT') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const userId = path.split('/')[4];
+          const salt = generateSalt();
+          const hash = await hashPassword('1234', salt);
+          await env.DB.prepare('UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?').bind(hash, salt, userId).run();
+          await logSecurityEvent(env, 'admin_action', { action: 'reset_password', userId }, request.headers.get('CF-Connecting-IP') || 'unknown', path, parseInt(userId), 'admin');
+          return jsonResponse({ success: true, message: '密码已重置为 1234' }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '操作失败' }, 500, origin);
+        }
+      }
+
+      // AI调用统计（GET /api/admin/ai-stats）
+      if (path === '/api/admin/ai-stats' && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const url = new URL(request.url);
+          const days = parseInt(url.searchParams.get('days') || '7');
+          const fromDate = new Date(Date.now() - days * 86400000).toISOString().replace('T', ' ').substring(0, 19);
+          const stats = await env.DB.prepare(
+            "SELECT endpoint, COUNT(*) as cnt FROM api_rate_limits WHERE endpoint IN ('chat','analyze','letter','mira_quiz','mira_deep') AND created_at_ms >= ? GROUP BY endpoint"
+          ).bind(Date.now() - days * 86400000).all();
+          return jsonResponse({ stats: stats.results || [] }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
+      }
+
+      // 短信统计（GET /api/admin/sms-stats）
+      if (path === '/api/admin/sms-stats' && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const url = new URL(request.url);
+          const days = parseInt(url.searchParams.get('days') || '30');
+          const fromDate = new Date(Date.now() - days * 86400000).toISOString().replace('T', ' ').substring(0, 19);
+          const dailyStats = await env.DB.prepare(
+            "SELECT date(created_at) as date, COUNT(*) as cnt FROM sms_send_log WHERE created_at >= ? GROUP BY date(created_at) ORDER BY date DESC"
+          ).bind(fromDate).all();
+          const total = await env.DB.prepare("SELECT COUNT(*) as cnt FROM sms_send_log WHERE created_at >= ?").bind(fromDate).first();
+          return jsonResponse({ daily: dailyStats.results || [], total: total ? total.cnt : 0, cost: Math.round((total ? total.cnt : 0) * 0.045 * 100) / 100 }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
+      }
+
+      // 报告统计排行（GET /api/admin/report-stats）
+      if (path === '/api/admin/report-stats' && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const url = new URL(request.url);
+          const days = parseInt(url.searchParams.get('days') || '30');
+          const fromDate = new Date(Date.now() - days * 86400000).toISOString().replace('T', ' ').substring(0, 19);
+
+          // MIRA人格测试报告排行
+          const miraTestTypes = await env.DB.prepare(
+            "SELECT mira_type, COUNT(*) as cnt FROM mira_tests WHERE created_at >= ? AND mira_type IS NOT NULL AND mira_type != '' GROUP BY mira_type ORDER BY cnt DESC"
+          ).bind(fromDate).all();
+
+          // 单人对话分析报告排行
+          const singleTypes = await env.DB.prepare(
+            "SELECT mira_type, COUNT(*) as cnt FROM single_analyses WHERE created_at >= ? AND mira_type IS NOT NULL AND mira_type != '' GROUP BY mira_type ORDER BY cnt DESC"
+          ).bind(fromDate).all();
+
+          // 总报告数
+          const totalMiraTests = await env.DB.prepare("SELECT COUNT(*) as cnt FROM mira_tests WHERE created_at >= ?").bind(fromDate).first();
+          const totalSingleAnalyses = await env.DB.prepare("SELECT COUNT(*) as cnt FROM single_analyses WHERE created_at >= ?").bind(fromDate).first();
+
+          return jsonResponse({
+            miraTestRank: miraTestTypes.results || [],
+            singleAnalysisRank: singleTypes.results || [],
+            totals: {
+              miraTests: totalMiraTests ? totalMiraTests.cnt : 0,
+              singleAnalyses: totalSingleAnalyses ? totalSingleAnalyses.cnt : 0
+            }
+          }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
+      }
+
+      // 安全日志（GET /api/admin/security-logs）
+      if (path === '/api/admin/security-logs' && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const url = new URL(request.url);
+          const page = parseInt(url.searchParams.get('page') || '1');
+          const limit = parseInt(url.searchParams.get('limit') || '50');
+          const eventType = url.searchParams.get('type') || '';
+          const offset = (page - 1) * limit;
+
+          let where = 'WHERE 1=1';
+          const params = [];
+          if (eventType) { where += " AND event_type = ?"; params.push(eventType); }
+
+          const countResult = await env.DB.prepare(`SELECT COUNT(*) as cnt FROM security_logs ${where}`).bind(...params).first();
+          const logs = await env.DB.prepare(`SELECT id, event_type, event_detail, ip, endpoint, user_id, admin_id, created_at FROM security_logs ${where} ORDER BY id DESC LIMIT ? OFFSET ?`).bind(...params, limit, offset).all();
+
+          return jsonResponse({
+            logs: logs.results || [],
+            pagination: { page, limit, total: countResult ? countResult.cnt : 0 }
+          }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
+      }
+
+      // CSV导出（GET /api/admin/export/:type）
+      if (path.startsWith('/api/admin/export/') && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const type = path.split('/').pop();
+          let csv = '';
+          let filename = '';
+
+          if (type === 'users') {
+            const users = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, status, created_at, last_login_at FROM users ORDER BY id DESC').all();
+            filename = 'users.csv';
+            csv = 'ID,GuestID,Phone,Nickname,MIRAType,Status,CreatedAt,LastLogin\n';
+            for (const u of (users.results || [])) {
+              csv += `${u.id},${u.guest_id || ''},"${u.phone || ''}","${u.nickname || ''}",${u.mira_type || ''},${u.status || ''},${u.created_at || ''},${u.last_login_at || ''}\n`;
+            }
+          } else if (type === 'security-logs') {
+            const logs = await env.DB.prepare('SELECT id, event_type, event_detail, ip, endpoint, user_id, admin_id, created_at FROM security_logs ORDER BY id DESC').all();
+            filename = 'security-logs.csv';
+            csv = 'ID,EventType,Detail,IP,Endpoint,UserID,AdminID,CreatedAt\n';
+            for (const l of (logs.results || [])) {
+              csv += `${l.id},${l.event_type},"${(l.event_detail || '').replace(/"/g, '""')}",${l.ip},${l.endpoint || ''},${l.user_id || ''},${l.admin_id || ''},${l.created_at || ''}\n`;
+            }
+          } else {
+            return jsonResponse({ error: '不支持的导出类型' }, 400, origin);
+          }
+
+          await logSecurityEvent(env, 'admin_action', { action: 'export', type }, request.headers.get('CF-Connecting-IP') || 'unknown', path, null, 'admin');
+
+          return new Response(csv, {
+            headers: {
+              'Content-Type': 'text/csv; charset=utf-8',
+              'Content-Disposition': `attachment; filename="${filename}"`,
+              ...getCorsHeaders(origin)
+            }
+          });
+        } catch (e) {
+          return jsonResponse({ error: '导出失败' }, 500, origin);
+        }
+      }
+
+      // 获取配置（GET /api/admin/config）
+      if (path === '/api/admin/config' && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          const whitelist = await getAdminConfig(env, 'ip_whitelist', []);
+          return jsonResponse({ ipWhitelist: whitelist }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '查询失败' }, 500, origin);
+        }
+      }
+
+      // 修改配置（PUT /api/admin/config）
+      if (path === '/api/admin/config' && request.method === 'PUT') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        try {
+          let body;
+          try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+          const { ipWhitelist } = body;
+          if (!Array.isArray(ipWhitelist)) return jsonResponse({ error: 'IP白名单格式错误' }, 400, origin);
+          await setAdminConfig(env, 'ip_whitelist', ipWhitelist);
+          await logSecurityEvent(env, 'admin_action', { action: 'update_config', ipWhitelist }, request.headers.get('CF-Connecting-IP') || 'unknown', path, null, 'admin');
+          return jsonResponse({ success: true }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '操作失败' }, 500, origin);
         }
       }
 

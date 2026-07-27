@@ -29,9 +29,11 @@ CREATE TABLE IF NOT EXISTS users (
   password_salt TEXT,              -- 密码盐值（随机生成）
   nickname TEXT,                  -- 昵称（可选）
   mira_type TEXT,                 -- 用户最新的MIRA人格类型
+  status TEXT DEFAULT 'normal',   -- 用户状态: normal/banned
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   last_login_at DATETIME
 );
+-- ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'normal';
 
 CREATE INDEX IF NOT EXISTS idx_users_guest ON users(guest_id);
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
@@ -108,3 +110,29 @@ CREATE TABLE IF NOT EXISTS user_room_records (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_room_records_user ON user_room_records(user_id, created_at);
+
+-- ══════════════════════════════════════════ 后台管理相关表 ══════════════════════════════════════════
+
+-- 管理员配置表（IP白名单等动态配置）
+CREATE TABLE IF NOT EXISTS admin_config (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  config_key TEXT UNIQUE NOT NULL,     -- 配置项名称，如 'ip_whitelist'
+  config_value TEXT NOT NULL,          -- 配置值（JSON格式）
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 安全日志表（管理员操作审计、限流触发、登录失败、恶意请求）
+CREATE TABLE IF NOT EXISTS security_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_type TEXT NOT NULL,            -- 事件类型: admin_login/admin_action/rate_limit/login_fail/malicious_request
+  event_detail TEXT,                   -- 事件详情（JSON格式）
+  ip TEXT NOT NULL,                    -- 请求来源IP
+  endpoint TEXT,                       -- 触发的端点
+  user_id INTEGER,                     -- 关联的用户ID（如有）
+  admin_id TEXT,                       -- 管理员标识（如有）
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_security_logs_type ON security_logs(event_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_security_logs_ip ON security_logs(ip, created_at);
+CREATE INDEX IF NOT EXISTS idx_security_logs_created ON security_logs(created_at);
