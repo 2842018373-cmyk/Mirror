@@ -2773,9 +2773,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     function showResultActions(data) {
       setState('RESULT');
       addMessage('actions', [
-        { text: '🔍 查看完整人格画像', className: 'btn btn-primary', onclick: function() { openProfileOverlay(data); } },
-        { text: '📤 分享人格', className: 'btn btn-primary', onclick: function() { generateShareCard(); } },
-        { text: '📋 导出报告', className: 'btn btn-secondary', onclick: function() { exportReport(); } }
+        { text: '一键分享到微信', className: 'btn btn-primary', onclick: function() { generateShareCard('share'); } },
+        { text: '保存长图', className: 'btn btn-secondary', onclick: function() { generateShareCard('save'); } },
+        { text: '返回', className: 'btn btn-secondary', onclick: function() { restartExperience(); } }
       ]);
       // 导流入口
       appendCtaToThread();
@@ -3081,7 +3081,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         '<div style="font-size:0.85rem;color:#C8D0DC;font-style:italic">\u201C' + safeText(text) + '\u201D</div></div>';
     }
 
-    function generateShareCard() {
+    function generateShareCard(mode) {
+      mode = mode || 'save';
       var d = userData.aiData;
       if (!d || !d.miraType) { alert('暂无 MIRA 人格数据'); return; }
       if (typeof html2canvas === 'undefined') { alert('组件加载中，请稍后再试'); return; }
@@ -3094,82 +3095,75 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var exprScores = d._scores || { D: dim==='D'?12:3, S: dim==='S'?12:3, B: dim==='B'?12:3, R: dim==='R'?12:3 };
       var focusScores = d._focusScores || { O: dir==='O'?12:3, T: dir==='T'?12:3, I: dir==='I'?12:3, N: dir==='N'?12:3 };
 
-      function barHtml(label, score, color) {
+      function barHtml(label, score, isActive) {
         var pct = Math.min(100, Math.max(15, score / 15 * 100));
-        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
-          '<div style="width:28px;font-size:0.6rem;color:#5A6472;text-align:right;">' + label + '</div>' +
-          '<div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">' +
+        var color = isActive ? '#D4AF37' : '#7EA7FF';
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">' +
+          '<div style="width:32px;font-size:0.55rem;color:#5A6472;text-align:right;">' + label + '</div>' +
+          '<div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">' +
             '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px;"></div>' +
           '</div>' +
-          '<div style="width:20px;font-size:0.6rem;color:#8892A0;">' + score + '</div>' +
+          '<div style="width:18px;font-size:0.55rem;color:#8892A0;">' + score + '</div>' +
         '</div>';
       }
 
-      var tags = [miraInfo.dim, miraInfo.dir, dim === 'D' ? '内敛深沉' : dim === 'S' ? '温柔细腻' : dim === 'B' ? '主动坦诚' : '炽热锐利'];
       var insight = d.insight || miraInfo.desc;
-      var suggest = d.suggest || '尝试在关系中更直接地表达你的真实感受，让对方了解你的内心世界。';
-      var feeling = d.emotion || '在这段关系中，你可能正在经历一种复杂的情绪状态。';
 
-      // 构建卡片 HTML（不含 img，后面用预加载的图片替换）
+      // 图鉴风格大图分享卡片（严格参照图鉴卡片设计）
       var cardHtml =
-        '<div style="height:3px;background:linear-gradient(90deg,#D4AF37,#F0D080,#D4AF37);"></div>' +
-        '<div style="padding:28px 24px 4px;text-align:center;">' +
-          '<div style="font-size:0.65rem;letter-spacing:5px;color:#7EA7FF;margin-bottom:4px;">M I R R O R</div>' +
-          '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:1px;">我的 MIRA 关系人格</div>' +
-        '</div>' +
-        '<div style="text-align:center;padding:12px 0;">' +
-          '<img id="_scImg" src="" style="width:120px;height:120px;border-radius:50%;object-fit:cover;border:2px solid rgba(212,175,55,0.3);box-shadow:0 4px 20px rgba(0,0,0,0.5);display:none;">' +
-        '</div>' +
-        '<div style="text-align:center;padding:0 24px 4px;">' +
-          '<div style="font-size:3.2rem;font-weight:800;letter-spacing:6px;background:linear-gradient(180deg,#F0D080,#D4AF37,#B8962E);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;display:inline-block;">' + miraType + '</div>' +
-          '<div style="font-size:1.1rem;font-weight:600;color:#F0EDE6;letter-spacing:2px;margin-top:4px;">' + miraInfo.name + '</div>' +
-          '<div style="margin-top:8px;display:flex;justify-content:center;gap:6px;">' +
-            '<span style="font-size:0.6rem;color:#7EA7FF;background:rgba(126,167,255,0.08);padding:3px 10px;border-radius:10px;">' + miraInfo.dim + '</span>' +
-            '<span style="font-size:0.6rem;color:#7EA7FF;background:rgba(126,167,255,0.08);padding:3px 10px;border-radius:10px;">' + miraInfo.dir + '</span>' +
+        // 顶部大图区（参照图鉴卡片：图片占满 + 底部渐变遮罩 + 右上角代码徽章）
+        '<div style="position:relative;width:100%;aspect-ratio:3/4;overflow:hidden;">' +
+          '<img id="_scImg" src="" style="width:100%;height:100%;object-fit:cover;display:block;">' +
+          '<div style="position:absolute;bottom:0;left:0;right:0;height:65%;background:linear-gradient(to top, #0D0E12 0%, rgba(13,14,18,0.7) 40%, transparent 100%);pointer-events:none;"></div>' +
+          // 右上角类型代码（图鉴风格毛玻璃徽章）
+          '<div style="position:absolute;top:16px;right:16px;background:rgba(0,0,0,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px 16px;z-index:2;">' +
+            '<span style="font-size:1.1rem;font-weight:700;letter-spacing:3px;background:linear-gradient(135deg,#D4AF37,#F0D080);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">' + miraType + '</span>' +
+          '</div>' +
+          // 底部叠加信息（图鉴风格：名称 + 描述）
+          '<div style="position:absolute;bottom:0;left:0;right:0;padding:24px 20px;z-index:2;">' +
+            '<div style="font-size:1.3rem;font-weight:600;color:#F0EDE6;margin-bottom:4px;letter-spacing:1px;">' + miraInfo.name + '</div>' +
+            '<div style="font-size:0.7rem;color:#8A92A0;letter-spacing:1px;">' + miraInfo.short + ' · ' + dimNames[dim] + ' · ' + dirNames[dir] + '</div>' +
           '</div>' +
         '</div>' +
-        '<div style="width:40px;height:1px;background:rgba(212,175,55,0.3);margin:16px auto;"></div>' +
-        '<div style="padding:0 28px 10px;">' +
-          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:10px;font-weight:600;">表达方式维度</div>' +
-          barHtml('D', exprScores.D || 3, '#7EA7FF') + barHtml('S', exprScores.S || 3, '#7EA7FF') +
-          barHtml('B', exprScores.B || 3, '#D4AF37') + barHtml('R', exprScores.R || 3, '#D4AF37') +
+        // 信息区
+        '<div style="padding:20px 24px 16px;">' +
+          // 维度条
+          '<div style="margin-bottom:14px;">' +
+            '<div style="font-size:0.55rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">表达方式</div>' +
+            barHtml('暗影', exprScores.D || 3, dim==='D') +
+            barHtml('柔光', exprScores.S || 3, dim==='S') +
+            barHtml('明光', exprScores.B || 3, dim==='B') +
+            barHtml('辉光', exprScores.R || 3, dim==='R') +
+          '</div>' +
+          '<div style="width:32px;height:1px;background:rgba(212,175,55,0.3);margin:12px auto;"></div>' +
+          '<div style="margin-bottom:14px;">' +
+            '<div style="font-size:0.55rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">关注方向</div>' +
+            barHtml('向外', focusScores.O || 3, dir==='O') +
+            barHtml('朝向', focusScores.T || 3, dir==='T') +
+            barHtml('倾向', focusScores.I || 3, dir==='I') +
+            barHtml('向内', focusScores.N || 3, dir==='N') +
+          '</div>' +
+          '<div style="width:32px;height:1px;background:rgba(212,175,55,0.3);margin:12px auto;"></div>' +
+          // 金句
+          '<div style="text-align:center;padding:8px 0;">' +
+            '<div style="font-size:0.85rem;color:#C8D0DC;line-height:1.8;font-style:italic;">\u201C' + _rText(insight) + '\u201D</div>' +
+          '</div>' +
         '</div>' +
-        '<div style="padding:0 28px 14px;">' +
-          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:10px;font-weight:600;">关注方向维度</div>' +
-          barHtml('O', focusScores.O || 3, '#7EA7FF') + barHtml('T', focusScores.T || 3, '#7EA7FF') +
-          barHtml('I', focusScores.I || 3, '#D4AF37') + barHtml('N', focusScores.N || 3, '#D4AF37') +
-        '</div>' +
-        '<div style="width:40px;height:1px;background:rgba(212,175,55,0.3);margin:14px auto;"></div>' +
-        '<div style="padding:0 28px 12px;text-align:center;">' +
-          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">在这段感情中的位置</div>' +
-          '<div style="font-size:0.8rem;color:#C8D0DC;line-height:1.8;">' + _rText(insight) + '</div>' +
-        '</div>' +
-        '<div style="padding:0 28px 12px;text-align:center;">' +
-          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">你的真实感受</div>' +
-          '<div style="font-size:0.8rem;color:#C8D0DC;line-height:1.8;font-style:italic;">\u201C' + _rText(feeling) + '\u201D</div>' +
-        '</div>' +
-        '<div style="padding:0 28px 18px;text-align:center;">' +
-          '<div style="font-size:0.6rem;color:#7EA7FF;letter-spacing:2px;margin-bottom:8px;font-weight:600;">给这段关系的建议</div>' +
-          '<div style="font-size:0.8rem;color:#C8D0DC;line-height:1.8;">' + _rText(suggest) + '</div>' +
-        '</div>' +
-        '<div style="padding:0 24px 24px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">' +
-          tags.map(function(t) { return '<span style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);color:#D4AF37;padding:5px 12px;border-radius:20px;font-size:0.7rem;letter-spacing:0.5px;">' + t + '</span>'; }).join('') +
-        '</div>' +
-        '<div style="padding:18px 24px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.04);">' +
-          '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:1px;">Generated by Mirror · mirrorsoul.top</div>' +
-          '<div style="font-size:0.55rem;color:#3A4149;margin-top:6px;">测测你的 MIRA 关系人格</div>' +
+        // 底部品牌（网址已修正为 mirrorsoul.top）
+        '<div style="padding:16px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.04);">' +
+          '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:1px;">Mirror · mirrorsoul.top</div>' +
+          '<div style="font-size:0.55rem;color:#3A4149;margin-top:4px;">测测你的 MIRA 关系人格</div>' +
         '</div>';
 
       addMessage('system', '正在生成分享卡片…');
 
-      // 预加载 MIRA 图片，确保截图完整
+      // 预加载 MIRA 图片（严格使用图鉴同款图片）
       var preloadImg = new Image();
       preloadImg.onload = doCapture;
       preloadImg.onerror = doCapture;
       preloadImg.src = 'mira-images/' + miraType + '.jpg';
 
       function doCapture() {
-        // 创建 overflow:visible 的 wrapper，卡片用默认 static 定位
         var wrapper = document.createElement('div');
         wrapper.id = '_scWrapper';
         wrapper.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;overflow:visible;z-index:-1;opacity:0;pointer-events:none;';
@@ -3177,18 +3171,16 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
         var card = document.createElement('div');
         card.id = '_shareCard';
-        card.style.cssText = 'width:375px;background:#08090B;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;box-sizing:border-box;';
+        card.style.cssText = 'width:375px;background:#0D0E12;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;box-sizing:border-box;border-radius:20px;overflow:hidden;';
         card.innerHTML = cardHtml;
-        // 把预加载的图片地址填进去
         var scImg = card.querySelector('#_scImg');
-        if (scImg) { scImg.src = 'mira-images/' + miraType + '.jpg'; scImg.style.display = 'inline-block'; }
+        if (scImg) { scImg.src = 'mira-images/' + miraType + '.jpg'; }
         wrapper.appendChild(card);
 
-        // 等浏览器渲染一帧后再截图
         requestAnimationFrame(function() {
           var h = card.scrollHeight;
           html2canvas(card, {
-            backgroundColor: '#08090B', scale: 2, useCORS: true, allowTaint: true,
+            backgroundColor: '#0D0E12', scale: 2, useCORS: true, allowTaint: true,
             width: 375, height: h, windowWidth: 375, windowHeight: h,
             onclone: function(doc) {
               var el = doc.getElementById('_shareCard');
@@ -3200,23 +3192,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
               if (!blob) { addMessage('system', '生成失败，请重试'); return; }
               var url = URL.createObjectURL(blob);
               if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                var img = document.createElement('img');
-                img.src = url;
-                img.style.cssText = 'max-width:100%;border-radius:12px;display:block;margin:12px auto;';
-                var preview = document.createElement('div');
-                preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 12px;';
-                var tipBar = document.createElement('div');
-                tipBar.style.cssText = 'color:#D4AF37;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;max-width:375px;flex-shrink:0;';
-                tipBar.textContent = '长按图片保存到相册，然后去微信分享';
-                preview.appendChild(tipBar);
-                preview.appendChild(img);
-                var closeBtn = document.createElement('div');
-                closeBtn.textContent = '关闭';
-                closeBtn.style.cssText = 'margin-top:16px;padding:10px 32px;border:1px solid #D4AF37;color:#D4AF37;border-radius:8px;cursor:pointer;font-size:14px;';
-                closeBtn.onclick = function() { document.body.removeChild(preview); URL.revokeObjectURL(url); };
-                preview.appendChild(closeBtn);
-                preview.onclick = function(e) { if (e.target === preview) { document.body.removeChild(preview); URL.revokeObjectURL(url); } };
-                document.body.appendChild(preview);
+                showSharePreview(url, miraType, mode);
               } else {
                 var link = document.createElement('a');
                 link.download = 'Mirror-MIRA-' + miraType + '.png';
@@ -3232,6 +3208,87 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
             console.error('generateShareCard error:', err);
           });
         });
+      }
+    }
+
+    // 手机端分享预览弹层（含三按钮操作区）
+    function showSharePreview(imgUrl, miraType, mode) {
+      mode = mode || 'save';
+      var preview = document.createElement('div');
+      preview.id = '_sharePreview';
+      preview.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:10000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:0;';
+
+      // 关闭按钮
+      var closeBtn = document.createElement('button');
+      closeBtn.innerHTML = '&#10005;';
+      closeBtn.style.cssText = 'position:fixed;top:12px;right:12px;z-index:10001;width:36px;height:36px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:50%;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+      closeBtn.onclick = function() { closeSharePreview(); };
+
+      // 提示栏
+      var tipText = mode === 'share' ? '长按图片保存到相册，然后去微信分享' : '长按图片保存到相册';
+      var tipBar = document.createElement('div');
+      tipBar.style.cssText = 'color:#D4AF37;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;flex-shrink:0;';
+      tipBar.textContent = tipText;
+
+      // 图片
+      var img = document.createElement('img');
+      img.src = imgUrl;
+      img.style.cssText = 'max-width:92%;width:375px;border-radius:16px;display:block;margin:8px auto;box-shadow:0 8px 40px rgba(0,0,0,0.5);';
+
+      // 底部操作区
+      var actionWrap = document.createElement('div');
+      actionWrap.style.cssText = 'width:100%;max-width:375px;padding:16px 16px 24px;box-sizing:border-box;flex-shrink:0;';
+
+      // 主按钮
+      var primaryBtn = document.createElement('button');
+      primaryBtn.style.cssText = 'width:100%;padding:14px 0;border-radius:14px;font-size:15px;font-weight:600;font-family:inherit;border:none;cursor:pointer;margin-bottom:10px;background:linear-gradient(135deg,#B8962E,#D4AF37);color:#0a0a0d;';
+      primaryBtn.textContent = mode === 'share' ? '保存并去微信分享' : '保存到相册';
+      primaryBtn.onclick = function() {
+        var a = document.createElement('a');
+        a.href = imgUrl;
+        a.download = 'Mirror-MIRA-' + miraType + '.png';
+        a.click();
+      };
+
+      // 次按钮行
+      var btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
+
+      var copyBtn = document.createElement('button');
+      copyBtn.style.cssText = 'padding:12px 0;border-radius:14px;font-size:14px;font-family:inherit;border:1px solid rgba(255,255,255,0.15);cursor:pointer;background:#1a1a1f;color:#E8EDF5;';
+      copyBtn.textContent = '复制文案';
+      copyBtn.onclick = function() {
+        if (navigator.clipboard) {
+          var miraInfo = getMiraInfo(miraType);
+          navigator.clipboard.writeText('我的 MIRA 关系人格是「' + miraInfo.name + '」(' + miraType + ')，你也来测测吧 👉 mirrorsoul.top').then(function(){
+            copyBtn.textContent = '已复制';
+            setTimeout(function(){ copyBtn.textContent = '复制文案'; }, 2000);
+          });
+        }
+      };
+
+      var backBtn = document.createElement('button');
+      backBtn.style.cssText = 'padding:12px 0;border-radius:14px;font-size:14px;font-family:inherit;border:1px solid rgba(255,255,255,0.15);cursor:pointer;background:#1a1a1f;color:#8892A0;';
+      backBtn.textContent = '返回';
+      backBtn.onclick = function() { closeSharePreview(); };
+
+      btnRow.appendChild(copyBtn);
+      btnRow.appendChild(backBtn);
+
+      actionWrap.appendChild(primaryBtn);
+      actionWrap.appendChild(btnRow);
+
+      preview.appendChild(closeBtn);
+      preview.appendChild(tipBar);
+      preview.appendChild(img);
+      preview.appendChild(actionWrap);
+      document.body.appendChild(preview);
+    }
+
+    function closeSharePreview() {
+      var preview = document.getElementById('_sharePreview');
+      if (preview) {
+        document.body.removeChild(preview);
       }
     }
 
