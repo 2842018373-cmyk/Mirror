@@ -2774,7 +2774,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       setState('RESULT');
       addMessage('actions', [
         { text: '🔍 查看完整人格画像', className: 'btn btn-primary', onclick: function() { openProfileOverlay(data); } },
-        { text: '一键分享到微信', className: 'btn btn-primary', onclick: function() { generateShareCard('share'); } },
+        { text: '一键分享', className: 'btn btn-primary', onclick: function() { generateShareCard('share'); } },
         { text: '保存长图', className: 'btn btn-secondary', onclick: function() { generateShareCard('save'); } },
         { text: '📋 导出报告', className: 'btn btn-secondary', onclick: function() { exportReport(); } }
       ]);
@@ -5718,7 +5718,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         <!-- 内容由 JS 动态生成 -->
       </div>
       <div class="profile-actions">
-        <button class="btn btn-primary" id="profileShareCardBtn">一键分享到微信</button>
+        <button class="btn btn-primary" id="profileShareCardBtn">一键分享</button>
         <button class="btn btn-primary" id="profileShareBtn">&#128247; 保存长图</button>
         <button class="btn btn-secondary" id="profileRestartBtn">&#128260; 重新开始</button>
       </div>
