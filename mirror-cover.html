@@ -2773,9 +2773,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     function showResultActions(data) {
       setState('RESULT');
       addMessage('actions', [
+        { text: '🔍 查看完整人格画像', className: 'btn btn-primary', onclick: function() { openProfileOverlay(data); } },
         { text: '一键分享到微信', className: 'btn btn-primary', onclick: function() { generateShareCard('share'); } },
         { text: '保存长图', className: 'btn btn-secondary', onclick: function() { generateShareCard('save'); } },
-        { text: '返回', className: 'btn btn-secondary', onclick: function() { restartExperience(); } }
+        { text: '📋 导出报告', className: 'btn btn-secondary', onclick: function() { exportReport(); } }
       ]);
       // 导流入口
       appendCtaToThread();
