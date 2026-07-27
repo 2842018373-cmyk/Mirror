@@ -3230,7 +3230,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       closeBtn.onclick = function() { closeSharePreview(); };
 
       // 提示栏
-      var tipText = mode === 'share' ? '长按图片保存到相册，然后去微信分享' : '长按图片保存到相册';
+      var tipText = mode === 'share' ? '点击下方按钮分享，或长按图片保存到相册' : '长按图片保存到相册';
       var tipBar = document.createElement('div');
       tipBar.style.cssText = 'color:#D4AF37;font-size:13px;text-align:center;padding:12px 0;position:sticky;top:0;background:rgba(0,0,0,0.92);z-index:1;width:100%;flex-shrink:0;';
       tipBar.textContent = tipText;
@@ -3247,12 +3247,49 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       // 主按钮
       var primaryBtn = document.createElement('button');
       primaryBtn.style.cssText = 'width:100%;padding:14px 0;border-radius:14px;font-size:15px;font-weight:600;font-family:inherit;border:none;cursor:pointer;margin-bottom:10px;background:linear-gradient(135deg,#B8962E,#D4AF37);color:#0a0a0d;';
-      primaryBtn.textContent = mode === 'share' ? '保存并去微信分享' : '保存到相册';
+      primaryBtn.textContent = mode === 'share' ? '分享' : '保存到相册';
+
+      // 手机端：优先用 navigator.share（系统分享面板），不支持则提示长按
       primaryBtn.onclick = function() {
-        var a = document.createElement('a');
-        a.href = imgUrl;
-        a.download = 'Mirror-MIRA-' + miraType + '.png';
-        a.click();
+        if (navigator.share && navigator.canShare) {
+          // 尝试用 Web Share API 分享图片
+          fetch(imgUrl).then(function(r) { return r.blob(); }).then(function(blob) {
+            var file = new File([blob], 'Mirror-MIRA-' + miraType + '.png', { type: 'image/png' });
+            if (navigator.canShare({ files: [file] })) {
+              navigator.share({
+                title: '我的 MIRA 关系人格',
+                text: '测测你的 MIRA 关系人格 👉 mirrorsoul.top',
+                files: [file]
+              }).catch(function() {});
+            } else {
+              // 不支持分享文件，降级为分享文字
+              navigator.share({
+                title: '我的 MIRA 关系人格',
+                text: '测测你的 MIRA 关系人格 👉 mirrorsoul.top',
+                url: window.location.href
+              }).catch(function() {});
+            }
+          }).catch(function() {
+            // fetch 失败，提示长按
+            tipBar.textContent = '长按上方图片保存到相册';
+            tipBar.style.color = '#D4AF37';
+          });
+        } else if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          // 无 navigator.share 的手机浏览器：提示长按
+          tipBar.textContent = '请长按上方图片，选择「保存到相册」';
+          tipBar.style.color = '#D4AF37';
+          tipBar.style.fontSize = '14px';
+          // 高亮图片提示
+          img.style.outline = '2px solid #D4AF37';
+          img.style.outlineOffset = '4px';
+          setTimeout(function() { img.style.outline = ''; img.style.outlineOffset = ''; }, 3000);
+        } else {
+          // PC端：直接下载
+          var a = document.createElement('a');
+          a.href = imgUrl;
+          a.download = 'Mirror-MIRA-' + miraType + '.png';
+          a.click();
+        }
       };
 
       // 次按钮行
