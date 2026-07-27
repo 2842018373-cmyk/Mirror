@@ -3093,6 +3093,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       var dim = miraType[0];
       var dir = miraType[1];
 
+      // 维度中文名（函数内定义，避免引用未初始化的全局变量）
+      var dimNames = { D:'暗影', S:'柔光', B:'明光', R:'辉光' };
+      var dirNames = { O:'向外', T:'朝向', I:'倾向', N:'向内' };
+
       var exprScores = d._scores || { D: dim==='D'?12:3, S: dim==='S'?12:3, B: dim==='B'?12:3, R: dim==='R'?12:3 };
       var focusScores = d._focusScores || { O: dir==='O'?12:3, T: dir==='T'?12:3, I: dir==='I'?12:3, N: dir==='N'?12:3 };
 
@@ -3123,7 +3127,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           // 底部叠加信息（图鉴风格：名称 + 描述）
           '<div style="position:absolute;bottom:0;left:0;right:0;padding:24px 20px;z-index:2;">' +
             '<div style="font-size:1.3rem;font-weight:600;color:#F0EDE6;margin-bottom:4px;letter-spacing:1px;">' + miraInfo.name + '</div>' +
-            '<div style="font-size:0.7rem;color:#8A92A0;letter-spacing:1px;">' + miraInfo.short + ' · ' + dimNames[dim] + ' · ' + dirNames[dir] + '</div>' +
+            '<div style="font-size:0.7rem;color:#8A92A0;letter-spacing:1px;">' + miraInfo.dim + ' · ' + miraInfo.dir + '</div>' +
           '</div>' +
         '</div>' +
         // 信息区
