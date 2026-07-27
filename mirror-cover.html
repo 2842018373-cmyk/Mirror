@@ -905,8 +905,8 @@
       </div>
       <div class="skill-item">
         <span class="skill-icon">&#128161;</span>
-        <span class="skill-name">5层追问</span>
-        <span class="skill-desc">从事实到行动的深度理解</span>
+        <span class="skill-name">引导式对话</span>
+        <span class="skill-desc">像咨询师一样陪你看见自己</span>
       </div>
       <div class="skill-item">
         <span class="skill-icon">&#128221;</span>
@@ -1770,23 +1770,21 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // 状态机与核心变量
     // ════════════════════════════════════════════════════════════════════════════════════════════
 
-    var state = 'IDLE'; // IDLE | INPUT | ANALYZING | FOLLOWUP | DEEP | RESULT | LETTER | DONE
+    var state = 'IDLE'; // IDLE | INPUT | CHATTING | ANALYZING | RESULT | LETTER | DONE
     var userData = { q1: '', scenario: '', aiData: null };
     var aiMessages = []; // AI 对话历史
-    var followupRound = 0;
-    var followupQuestions = [];
-    var followupAnswers = [];
+    var chatRound = 0; // 咨询师对话轮次计数
     var letterData = { original: '', empathy: '', guide: '', redemption: '' };
     var lastActionFn = null; // 用于重试
     var parallaxActive = true;
 
     // 阶段名称映射
     var STAGE_NAMES = {
-      'IDLE': '', 'INPUT': '描述困扰', 'ANALYZING': '分析中',
-      'FOLLOWUP': '追问了解', 'DEEP': '深入探索', 'RESULT': '查看结果',
+      'IDLE': '', 'INPUT': '描述困扰', 'CHATTING': 'Mirror 在听你说',
+      'ANALYZING': '分析中', 'RESULT': '查看结果',
       'LETTER': '写信模式', 'DONE': '完成'
     };
-    var STAGE_ORDER = ['INPUT', 'ANALYZING', 'FOLLOWUP', 'DEEP', 'RESULT'];
+    var STAGE_ORDER = ['INPUT', 'CHATTING', 'ANALYZING', 'RESULT'];
 
     // ════════════════════════════════════════════════════════════════════════════════
     // 标签体系数据
@@ -1905,6 +1903,40 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       }
     }
 
+    // 咨询师对话（调用 /api/chat，返回自然语言回复 + 追问信号）
+    async function chatWithMirror(userText, history) {
+      if (typeof WORKER_API_BASE === 'undefined' || !WORKER_API_BASE) {
+        console.warn('Worker API 未配置，使用本地模板');
+        return null;
+      }
+      try {
+        var controller = window.AbortController ? new AbortController() : null;
+        var chatTimeout = setTimeout(function() {
+          if (controller) controller.abort();
+        }, 30000);
+
+        var response = await fetch(WORKER_API_BASE + '/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (localStorage.getItem('mirror_token') || '')
+          },
+          body: JSON.stringify({ prompt: userText, history: history || [] }),
+          signal: controller ? controller.signal : undefined
+        });
+        clearTimeout(chatTimeout);
+        if (!response.ok) throw new Error('API 错误: ' + response.status);
+        var data = await response.json();
+        if (data.error) throw new Error(data.error);
+        if (data.raw) { try { return JSON.parse(data.raw); } catch(e) {} }
+        return data;
+      } catch (err) {
+        console.error('咨询师对话失败:', err);
+        showRetryBar();
+        return null;
+      }
+    }
+
     // 保存对话历史
     function saveConversation(text, summary) {
       var history = JSON.parse(localStorage.getItem('mirror_history') || '[]');
@@ -1916,8 +1948,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // 草稿缓存
     function saveDraft() {
       localStorage.setItem('mirror_draft', JSON.stringify({
-        userText: userData.q1, followupRound: followupRound,
-        followupQuestions: followupQuestions, followupAnswers: followupAnswers,
+        userText: userData.q1, chatRound: chatRound,
+        aiMessages: aiMessages,
         timestamp: Date.now()
       }));
     }
@@ -2222,8 +2254,14 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     function renderInputArea(prefillText) {
       var inputArea = document.getElementById('inputArea');
       inputArea.classList.add('active');
-      inputArea.innerHTML =
-        '<div style="position:relative;width:100%;">' +
+
+      // 根据状态调整引导浮层内容
+      var isChatting = state === 'CHATTING';
+      var overlayHtml = isChatting ?
+        '<div class="input-placeholder-overlay" id="inputPlaceholder">' +
+        '<span class="guide-line">继续告诉我你的感受和想法 →</span>' +
+        '</div>'
+        :
         '<div class="input-placeholder-overlay" id="inputPlaceholder">' +
         '<span class="guide-line">你可以像倾诉一样说：</span>' +
         '<span class="guide-example">"他回消息越来越慢，我一问他就说我想太多"</span>' +
@@ -2232,8 +2270,16 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         '<span class="guide-example">"对方回复间隔变长，我感到不安，害怕失去"</span>' +
         '<br><br>' +
         '<span class="guide-line">或者两者相结合，说你想对我说的所有东西，我一直都在 →</span>' +
-        '</div>' +
-        '<textarea id="mainInput" placeholder="" rows="5" style="width:100%;min-height:140px;padding:12px 16px;border-radius:14px;border:1px solid var(--rule);background:rgba(0,0,0,0.2);color:var(--ink);font-size:0.88rem;line-height:1.6;resize:none;font-family:inherit;outline:none;transition:border-color 0.3s;"></textarea>' +
+        '</div>';
+
+      // 对话中用更小的输入框，像聊天一样
+      var textareaRows = isChatting ? 3 : 5;
+      var textareaMinHeight = isChatting ? '80px' : '140px';
+
+      inputArea.innerHTML =
+        '<div style="position:relative;width:100%;">' +
+        overlayHtml +
+        '<textarea id="mainInput" placeholder="" rows="' + textareaRows + '" style="width:100%;min-height:' + textareaMinHeight + ';padding:12px 16px;border-radius:14px;border:1px solid var(--rule);background:rgba(0,0,0,0.2);color:var(--ink);font-size:0.88rem;line-height:1.6;resize:none;font-family:inherit;outline:none;transition:border-color 0.3s;"></textarea>' +
         '</div>' +
         '<button class="btn btn-primary" id="mainSendBtn" style="margin-top:8px;width:100%;">发送</button>';
 
@@ -2315,12 +2361,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
       switch (state) {
         case 'INPUT':
+        case 'CHATTING':
+          // CHATTING 状态下保持输入框可用，让用户继续对话
           renderInputArea('');
-          break;
-
-        case 'FOLLOWUP':
-        case 'DEEP':
-          // 追问表单已通过 addMessage('followup') 渲染
           break;
 
         case 'RESULT':
@@ -2349,7 +2392,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // 流程逻辑
     // ════════════════════════════════════════════════════════════════════════════════════════════
 
-    // 提交主输入
+    // 提交主输入（改造后：对话式咨询师流程）
     function submitMainInput() {
       var input = document.getElementById('mainInput');
       var text = input.value.trim();
@@ -2363,33 +2406,32 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         return;
       }
 
-      userData.q1 = text;
-      saveConversation(text);
-      saveDraft();
-      clearDraft(); // 输入已提交，清除旧草稿
+      // 首次输入初始化
+      var isFirstInput = !userData.q1;
+      if (isFirstInput) {
+        userData.q1 = text;
+        saveConversation(text);
+        clearDraft();
+        aiMessages = [];
+        chatRound = 0;
+      }
+      // 注意：不在这里 push 用户输入到 aiMessages
+      // 因为 chatWithMirror 会把 text 作为 prompt 传给后端，后端会自动加到末尾
+      // 等后端返回后，再把 user + assistant 一起 push 到 aiMessages
 
+      // 显示用户消息，清空输入框
       addMessage('user', text);
-      setState('ANALYZING');
+      if (input) input.value = '';
 
       // 显示加载
-      var loadingMsg = addMessage('loading', 'Mirror 正在理解你', { sub: '分析情绪、识别需求、寻找误解', id: 'mainLoading' });
+      var loadingMsg = addMessage('loading', 'Mirror 正在听你说', { sub: '', id: 'chatLoading' });
+      setState('CHATTING');
+      lastActionFn = function() { submitMainInput(); };
 
-      // 重置状态
-      aiMessages = [];
-      followupRound = 0;
-      followupQuestions = [];
-      followupAnswers = [];
-      userData.aiData = null;
-
-      // 调用 AI
-      var history = [{ role: 'user', content: text }];
-      lastActionFn = function() { submitMainInput(); }; // 重试用
-
-      // 让 AI 用5层分析（事实/情绪/需求/意义/行动）判断信息充足度
-      var analysisPrompt = '用户描述了一段关系困扰。请按5层分析（事实层/情绪层/需求层/意义层/行动层）评估信息充足度。\n\n用户输入："' + text + '"\n\n请判断：\n1. 5个层面分别是否充足\n2. 如果不充足，缺失了哪些层面，需要补充什么\n3. 如果充足，直接输出完整的分析结果\n\n如果信息不充足，输出：{"sufficient":false,"missing":["缺失的层面1","缺失的层面2"],"hints":["具体的追问提示1","具体的追问提示2","具体的追问提示3"]}\n\n如果信息充足，输出完整的单人模式 JSON（包含 fact/emotion/need/misread/misreadType/mirror/insight/before/inner/after/summary/analyst/status/suggest/questions 等所有字段），此时 sufficient 为 true。';
-
-      aiAnalyze(analysisPrompt, 'single', history).then(function(result) {
-        var ld = document.getElementById('mainLoading');
+      // 调用 chat 模式（传入不含最新输入的历史，后端会自动把 prompt 加到末尾）
+      var historyForChat = aiMessages.slice();
+      chatWithMirror(text, historyForChat).then(function(result) {
+        var ld = document.getElementById('chatLoading');
         if (ld) ld.remove();
 
         if (!result) {
@@ -2397,89 +2439,94 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           detectSc();
           var localData = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
           userData.aiData = localData;
+          addMessage('ai', '【网络异常，已使用本地分析】', { typewriter: false });
           showResults(localData);
           return;
         }
 
-        if (result.sufficient === false || !result.fact) {
-          // 信息不足 → AI 直接提问缺失的层面（不弹卡片）
-          var hints = result.hints || ['这种情况持续多久了？', '你最害怕的是什么？', '你最希望改变的是什么？'];
-          var missing = result.missing || [];
-          var missingText = missing.length > 0 ? '（缺少：' + missing.join('、') + '）' : '';
-          addMessage('ai', 'Mirror 还需要了解更多' + missingText, { typewriter: true });
-          setState('FOLLOWUP');
-          addMessage('followup', hints, { layer: '补充', round: 1 });
+        // 成功后，把 user + assistant 一起存入历史（避免重复）
+        aiMessages.push({ role: 'user', content: text });
+        if (result.reply) {
+          aiMessages.push({ role: 'assistant', content: result.reply });
+        }
+
+        chatRound++;
+
+        // 防御性处理：如果 AI 返回格式不规范，给默认值
+        var replyText = result.reply || '我在听，继续说。';
+        var actionType = result.action || 'ask';
+
+        // 前端硬性上限：第5轮强制出报告
+        if (chatRound >= 5 && actionType === 'ask') {
+          // AI 想继续追问，但已达上限，强制出报告
+          addMessage('ai', replyText, { typewriter: true });
+          setTimeout(function() {
+            addMessage('ai', '聊了这么多，我来帮你梳理一下。', { typewriter: true });
+            setTimeout(function() {
+              runFullAnalysis(aiMessages);
+            }, 800);
+          }, 800);
+          return;
+        }
+
+        if (actionType === 'ask') {
+          // 继续追问 - 显示 AI 自然语言回复
+          addMessage('ai', replyText, { typewriter: true });
+        } else if (actionType === 'offer_analyze') {
+          // 信息充足，给用户选择权
+          addMessage('ai', replyText, { typewriter: true });
+          // 延迟显示选择按钮，等打字机效果完成
+          setTimeout(function() {
+            showAnalyzeChoice();
+          }, 800);
+        } else if (actionType === 'analyze') {
+          // 直接出报告（达到软上限）
+          addMessage('ai', replyText, { typewriter: true });
+          setTimeout(function() {
+            runFullAnalysis(aiMessages);
+          }, 800);
         } else {
-          // 信息充足 → 弹出充足度卡片让用户选择
-          var missingHints = result.hints || [];
-          showSufficiencyCards(text, history, missingHints, result);
+          // 未知 action，默认当 ask 处理
+          addMessage('ai', replyText, { typewriter: true });
         }
       });
     }
 
-    // 显示充足度判断卡片
-    function showSufficiencyCards(userText, history, missingHints, existingResult) {
-      var overlay = document.createElement('div');
-      overlay.className = 'sufficiency-overlay';
-      var hintsHtml = '';
-      if (missingHints.length > 0) {
-        hintsHtml = '<div class="sufficiency-card-hints">';
-        missingHints.forEach(function(h) {
-          hintsHtml += '<div class="sufficiency-card-hint">' + h + '</div>';
-        });
-        hintsHtml += '</div>';
-      }
-      overlay.innerHTML =
-        '<div class="sufficiency-cards">' +
-        '<div class="sufficiency-card" id="suffDirect">' +
-        '<div class="sufficiency-card-icon">✅</div>' +
-        '<div class="sufficiency-card-title">直接看报告</div>' +
-        '<div class="sufficiency-card-desc">你描述的事实、感受、所需要的、所做的以及意义都挺详细了</div>' +
-        '</div>' +
-        '<div class="sufficiency-card" id="suffSupplement">' +
-        '<div class="sufficiency-card-icon">✏️</div>' +
-        '<div class="sufficiency-card-title">补充细节</div>' +
-        '<div class="sufficiency-card-desc">还有什么关键的细节需要补充？</div>' +
-        hintsHtml +
-        '</div>' +
-        '</div>';
-      document.body.appendChild(overlay);
-      setTimeout(function() { overlay.classList.add('active'); }, 50);
+    // 显示"出报告"或"继续聊"选择按钮
+    function showAnalyzeChoice() {
+      var thread = document.getElementById('chatThread');
+      var el = document.createElement('div');
+      el.className = 'msg msg-actions';
+      el.innerHTML =
+        '<button class="btn btn-primary" id="btnAnalyze">生成分析报告</button>' +
+        '<button class="btn-ghost" id="btnContinue">继续聊聊</button>';
+      thread.appendChild(el);
+      scrollThread();
 
-      document.getElementById('suffDirect').onclick = function() {
-        overlay.classList.remove('active');
-        setTimeout(function() { overlay.remove(); }, 400);
-        // 如果 AI 已经返回了完整分析结果，直接展示；否则重新调用
-        if (existingResult && existingResult.fact) {
-          userData.aiData = existingResult;
-          localStorage.setItem('mirror_aiData', JSON.stringify(existingResult));
-          clearDraft();
-          showResults(existingResult);
-        } else {
-          runFullAnalysis(userText, history);
-        }
+      document.getElementById('btnAnalyze').onclick = function() {
+        // 移除选择按钮
+        el.remove();
+        runFullAnalysis(aiMessages);
       };
-      document.getElementById('suffSupplement').onclick = function() {
-        overlay.classList.remove('active');
-        setTimeout(function() { overlay.remove(); }, 400);
-        // 显示追问输入
-        showDynamicFollowup(userText, history, missingHints);
+      document.getElementById('btnContinue').onclick = function() {
+        // 移除选择按钮，用户继续在输入框输入
+        el.remove();
+        // 保持 CHATTING 状态，用户继续输入即可
       };
     }
 
-    // 动态追问
-    function showDynamicFollowup(userText, history, missingHints) {
-      var questions = missingHints.length > 0 ? missingHints : ['这种情况持续多久了？', '你最害怕的是什么？', '你最希望改变的是什么？'];
-      setState('FOLLOWUP');
-      addMessage('followup', questions, { layer: '补充', round: 1 });
-    }
+    // 旧函数已废弃（保留空函数避免引用错误，后续可删除）
+    function showSufficiencyCards() { /* 已废弃 */ }
+    function showDynamicFollowup() { /* 已废弃 */ }
 
-    // 执行完整分析
-    function runFullAnalysis(userText, history) {
+    // 执行完整分析（基于对话历史，不再传 userText 避免重复）
+    function runFullAnalysis(history) {
       setState('ANALYZING');
       addMessage('loading', 'Mirror 正在分析', { sub: '理解情绪、识别需求、寻找误解', id: 'fullAnalysisLoading' });
 
-      aiAnalyze('请根据用户的描述，进行完整的单人模式分析。输出完整的 JSON，包含 fact、emotion、need、misread、misreadType、insight、before、inner、after、summary、analyst、status、suggest 等所有字段。', 'single', history).then(function(result) {
+      // 传分析指令作为 prompt，history 已包含完整对话
+      var analysisPrompt = '请根据以上全部对话，进行完整的单人模式分析。输出完整的 JSON，包含 fact、emotion、need、misread、misreadType、insight、before、inner、after、summary、analyst、status、suggest 等所有字段。';
+      aiAnalyze(analysisPrompt, 'single', history).then(function(result) {
         var ld = document.getElementById('fullAnalysisLoading');
         if (ld) ld.remove();
 
@@ -2499,112 +2546,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       });
     }
 
-    // 提交追问回答
-    function submitFollowup() {
-      var answers = [];
-      for (var i = 0; i < followupQuestions.length; i++) {
-        var el = document.getElementById('fq_' + i);
-        answers.push(el ? el.value.trim() : '');
-      }
-      followupAnswers = answers;
-      saveDraft();
-
-      // 显示用户的追问回答
-      var answerText = answers.filter(function(a) { return a; }).map(function(a, i) {
-        return (i + 1) + '. ' + a;
-      }).join('\n');
-      if (answerText) addMessage('user', answerText);
-
-      setState('ANALYZING');
-      var loadingMsg = addMessage('loading', 'Mirror 正在深入理解', { sub: '综合分析你的回答', id: 'followupLoading' });
-
-      // 构建历史
-      var history = [];
-      if (userData.q1) history.push({ role: 'user', content: userData.q1 });
-      for (var r = 0; r < followupAnswers.length; r++) {
-        history.push({ role: 'assistant', content: followupQuestions[r] });
-        history.push({ role: 'user', content: followupAnswers[r] || '（未回答）' });
-      }
-      aiMessages = history.slice();
-
-      followupRound++;
-      lastActionFn = function() { submitFollowup(); };
-
-      // 判断是否需要继续追问
-      if (followupRound >= 2) {
-        // 已追问2轮，进行最终分析
-        aiAnalyze('基于以上全部对话，请进行完整的单人模式分析并输出 JSON。', 'single', history).then(function(result) {
-          var ld = document.getElementById('followupLoading');
-          if (ld) ld.remove();
-          if (result) {
-            userData.aiData = result;
-            localStorage.setItem('mirror_aiData', JSON.stringify(result));
-            clearDraft();
-            showResults(result);
-          } else {
-            detectSc();
-            var d = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
-            userData.aiData = d;
-            showResults(d);
-          }
-        });
-      } else {
-        // 继续追问
-        var layerOrder = ['fact', 'emotion', 'need', 'meaning', 'action'];
-        var nextLayer = followupRound < layerOrder.length ? layerOrder[followupRound] : 'action';
-        aiAnalyze('基于以上对话，请继续从' + ({'fact':'事实层','emotion':'情绪层','need':'需求层','meaning':'意义层','action':'行动层'}[nextLayer] || '行动层') + '提出 3 个新的追问。不要重复之前的问题。输出 JSON：{"questions":["问题1","问题2","问题3"],"questionLayer":"' + nextLayer + '"}', 'single', history).then(function(result) {
-          var ld = document.getElementById('followupLoading');
-          if (ld) ld.remove();
-          if (result && result.questions && result.questions.length > 0) {
-            followupQuestions = result.questions;
-            setState('DEEP');
-            addMessage('followup', result.questions, { layer: result.questionLayer || nextLayer, round: followupRound + 1 });
-          } else {
-            // 无法继续追问，直接分析
-            aiAnalyze('基于以上全部对话，请进行完整的单人模式分析并输出 JSON。', 'single', history).then(function(finalResult) {
-              if (finalResult) {
-                userData.aiData = finalResult;
-                localStorage.setItem('mirror_aiData', JSON.stringify(finalResult));
-                clearDraft();
-                showResults(finalResult);
-              } else {
-                detectSc();
-                var d = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
-                userData.aiData = d;
-                showResults(d);
-              }
-            });
-          }
-        });
-      }
-    }
-
-    // 跳过追问
-    function skipFollowup() {
-      setState('ANALYZING');
-      var loadingMsg = addMessage('loading', 'Mirror 正在分析', { sub: '基于已有信息生成分析', id: 'skipLoading' });
-
-      var history = [];
-      if (userData.q1) history.push({ role: 'user', content: userData.q1 });
-
-      lastActionFn = function() { skipFollowup(); };
-
-      aiAnalyze(userData.q1, 'single', []).then(function(result) {
-        var ld = document.getElementById('skipLoading');
-        if (ld) ld.remove();
-        if (result) {
-          userData.aiData = result;
-          localStorage.setItem('mirror_aiData', JSON.stringify(result));
-          clearDraft();
-          showResults(result);
-        } else {
-          detectSc();
-          var d = SCENARIOS[userData.scenario] || SCENARIOS['其他'];
-          userData.aiData = d;
-          showResults(d);
-        }
-      });
-    }
+    // 旧函数已废弃（保留空函数避免引用错误，后续可删除）
+    function submitFollowup() { /* 已废弃 */ }
+    function skipFollowup() { /* 已废弃 */ }
 
     // 显示完整结果
     function getMiraInfo(code) {
@@ -3456,9 +3400,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         state = 'IDLE';
         userData = { q1: '', scenario: '', aiData: null, mode: 'single', entryType: 'chat' };
         aiMessages = [];
-        followupRound = 0;
-        followupQuestions = [];
-        followupAnswers = [];
+        chatRound = 0;
         letterData = { original: '', reply: '', redemption: '' };
         document.getElementById('chatThread').innerHTML = '';
         document.getElementById('chatProgressFill').style.width = '0%';
@@ -4270,7 +4212,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         if (mode === 'couple') {
           addMessage('ai', '欢迎来到 Mirror 双人模式。\n\n请两位轮流输入各自的想法和感受。Mirror 会交叉翻译，让你们看见彼此真正想表达的东西。\n\n先请 A 方输入：');
         } else {
-          addMessage('ai', '你好，我是 Mirror。把你想说的都写下来，不用一次说完，我会帮你看见自己真正想表达什么。');
+          addMessage('ai', '你好，我是 Mirror。想说的话都写下来就好，不用一次说完。');
           // 显示快捷标签
           // 显示引导语和两级标签
           addMessage('tags', null); // 触发 tags 类型渲染
@@ -4741,9 +4683,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       state = 'IDLE';
       userData = { q1: '', scenario: '', aiData: null, mode: 'single', entryType: 'chat' };
       aiMessages = [];
-      followupRound = 0;
-      followupQuestions = [];
-      followupAnswers = [];
+      chatRound = 0;
       letterData = { original: '', reply: '', redemption: '' };
       document.getElementById('chatProgressFill').style.width = '0%';
       document.getElementById('chatProgressLabel').textContent = '';
