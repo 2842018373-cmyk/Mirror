@@ -2794,14 +2794,14 @@ async function callAI(env, prompt, mode, history) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     let response;
     try {
-      response = await fetchWithTimeout('https://apihub.agnes-ai.com/v1/chat/completions', {
+      response = await fetchWithTimeout('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${env.AI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'agnes-2.0-flash',
+          model: 'deepseek-v4-flash',
           messages,
           temperature: 0.15,
           max_tokens: 2000,
