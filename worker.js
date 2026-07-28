@@ -895,7 +895,28 @@ export default {
         }
 
         // 验证成功，绑定手机号
-        await env.DB.prepare('UPDATE users SET phone = ?, last_login_at = datetime("now") WHERE id = ?').bind(phone, payload.uid).run();
+        // 先检查该手机号是否已绑定其他账号
+        const existingUser = await env.DB.prepare('SELECT id, guest_id, phone, nickname, mira_type, avatar FROM users WHERE phone = ?').bind(phone).first();
+        if (existingUser && existingUser.id !== payload.uid) {
+          // 手机号已绑定其他账号 → 直接登录到该账号（而非绑定到当前游客）
+          await env.DB.prepare('UPDATE users SET last_login_at = datetime("now") WHERE id = ?').bind(existingUser.id).run();
+          await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(phone).run();
+          const newToken = await createJWT(env, { uid: existingUser.id, gid: existingUser.guest_id, phone });
+          return jsonResponse({
+            success: true,
+            token: newToken,
+            isGuest: false,
+            user: { id: existingUser.id, phone: existingUser.phone, nickname: existingUser.nickname, miraType: existingUser.mira_type, avatar: existingUser.avatar || '', isGuest: false }
+          }, 200, origin);
+        }
+
+        // 手机号未被绑定，执行绑定
+        try {
+          await env.DB.prepare('UPDATE users SET phone = ?, last_login_at = datetime("now") WHERE id = ?').bind(phone, payload.uid).run();
+        } catch (dbErr) {
+          console.error('bind-phone UPDATE error:', dbErr.message);
+          return jsonResponse({ error: '绑定失败，该手机号可能已被使用' }, 400, origin);
+        }
         await env.DB.prepare('DELETE FROM verify_codes WHERE phone = ?').bind(phone).run();
 
         // 生成新Token（包含phone）
