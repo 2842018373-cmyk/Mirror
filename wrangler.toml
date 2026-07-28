@@ -1,4 +1,4 @@
-name = "mirror-api"
+name = "mirror"
 main = "worker.js"
 compatibility_date = "2024-12-01"
 
