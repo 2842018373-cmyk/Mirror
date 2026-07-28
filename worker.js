@@ -1776,7 +1776,7 @@ MIRA类型：${miraType}
               ['assess_need', 'assess_emotion', 'ask', 'has_need', 'true', '三个维度都充足。给用户选择权。', 'offer_analyze', 'ask_need', '评估需求维度是否充足', 1, 5],
               ['ask_need', 'assess_need', 'ask', 'has_need', 'false', '用户缺少需求表达。问：你真正想要的是什么？', 'offer_analyze', null, '追问需求', 1, 6],
               ['offer_analyze', 'assess_need', 'offer_analyze', '', '', '聊了这么多，信息看起来够了。我来帮你梳理一下？还是你想再聊聊？', 'analyze', 'continue_chat', '信息充足，给用户选择', 1, 7],
-              ['continue_chat', 'offer_analyze', 'ask', 'round_count', '>=5', '已达5轮软上限，自动切换到分析。', 'analyze', 'continue_chat', '继续对话（5轮后强制分析）', 1, 8],
+              ['continue_chat', 'offer_analyze', 'ask', 'round_count', '>=50', '已达50轮软上限，自动切换到分析。', 'analyze', 'continue_chat', '继续对话（50轮后强制分析）', 1, 8],
               ['analyze', 'offer_analyze', 'analyze', '', '', '聊了这么多，我来帮你梳理一下。', 'end', null, '生成分析报告', 1, 9],
               ['end', 'analyze', 'end', '', '', '分析已完成。', null, null, '结束节点', 1, 10],
             ];
@@ -1786,6 +1786,9 @@ MIRA类型：${miraType}
               ).bind(...node).run();
             }
           }
+
+          // 兼容旧数据：将 continue_chat 节点的轮次上限从 >=5 更新为 >=50
+          try { await env.DB.prepare("UPDATE chat_decision_tree SET condition_value = '>=50', prompt_template = '已达50轮软上限，自动切换到分析。' WHERE node_id = 'continue_chat' AND condition_value = '>=5'").run(); } catch(e) {}
 
           // schema_version 版本管理表
           await env.DB.prepare(`
@@ -2753,7 +2756,7 @@ async function callAI(env, prompt, mode, history) {
 - 当三个维度都有明确信息时，给用户选择权：设置 action 为 "offer_analyze"
 - offer_analyze 时回复："聊了这么多，信息看起来够了。我来帮你梳理一下？还是你想再聊聊？"
 - 如果用户选继续聊，继续追问或倾听
-- 软上限 5 轮，第 5 轮自动切换到 analyze（"聊了这么多，我来帮你梳理一下"）
+- 软上限 50 轮，第 50 轮自动切换到 analyze（"聊了这么多，我来帮你梳理一下"）
 - 如果信息不充足，继续追问缺失维度，同时给用户暗示方向
 
 处理敷衍/恶意输入：

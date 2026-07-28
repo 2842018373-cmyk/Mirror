@@ -1777,6 +1777,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     var userData = { q1: '', scenario: '', aiData: null };
     var aiMessages = []; // AI 对话历史
     var chatRound = 0; // 咨询师对话轮次计数
+    var currentNodeId = 'start'; // 决策树当前节点
+    var sufficientSignals = { hasFact: false, hasEmotion: false, hasNeed: false }; // 信息充足信号
     var letterData = { original: '', empathy: '', guide: '', redemption: '' };
     var lastActionFn = null; // 用于重试
     var parallaxActive = true;
@@ -1906,7 +1908,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       }
     }
 
-    // 咨询师对话（调用 /api/chat，返回自然语言回复 + 追问信号）
+    // 咨询师对话（调用 /api/chat-v2 决策树增强版，返回自然语言回复 + 追问信号 + 决策树节点）
     async function chatWithMirror(userText, history) {
       if (typeof WORKER_API_BASE === 'undefined' || !WORKER_API_BASE) {
         console.warn('Worker API 未配置，使用本地模板');
@@ -1918,13 +1920,19 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           if (controller) controller.abort();
         }, 30000);
 
-        var response = await fetch(WORKER_API_BASE + '/api/chat', {
+        var response = await fetch(WORKER_API_BASE + '/api/chat-v2', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + (localStorage.getItem('mirror_token') || '')
           },
-          body: JSON.stringify({ prompt: userText, history: history || [] }),
+          body: JSON.stringify({
+            prompt: userText,
+            history: history || [],
+            currentNodeId: currentNodeId || 'start',
+            sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false },
+            round: chatRound + 1
+          }),
           signal: controller ? controller.signal : undefined
         });
         clearTimeout(chatTimeout);
@@ -2417,6 +2425,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         clearDraft();
         aiMessages = [];
         chatRound = 0;
+        currentNodeId = 'start';
+        sufficientSignals = { hasFact: false, hasEmotion: false, hasNeed: false };
       }
       // 注意：不在这里 push 用户输入到 aiMessages
       // 因为 chatWithMirror 会把 text 作为 prompt 传给后端，后端会自动加到末尾
@@ -2455,12 +2465,18 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
         chatRound++;
 
+        // 更新决策树状态（从 AI 返回中提取）
+        if (result.currentNodeId) currentNodeId = result.currentNodeId;
+        if (result.attachment && result.attachment.sufficientSignals) {
+          sufficientSignals = result.attachment.sufficientSignals;
+        }
+
         // 防御性处理：如果 AI 返回格式不规范，给默认值
         var replyText = result.reply || '我在听，继续说。';
         var actionType = result.action || 'ask';
 
-        // 前端硬性上限：第5轮强制出报告
-        if (chatRound >= 5 && actionType === 'ask') {
+        // 前端硬性上限：第50轮强制出报告
+        if (chatRound >= 50 && actionType === 'ask') {
           // AI 想继续追问，但已达上限，强制出报告
           addMessage('ai', replyText, { typewriter: true });
           setTimeout(function() {
