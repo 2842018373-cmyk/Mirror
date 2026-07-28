@@ -152,3 +152,68 @@ CREATE TABLE IF NOT EXISTS user_contacts (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_user_contacts_user ON user_contacts(user_id, created_at);
+
+-- ══════════════════════════════════════════ 阶段四：数据粘性 — 动态画像 & 洞察日记 ══════════════════════════════════════════
+
+-- 分析历史记录表（统一存储单人分析、双人分析、MIRA测试，用于动态画像趋势追踪）
+CREATE TABLE IF NOT EXISTS analysis_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,                 -- 关联用户
+  source_type TEXT NOT NULL,                -- 来源类型: single/couple/quiz
+  source_id INTEGER,                        -- 来源记录ID（single_analyses.id / user_room_records.id / mira_tests.id）
+  mira_type TEXT,                           -- 本次分析的 MIRA 类型
+  dimensions_json TEXT DEFAULT '{}',        -- 8个维度分数 JSON（expr_D/S/B/R, focus_O/T/I/N）
+  insight_summary TEXT DEFAULT '',          -- 简短洞察摘要（一句话）
+  emotion_snapshot TEXT DEFAULT '',         -- 情绪快照
+  need_snapshot TEXT DEFAULT '',            -- 需求快照
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_analysis_history_user ON analysis_history(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_analysis_history_type ON analysis_history(user_id, source_type, created_at);
+
+-- 关系洞察日记表（每次对话/分析后自动生成一条洞察卡片）
+CREATE TABLE IF NOT EXISTS insight_diaries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,                 -- 关联用户
+  source_type TEXT NOT NULL,                -- 来源: chat/analyze/couple/quiz
+  source_id INTEGER,                        -- 来源记录ID
+  diary_text TEXT NOT NULL,                 -- 洞察日记内容（1-2句话）
+  emotion_tag TEXT DEFAULT '',              -- 情绪标签
+  growth_tag TEXT DEFAULT '',               -- 成长标签（如"自我觉察"“关系突破"）
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_insight_diaries_user ON insight_diaries(user_id, created_at);
+
+-- ══════════════════════════════════════════ 阶段五：咨询师模式决策树框架 ══════════════════════════════════════════
+
+-- 咨询师对话决策树节点表（可在后台配置，驱动多轮引导逻辑）
+CREATE TABLE IF NOT EXISTS chat_decision_tree (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  node_id TEXT UNIQUE NOT NULL,             -- 节点唯一标识（如 'start', 'collect_fact', 'ask_emotion'）
+  parent_id TEXT,                           -- 父节点ID（根节点为NULL）
+  node_type TEXT NOT NULL,                  -- 节点类型: collect/ask/offer_analyze/analyze/end
+  condition_type TEXT DEFAULT '',           -- 判断条件类型: has_fact/has_emotion/has_need/round_count/emotion_signal
+  condition_value TEXT DEFAULT '',          -- 判断条件值（如 'true', '>=3', 'anxious'）
+  prompt_template TEXT NOT NULL,            -- Prompt 模板（支持变量插值：{userInput}, {round}, {emotion}）
+  next_node_sufficient TEXT,                -- 条件满足时跳转的节点ID
+  next_node_insufficient TEXT,              -- 条件不满足时跳转的节点ID
+  description TEXT DEFAULT '',              -- 节点描述（后台管理用）
+  is_active INTEGER DEFAULT 1,              -- 是否启用（0=禁用, 1=启用）
+  sort_order INTEGER DEFAULT 0,             -- 排序顺序
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_chat_tree_parent ON chat_decision_tree(parent_id);
+CREATE INDEX IF NOT EXISTS idx_chat_tree_active ON chat_decision_tree(is_active, sort_order);
+
+-- 决策树默认数据（种子数据，首次初始化时插入）
+-- 注意：这些是默认配置，管理员可通过后台修改
+
+-- ══════════════════════════════════════════ 数据库版本管理 ══════════════════════════════════════════
+
+-- Schema 版本记录表（替代 try/catch ALTER TABLE 的版本化管理）
+CREATE TABLE IF NOT EXISTS schema_version (
+  version INTEGER PRIMARY KEY,
+  description TEXT,
+  applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

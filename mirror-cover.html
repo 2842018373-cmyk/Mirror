@@ -1060,6 +1060,7 @@
         <div style="font-size:0.82rem; color:var(--muted); margin-bottom:20px;">把房间码发给对方，对方输入后即可开始</div>
         <button class="btn btn-secondary" id="copyRoomCodeBtn" style="margin-bottom:12px;">复制房间码</button>
         <div id="waitStatus" style="font-size:0.78rem; color:var(--faint);">等待对方加入...</div>
+        <div id="roomCountdown" style="font-size:0.7rem;color:var(--faint);margin-top:8px;"></div>
       </div>
     </div>
   </div>
@@ -1078,6 +1079,7 @@
       </div>
       <textarea id="coupleInput" rows="6" style="width:100%; padding:12px 16px; border-radius:14px; border:1px solid var(--rule); background:rgba(0,0,0,0.2); color:var(--ink); font-size:0.9rem; line-height:1.6; resize:none; font-family:inherit; outline:none; margin-bottom:12px;"></textarea>
       <button class="btn btn-primary" id="coupleSubmitBtn" style="width:100%;">提交</button>
+      <div id="partnerStatusHint" style="font-size:0.75rem;color:var(--faint);margin-top:8px;text-align:center;"></div>
     </div>
   </div>
 
@@ -1091,6 +1093,7 @@
     </div>
     <div class="chat-thread" style="padding:20px 16px; background:#08090B;">
       <div id="coupleInsightContent"></div>
+      <div id="consentStatusHint" style="font-size:0.75rem;color:var(--faint);margin-bottom:8px;"></div>
       <div style="margin-top:24px; padding:16px; border-radius:16px; background:rgba(126,167,255,0.06); border:1px solid rgba(126,167,255,0.12);">
         <div style="font-size:0.85rem; color:var(--muted); margin-bottom:12px;">查看对方的洞察后，你是否同意生成共同报告？</div>
         <div style="display:flex; gap:12px;">
@@ -3056,7 +3059,33 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         '</div>';
       }
 
-      var insight = d.insight || miraInfo.desc;
+      var fallbackInsight = d.insight || miraInfo.desc;
+
+      addMessage('system', '正在生成分享卡片…');
+
+      // 获取金句（优先使用缓存，否则请求 API）
+      (async function() {
+        var insight = fallbackInsight;
+        try {
+          if (userData.cachedQuote && userData.cachedQuote.miraType === miraType) {
+            insight = userData.cachedQuote.quote;
+          } else {
+            var quoteResp = await fetch(WORKER_API_BASE + '/api/quote', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ miraType: miraType, insight: d.insight || '', emotion: d.emotion || '', need: d.need || '' })
+            });
+            if (quoteResp.ok) {
+              var quoteData = await quoteResp.json();
+              if (quoteData && quoteData.quote) {
+                insight = quoteData.quote;
+                userData.cachedQuote = { miraType: miraType, quote: quoteData.quote };
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('金句获取失败，使用默认文本', e);
+        }
 
       // 图鉴风格大图分享卡片（严格参照图鉴卡片设计）
       var cardHtml =
@@ -3101,63 +3130,62 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         // 底部品牌（网址已修正为 mirrorsoul.top）
         '<div style="padding:16px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.04);">' +
           '<div style="font-size:0.6rem;color:#5A6472;letter-spacing:1px;">Mirror · mirrorsoul.top</div>' +
-          '<div style="font-size:0.55rem;color:#3A4149;margin-top:4px;">测测你的 MIRA 关系人格</div>' +
+          '<div style="font-size:0.55rem;color:#3A4149;margin-top:4px;">测测你是不是也这样 →</div>' +
         '</div>';
 
-      addMessage('system', '正在生成分享卡片…');
+        // 预加载 MIRA 图片（严格使用图鉴同款图片）
+        var preloadImg = new Image();
+        preloadImg.onload = doCapture;
+        preloadImg.onerror = doCapture;
+        preloadImg.src = 'mira-images/' + miraType + '.jpg';
 
-      // 预加载 MIRA 图片（严格使用图鉴同款图片）
-      var preloadImg = new Image();
-      preloadImg.onload = doCapture;
-      preloadImg.onerror = doCapture;
-      preloadImg.src = 'mira-images/' + miraType + '.jpg';
+        function doCapture() {
+          var wrapper = document.createElement('div');
+          wrapper.id = '_scWrapper';
+          wrapper.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;overflow:visible;z-index:-1;opacity:0;pointer-events:none;';
+          document.body.appendChild(wrapper);
 
-      function doCapture() {
-        var wrapper = document.createElement('div');
-        wrapper.id = '_scWrapper';
-        wrapper.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;overflow:visible;z-index:-1;opacity:0;pointer-events:none;';
-        document.body.appendChild(wrapper);
+          var card = document.createElement('div');
+          card.id = '_shareCard';
+          card.style.cssText = 'width:375px;background:#0D0E12;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;box-sizing:border-box;border-radius:20px;overflow:hidden;';
+          card.innerHTML = cardHtml;
+          var scImg = card.querySelector('#_scImg');
+          if (scImg) { scImg.src = 'mira-images/' + miraType + '.jpg'; }
+          wrapper.appendChild(card);
 
-        var card = document.createElement('div');
-        card.id = '_shareCard';
-        card.style.cssText = 'width:375px;background:#0D0E12;color:#E8EDF5;font-family:"Noto Sans SC","Inter","PingFang SC",sans-serif;box-sizing:border-box;border-radius:20px;overflow:hidden;';
-        card.innerHTML = cardHtml;
-        var scImg = card.querySelector('#_scImg');
-        if (scImg) { scImg.src = 'mira-images/' + miraType + '.jpg'; }
-        wrapper.appendChild(card);
-
-        requestAnimationFrame(function() {
-          var h = card.scrollHeight;
-          html2canvas(card, {
-            backgroundColor: '#0D0E12', scale: 2, useCORS: true, allowTaint: true,
-            width: 375, height: h, windowWidth: 375, windowHeight: h,
-            onclone: function(doc) {
-              var el = doc.getElementById('_shareCard');
-              if (el) { el.style.opacity = '1'; }
-            }
-          }).then(function(canvas) {
-            document.body.removeChild(wrapper);
-            canvas.toBlob(function(blob) {
-              if (!blob) { addMessage('system', '生成失败，请重试'); return; }
-              var url = URL.createObjectURL(blob);
-              if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                showSharePreview(url, miraType, mode);
-              } else {
-                var link = document.createElement('a');
-                link.download = 'Mirror-MIRA-' + miraType + '.png';
-                link.href = url;
-                link.click();
-                setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-                addMessage('system', '分享卡片已保存');
+          requestAnimationFrame(function() {
+            var h = card.scrollHeight;
+            html2canvas(card, {
+              backgroundColor: '#0D0E12', scale: 2, useCORS: true, allowTaint: true,
+              width: 375, height: h, windowWidth: 375, windowHeight: h,
+              onclone: function(doc) {
+                var el = doc.getElementById('_shareCard');
+                if (el) { el.style.opacity = '1'; }
               }
-            }, 'image/png');
-          }).catch(function(err) {
-            if (document.getElementById('_scWrapper')) document.body.removeChild(wrapper);
-            addMessage('system', '生成失败，请重试');
-            console.error('generateShareCard error:', err);
+            }).then(function(canvas) {
+              document.body.removeChild(wrapper);
+              canvas.toBlob(function(blob) {
+                if (!blob) { addMessage('system', '生成失败，请重试'); return; }
+                var url = URL.createObjectURL(blob);
+                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                  showSharePreview(url, miraType, mode);
+                } else {
+                  var link = document.createElement('a');
+                  link.download = 'Mirror-MIRA-' + miraType + '.png';
+                  link.href = url;
+                  link.click();
+                  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+                  addMessage('system', '分享卡片已保存');
+                }
+              }, 'image/png');
+            }).catch(function(err) {
+              if (document.getElementById('_scWrapper')) document.body.removeChild(wrapper);
+              addMessage('system', '生成失败，请重试');
+              console.error('generateShareCard error:', err);
+            });
           });
-        });
-      }
+        }
+      })();
     }
 
     // 手机端分享预览弹层（含三按钮操作区 + 导流入口）
@@ -4384,6 +4412,56 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
             stopPolling();
             showCoupleReportView();
           }
+
+          // 额外轮询 /api/room/{code}/status 获取倒计时及对方提交状态
+          try {
+            var statusResp = await fetch(WORKER_API_BASE + '/api/room/' + currentRoom.code + '/status');
+            var statusData = await statusResp.json();
+
+            // 更新房间倒计时
+            var countdownEl = document.getElementById('roomCountdown');
+            if (countdownEl && statusData.remainingMs !== undefined) {
+              if (statusData.remainingMs === 0) {
+                countdownEl.textContent = '房间已过期';
+                countdownEl.style.color = '#ff4444';
+              } else {
+                var remainingSec = Math.ceil(statusData.remainingMs / 1000);
+                var minutes = Math.floor(remainingSec / 60);
+                var seconds = remainingSec % 60;
+                countdownEl.textContent = '房间剩余时间：' + minutes + '分' + seconds + '秒';
+                countdownEl.style.color = statusData.isExpiringSoon ? '#ff4444' : 'var(--faint)';
+              }
+            }
+
+            // 更新对方输入状态反馈（输入页）
+            var partnerHintEl = document.getElementById('partnerStatusHint');
+            if (partnerHintEl) {
+              var iAmA = (currentRoom.role === 'a');
+              var partnerSubmitted = iAmA ? statusData.bSubmitted : statusData.aSubmitted;
+              if (partnerSubmitted) {
+                partnerHintEl.textContent = '对方已提交，正在分析中...';
+                partnerHintEl.style.color = 'var(--blue)';
+              } else {
+                partnerHintEl.textContent = '';
+              }
+            }
+
+            // 更新 consent 状态提示（洞察页）
+            var consentHintEl = document.getElementById('consentStatusHint');
+            if (consentHintEl) {
+              var iAmA2 = (currentRoom.role === 'a');
+              var partnerConsented = iAmA2 ? statusData.bConsented : statusData.aConsented;
+              if (partnerConsented) {
+                consentHintEl.textContent = '对方已同意，等待你的选择';
+                consentHintEl.style.color = 'var(--blue)';
+              } else {
+                consentHintEl.textContent = '等待对方同意生成共同报告...';
+                consentHintEl.style.color = 'var(--faint)';
+              }
+            }
+          } catch (statusErr) {
+            console.error('状态轮询失败', statusErr);
+          }
         } catch (err) {
           console.error('轮询失败', err);
         }
@@ -4858,6 +4936,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       loadMineMira();
       loadMineAnalyses();
       loadMineRooms();
+      loadTrends();
+      loadDiaries();
     }
 
     // 渲染用户信息
@@ -5105,6 +5185,154 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
             '<div class="empty-icon">📡</div>' +
             '<div class="empty-text">加载失败，点击重试</div>' +
             '<div class="empty-btn" onclick="loadMineRooms()">重试</div>' +
+          '</div>';
+      }
+    }
+
+    // 加载 MIRA 维度趋势
+    async function loadTrends() {
+      var container = document.getElementById('trendContainer');
+      container.innerHTML = '<div class="mine-loading"><div class="quiz-spinner"></div><div class="mine-loading-text">加载中...</div></div>';
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/trends', {
+          headers: { 'Authorization': 'Bearer ' + mirrorToken }
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        if (!data.hasEnoughData) {
+          container.innerHTML =
+            '<div class="mine-section">' +
+              '<div class="mine-section-header">' +
+                '<div class="mine-section-title">MIRA 维度趋势</div>' +
+              '</div>' +
+              '<div class="mine-empty-card">' +
+                '<div class="empty-icon">📊</div>' +
+                '<div class="empty-text">完成2次以上分析后可查看维度变化趋势</div>' +
+                '<div class="empty-btn" onclick="switchTab(\'home\');setTimeout(function(){initChat(\'single\',\'chat\');},300)">去分析</div>' +
+              '</div>' +
+            '</div>';
+          return;
+        }
+
+        var dimensions = data.dimensions || [];
+        var html =
+          '<div class="mine-section">' +
+            '<div class="mine-section-header">' +
+              '<div class="mine-section-title">MIRA 维度趋势</div>' +
+              '<div class="mine-section-count">最近变化</div>' +
+            '</div>' +
+            '<div style="padding:12px 0;">';
+
+        dimensions.forEach(function(dim) {
+          var change = dim.change || 0;
+          var label = dim.name || dim.dimension || '未知维度';
+          var current = dim.current !== undefined ? dim.current : 0;
+          var prev = dim.previous !== undefined ? dim.previous : 0;
+          var barWidth = Math.min(Math.max(Math.abs(change) * 10, 5), 100);
+          var direction = change >= 0 ? '↑' : '↓';
+          var changeColor = change >= 0 ? 'var(--blue)' : 'var(--red, #ff6b6b)';
+
+          html +=
+            '<div style="margin-bottom:14px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+                '<span style="font-size:0.82rem;color:var(--text-primary);">' + escapeHtml(label) + '</span>' +
+                '<span style="font-size:0.75rem;color:' + changeColor + ';">' + direction + ' ' + Math.abs(change).toFixed(1) + ' (' + prev.toFixed(1) + ' → ' + current.toFixed(1) + ')</span>' +
+              '</div>' +
+              '<div style="width:100%;height:8px;background:rgba(126,167,255,0.12);border-radius:4px;overflow:hidden;">' +
+                '<div style="width:' + barWidth + '%;height:100%;background:var(--blue);border-radius:4px;transition:width 0.6s ease;"></div>' +
+              '</div>' +
+            '</div>';
+        });
+
+        html += '</div></div>';
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML =
+          '<div class="mine-section">' +
+            '<div class="mine-section-header">' +
+              '<div class="mine-section-title">MIRA 维度趋势</div>' +
+            '</div>' +
+            '<div class="mine-empty-card">' +
+              '<div class="empty-icon">📡</div>' +
+              '<div class="empty-text">加载失败，点击重试</div>' +
+              '<div class="empty-btn" onclick="loadTrends()">重试</div>' +
+            '</div>' +
+          '</div>';
+      }
+    }
+
+    // 加载洞察日记
+    async function loadDiaries() {
+      var container = document.getElementById('diaryContainer');
+      container.innerHTML = '<div class="mine-loading"><div class="quiz-spinner"></div><div class="mine-loading-text">加载中...</div></div>';
+      try {
+        var resp = await fetch(WORKER_API_BASE + '/api/user/diaries', {
+          headers: { 'Authorization': 'Bearer ' + mirrorToken }
+        });
+        var data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        var list = data.list || data.diaries || [];
+
+        var html =
+          '<div class="mine-section">' +
+            '<div class="mine-section-header">' +
+              '<div class="mine-section-title">洞察日记</div>' +
+              '<div class="mine-section-count">' + (list.length > 0 ? '共' + list.length + '条' : '') + '</div>' +
+            '</div>';
+
+        if (list.length === 0) {
+          html +=
+            '<div class="mine-empty-card">' +
+              '<div class="empty-icon">📓</div>' +
+              '<div class="empty-text">还没有洞察日记</div>' +
+              '<div class="empty-btn" onclick="switchTab(\'home\');setTimeout(function(){initChat(\'single\',\'chat\');},300)">去分析</div>' +
+            '</div>';
+        } else {
+          html += '<div style="padding:4px 0;">';
+          list.forEach(function(item, index) {
+            var text = item.diary_text || item.text || '';
+            var emotion = item.emotion_tag || item.emotion || '';
+            var date = item.created_at || item.date || '';
+            var emotionColor = '';
+            if (emotion === 'positive' || emotion === '积极') emotionColor = '#4ecdc4';
+            else if (emotion === 'negative' || emotion === '消极') emotionColor = '#ff6b6b';
+            else if (emotion === 'neutral' || emotion === '平静') emotionColor = 'var(--blue)';
+            else emotionColor = 'var(--muted)';
+
+            var timelineDot =
+              '<div style="position:absolute;left:9px;top:16px;width:10px;height:10px;border-radius:50%;background:' + emotionColor + ';border:2px solid var(--card-bg);box-shadow:0 0 0 2px rgba(126,167,255,0.2);"></div>';
+
+            html +=
+              '<div style="position:relative;padding-left:32px;margin-bottom:16px;">' +
+                timelineDot +
+                (index < list.length - 1 ? '<div style="position:absolute;left:13px;top:28px;bottom:-16px;width:2px;background:rgba(126,167,255,0.15);"></div>' : '') +
+                '<div style="background:rgba(126,167,255,0.06);border-radius:12px;padding:12px 14px;">' +
+                  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+                    '<span style="font-size:0.75rem;color:' + emotionColor + ';font-weight:500;">' + (emotion ? escapeHtml(emotion) : '无标签') + '</span>' +
+                    '<span style="font-size:0.72rem;color:var(--muted);">' + (date ? formatTime(date) : '') + '</span>' +
+                  '</div>' +
+                  '<div style="font-size:0.82rem;color:var(--text-primary);line-height:1.5;">' + escapeHtml(text.length > 120 ? text.substring(0, 120) + '...' : text) + '</div>' +
+                '</div>' +
+              '</div>';
+          });
+          html += '</div>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML =
+          '<div class="mine-section">' +
+            '<div class="mine-section-header">' +
+              '<div class="mine-section-title">洞察日记</div>' +
+            '</div>' +
+            '<div class="mine-empty-card">' +
+              '<div class="empty-icon">📡</div>' +
+              '<div class="empty-text">加载失败，点击重试</div>' +
+              '<div class="empty-btn" onclick="loadDiaries()">重试</div>' +
+            '</div>' +
           '</div>';
       }
     }
@@ -5964,6 +6192,12 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
             </div>
           </div>
         </div>
+
+        <!-- MIRA 维度趋势 -->
+        <div id="trendContainer" style="margin-top:24px;"></div>
+
+        <!-- 洞察日记 -->
+        <div id="diaryContainer" style="margin-top:24px;"></div>
 
         <!-- 设置 -->
         <div class="mine-settings">

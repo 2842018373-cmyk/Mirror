@@ -1244,6 +1244,286 @@ export default {
         return jsonResponse(result, result.error ? 500 : 200, origin);
       }
 
+      // ══════════════════════════════════════════ 阶段二：分享卡片金句生成 ══════════════════════════════════════════
+
+      // 生成个性化金句（用于分享卡片）
+      if (path === '/api/quote' && request.method === 'POST') {
+        if (!await checkRateLimitD1(env, clientIP, 'quote', 10, 60000)) {
+          return jsonResponse({ error: '请求过于频繁，请稍后重试' }, 429, origin);
+        }
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { miraType, insight, emotion, need } = body;
+        if (!miraType || typeof miraType !== 'string') return jsonResponse({ error: 'miraType 不能为空' }, 400, origin);
+
+        const quotePrompt = `基于以下用户信息，生成一句有共鸣、值得分享的金句（20-40字，像朋友说的心里话，不要鸡汤，不要说教，可以带一点自嘲或反差）：
+
+MIRA类型：${miraType}
+洞察：${insight || ''}
+情绪：${emotion || ''}
+需求：${need || ''}
+
+要求：
+1. 像朋友说的心里话，不是格言不是鸡汤
+2. 带一点自嘲或反差更好（如"嘴上说无所谓，半夜会反复看消息"）
+3. 让人看到就想转发，因为"说的就是我"
+4. 只输出金句本身，不要引号不要解释
+
+示例：
+- 你是那种嘴上说无所谓，半夜会反复看消息的人
+- 你总说"我没事"，但你心里的事比谁都多
+- 你不是不在乎，你只是把在乎藏得太深了`;
+
+        const result = await callAI(env, quotePrompt, 'quote', []);
+        if (result.error) {
+          // AI 失败时返回基于类型的兜底金句
+          const fallbackQuotes = {
+            'DO': '你几乎不说出自己的感受，但你的沉默比谁都深情',
+            'DT': '你不善言辞，但你总是在场，这本身就是最深的话',
+            'DI': '你习惯把一切藏在心里，但心里装的不止是你的事',
+            'DN': '你像深海一样安静，但深处的暗涌只有你自己知道',
+            'SO': '你总是温柔地听别人说，但谁在听你说？',
+            'ST': '你像镜子一样照见别人，也别忘了照照自己',
+            'SI': '你善于反思，但有些答案不在脑子里，在感受里',
+            'SN': '你的沉默不是空的，里面装满了一个人的宇宙',
+            'BO': '你总把别人放在第一位，但谁在守护你？',
+            'BT': '你相信坦诚比和谐重要，这很勇敢',
+            'BI': '你知道自己的底线，这是对关系最真诚的尊重',
+            'BN': '你清楚自己要什么，但偶尔也留点空间给沉默',
+            'RO': '你毫无保留地付出，但热烈也需要被接住',
+            'RT': '你一眼看穿问题，但有时候真相需要包一层温柔',
+            'RI': '你不会为关系改变自己，因为好的关系不需要你变形',
+            'RN': '你和自己在对话，而你是自己最好的听众',
+          };
+          return jsonResponse({ quote: fallbackQuotes[miraType] || '你值得被看见，不是因为你完美，而是因为你真实' }, 200, origin);
+        }
+
+        const quoteText = (result.raw || result.reply || '').trim().replace(/^["'""]|["'""]$/g, '');
+        return jsonResponse({ quote: quoteText || '你值得被看见，不是因为你完美，而是因为你真实' }, 200, origin);
+      }
+
+      // ══════════════════════════════════════════ 阶段三：双人模式房间状态增强 ══════════════════════════════════════════
+
+      // 房间状态增强查询（含倒计时、对方输入状态）
+      if (path.match(/^\/api\/room\/[A-Z0-9]{6}\/status$/) && request.method === 'GET') {
+        const code = path.split('/')[3];
+        const room = await env.DB.prepare('SELECT id, status, a_consent, b_consent, created_at, expires_at, a_input, b_input FROM rooms WHERE id = ?').bind(code).first();
+        if (!room) return jsonResponse({ error: '房间不存在' }, 404, origin);
+
+        // 计算剩余时间
+        const now = Date.now();
+        let expiresAt = room.expires_at ? new Date(room.expires_at + 'Z').getTime() : (now + 24 * 60 * 60 * 1000);
+        let remainingMs = Math.max(0, expiresAt - now);
+        let remainingHours = Math.floor(remainingMs / (60 * 60 * 1000));
+        let remainingMinutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+        let isExpiringSoon = remainingMs < 60 * 60 * 1000; // 1小时内过期
+
+        return jsonResponse({
+          status: room.status,
+          aConsent: !!room.a_consent,
+          bConsent: !!room.b_consent,
+          aSubmitted: !!room.a_input,
+          bSubmitted: !!room.b_input,
+          remainingMs,
+          remainingHours,
+          remainingMinutes,
+          isExpiringSoon,
+          createdAt: room.created_at,
+          expiresAt: room.expires_at,
+        }, 200, origin);
+      }
+
+      // ══════════════════════════════════════════ 阶段四：动态画像 & 历史记录 & 洞察日记 ══════════════════════════════════════════
+
+      // 获取分析历史趋势（用于动态画像雷达图）
+      if (path === '/api/user/trends' && request.method === 'GET') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        try {
+          const records = await env.DB.prepare(
+            'SELECT mira_type, dimensions_json, insight_summary, emotion_snapshot, need_snapshot, created_at FROM analysis_history WHERE user_id = ? ORDER BY created_at ASC'
+          ).bind(auth.uid).all();
+
+          const list = records.results || [];
+
+          // 如果有多条记录，计算维度变化趋势
+          let trendData = [];
+          list.forEach(function(r) {
+            let dims = {};
+            try { dims = JSON.parse(r.dimensions_json || '{}'); } catch(e) {}
+            trendData.push({
+              miraType: r.mira_type,
+              dimensions: dims,
+              insight: r.insight_summary,
+              emotion: r.emotion_snapshot,
+              need: r.need_snapshot,
+              date: r.created_at,
+            });
+          });
+
+          return jsonResponse({
+            total: list.length,
+            trends: trendData,
+            hasEnoughData: list.length >= 2,
+          }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '获取趋势数据失败' }, 500, origin);
+        }
+      }
+
+      // 获取洞察日记列表
+      if (path === '/api/user/diaries' && request.method === 'GET') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        try {
+          const records = await env.DB.prepare(
+            'SELECT id, source_type, diary_text, emotion_tag, growth_tag, created_at FROM insight_diaries WHERE user_id = ? ORDER BY created_at DESC LIMIT 50'
+          ).bind(auth.uid).all();
+
+          return jsonResponse({
+            list: records.results || [],
+            total: (records.results || []).length,
+          }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '获取日记失败' }, 500, origin);
+        }
+      }
+
+      // ══════════════════════════════════════════ 阶段五：决策树管理 API ══════════════════════════════════════════
+
+      // 获取决策树所有节点（后台管理用）
+      if (path === '/api/admin/decision-tree' && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        try {
+          const records = await env.DB.prepare(
+            'SELECT * FROM chat_decision_tree ORDER BY sort_order ASC'
+          ).all();
+          return jsonResponse({ nodes: records.results || [] }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '获取决策树失败' }, 500, origin);
+        }
+      }
+
+      // 更新决策树节点（后台管理用）
+      if (path === '/api/admin/decision-tree' && request.method === 'PUT') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { id, node_id, parent_id, node_type, condition_type, condition_value, prompt_template, next_node_sufficient, next_node_insufficient, description, is_active, sort_order } = body;
+
+        if (!node_id || !node_type || !prompt_template) {
+          return jsonResponse({ error: '缺少必填字段' }, 400, origin);
+        }
+
+        try {
+          if (id) {
+            await env.DB.prepare(
+              'UPDATE chat_decision_tree SET node_id=?, parent_id=?, node_type=?, condition_type=?, condition_value=?, prompt_template=?, next_node_sufficient=?, next_node_insufficient=?, description=?, is_active=?, sort_order=?, updated_at=datetime("now") WHERE id=?'
+            ).bind(node_id, parent_id || null, node_type, condition_type || '', condition_value || '', prompt_template, next_node_sufficient || null, next_node_insufficient || null, description || '', is_active !== undefined ? (is_active ? 1 : 0) : 1, sort_order || 0, id).run();
+          } else {
+            await env.DB.prepare(
+              'INSERT INTO chat_decision_tree (node_id, parent_id, node_type, condition_type, condition_value, prompt_template, next_node_sufficient, next_node_insufficient, description, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ).bind(node_id, parent_id || null, node_type, condition_type || '', condition_value || '', prompt_template, next_node_sufficient || null, next_node_insufficient || null, description || '', is_active !== undefined ? (is_active ? 1 : 0) : 1, sort_order || 0).run();
+          }
+          return jsonResponse({ success: true }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '保存失败: ' + e.message }, 500, origin);
+        }
+      }
+
+      // 删除决策树节点
+      if (path === '/api/admin/decision-tree' && request.method === 'DELETE') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { id } = body;
+        if (!id) return jsonResponse({ error: '缺少节点ID' }, 400, origin);
+
+        try {
+          await env.DB.prepare('DELETE FROM chat_decision_tree WHERE id = ?').bind(id).run();
+          return jsonResponse({ success: true }, 200, origin);
+        } catch (e) {
+          return jsonResponse({ error: '删除失败' }, 500, origin);
+        }
+      }
+
+      // ══════════════════════════════════════════ 阶段五：决策树驱动的咨询师对话 ══════════════════════════════════════════
+
+      // 咨询师对话（决策树增强版，向后兼容旧逻辑）
+      if (path === '/api/chat-v2' && request.method === 'POST') {
+        if (!await checkRateLimitD1(env, clientIP, 'chat', 15, 60000)) {
+          return jsonResponse({ error: '请求过于频繁，请稍后重试' }, 429, origin);
+        }
+
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { prompt, history, currentNodeId, sufficientSignals, round } = body;
+        if (!prompt || typeof prompt !== 'string') return jsonResponse({ error: 'prompt 不能为空' }, 400, origin);
+        if (prompt.length > 10000) return jsonResponse({ error: 'prompt 过长' }, 400, origin);
+
+        // 获取决策树节点
+        let treeNodes = [];
+        try {
+          const treeResult = await env.DB.prepare('SELECT * FROM chat_decision_tree WHERE is_active = 1 ORDER BY sort_order ASC').all();
+          treeNodes = treeResult.results || [];
+        } catch (e) {
+          // 决策树表不存在，回退到旧逻辑
+        }
+
+        // 如果有决策树数据，使用决策树驱动
+        if (treeNodes.length > 0 && currentNodeId) {
+          const currentNode = treeNodes.find(function(n) { return n.node_id === currentNodeId; });
+          if (currentNode) {
+            // 根据条件判断下一步
+            const signals = sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false };
+            const currentRound = round || 1;
+
+            let nextNodeId = null;
+            if (currentNode.condition_type === 'has_fact') {
+              nextNodeId = signals.hasFact ? currentNode.next_node_sufficient : currentNode.next_node_insufficient;
+            } else if (currentNode.condition_type === 'has_emotion') {
+              nextNodeId = signals.hasEmotion ? currentNode.next_node_sufficient : currentNode.next_node_insufficient;
+            } else if (currentNode.condition_type === 'has_need') {
+              nextNodeId = signals.hasNeed ? currentNode.next_node_sufficient : currentNode.next_node_insufficient;
+            } else if (currentNode.condition_type === 'round_count') {
+              nextNodeId = currentRound >= parseInt(currentNode.condition_value) ? currentNode.next_node_sufficient : currentNode.next_node_insufficient;
+            } else {
+              nextNodeId = currentNode.next_node_sufficient;
+            }
+
+            // 构建基于决策树的 system prompt
+            const nodePrompt = currentNode.prompt_template
+              .replace(/\{userInput\}/g, prompt.substring(0, 500))
+              .replace(/\{round\}/g, currentRound)
+              .replace(/\{emotion\}/g, signals.emotion || '');
+
+            const result = await callAI(env, prompt, 'chat', history || []);
+            return jsonResponse({
+              ...result,
+              currentNodeId: nextNodeId,
+              nodeType: currentNode.node_type,
+            }, result.error ? 500 : 200, origin);
+          }
+        }
+
+        // 回退到旧逻辑
+        const result = await callAI(env, prompt, 'chat', history || []);
+        return jsonResponse(result, result.error ? 500 : 200, origin);
+      }
+
       // ══════════════════════════════════════════ 数据库初始化 API ══════════════════════════════════════════
 
       // 初始化数据库表（GET /api/init-db）
@@ -1429,6 +1709,96 @@ export default {
           try { await env.DB.prepare('ALTER TABLE users ADD COLUMN password_salt TEXT').run(); } catch(e) { /* 字段已存在 */ }
           // 为 users 表添加 avatar 字段（预设头像标识）
           try { await env.DB.prepare('ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT ""').run(); } catch(e) { /* 字段已存在 */ }
+
+          // ═══ 阶段四：数据粘性 — 分析历史 & 洞察日记 ═══
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS analysis_history (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              source_type TEXT NOT NULL,
+              source_id INTEGER,
+              mira_type TEXT,
+              dimensions_json TEXT DEFAULT '{}',
+              insight_summary TEXT DEFAULT '',
+              emotion_snapshot TEXT DEFAULT '',
+              need_snapshot TEXT DEFAULT '',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_analysis_history_user ON analysis_history(user_id, created_at)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_analysis_history_type ON analysis_history(user_id, source_type, created_at)').run();
+
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS insight_diaries (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              source_type TEXT NOT NULL,
+              source_id INTEGER,
+              diary_text TEXT NOT NULL,
+              emotion_tag TEXT DEFAULT '',
+              growth_tag TEXT DEFAULT '',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_insight_diaries_user ON insight_diaries(user_id, created_at)').run();
+
+          // ═══ 阶段五：咨询师模式决策树 ═══
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS chat_decision_tree (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              node_id TEXT UNIQUE NOT NULL,
+              parent_id TEXT,
+              node_type TEXT NOT NULL,
+              condition_type TEXT DEFAULT '',
+              condition_value TEXT DEFAULT '',
+              prompt_template TEXT NOT NULL,
+              next_node_sufficient TEXT,
+              next_node_insufficient TEXT,
+              description TEXT DEFAULT '',
+              is_active INTEGER DEFAULT 1,
+              sort_order INTEGER DEFAULT 0,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_chat_tree_parent ON chat_decision_tree(parent_id)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_chat_tree_active ON chat_decision_tree(is_active, sort_order)').run();
+
+          // 决策树种子数据（仅首次插入）
+          const treeCount = await env.DB.prepare('SELECT COUNT(*) as cnt FROM chat_decision_tree').first();
+          if (treeCount && treeCount.cnt === 0) {
+            const seedNodes = [
+              ['start', null, 'collect', '', '', '你是 Mirror，一位关系咨询师。用户刚开口说了：{userInput}。请用1句话承接情绪，然后基于依恋理论判断追问方向。', 'assess_fact', null, '起始节点：承接情绪+判断方向', 1, 0],
+              ['assess_fact', 'start', 'ask', 'has_fact', 'true', '用户已提供具体事实。检查是否需要追问情绪。', 'assess_emotion', 'ask_fact', '评估事实维度是否充足', 1, 1],
+              ['ask_fact', 'assess_fact', 'ask', 'has_fact', 'false', '用户缺少具体事实。问：能给我举个例子吗？或：具体是哪一次？', 'assess_emotion', null, '追问事实', 1, 2],
+              ['assess_emotion', 'assess_fact', 'ask', 'has_emotion', 'true', '用户已表达情绪。检查是否需要追问需求。', 'assess_need', 'ask_emotion', '评估情绪维度是否充足', 1, 3],
+              ['ask_emotion', 'assess_emotion', 'ask', 'has_emotion', 'false', '用户缺少情绪表达。问：那时候你心里是什么感觉？', 'assess_need', null, '追问情绪', 1, 4],
+              ['assess_need', 'assess_emotion', 'ask', 'has_need', 'true', '三个维度都充足。给用户选择权。', 'offer_analyze', 'ask_need', '评估需求维度是否充足', 1, 5],
+              ['ask_need', 'assess_need', 'ask', 'has_need', 'false', '用户缺少需求表达。问：你真正想要的是什么？', 'offer_analyze', null, '追问需求', 1, 6],
+              ['offer_analyze', 'assess_need', 'offer_analyze', '', '', '聊了这么多，信息看起来够了。我来帮你梳理一下？还是你想再聊聊？', 'analyze', 'continue_chat', '信息充足，给用户选择', 1, 7],
+              ['continue_chat', 'offer_analyze', 'ask', 'round_count', '>=5', '已达5轮软上限，自动切换到分析。', 'analyze', 'continue_chat', '继续对话（5轮后强制分析）', 1, 8],
+              ['analyze', 'offer_analyze', 'analyze', '', '', '聊了这么多，我来帮你梳理一下。', 'end', null, '生成分析报告', 1, 9],
+              ['end', 'analyze', 'end', '', '', '分析已完成。', null, null, '结束节点', 1, 10],
+            ];
+            for (const node of seedNodes) {
+              await env.DB.prepare(
+                'INSERT OR IGNORE INTO chat_decision_tree (node_id, parent_id, node_type, condition_type, condition_value, prompt_template, next_node_sufficient, next_node_insufficient, description, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              ).bind(...node).run();
+            }
+          }
+
+          // schema_version 版本管理表
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS schema_version (
+              version INTEGER PRIMARY KEY,
+              description TEXT,
+              applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+          // 记录当前版本
+          try {
+            await env.DB.prepare('INSERT OR IGNORE INTO schema_version (version, description) VALUES (?, ?)').bind(2, 'v2: analysis_history, insight_diaries, chat_decision_tree').run();
+          } catch(e) { /* 已存在 */ }
 
           return jsonResponse({ success: true, message: '数据库表创建/验证完成' }, 200, origin);
         } catch (err) {
@@ -2407,6 +2777,7 @@ async function callAI(env, prompt, mode, history) {
 
 当 action 为 "analyze" 时（出报告）：
 {"reply":"聊了这么多，我来帮你梳理一下。","action":"analyze","followUp":[],"attachment":{"emotion":"","dimension":"","sufficientSignals":{"hasFact":true,"hasEmotion":true,"hasNeed":true},"round":3}}`,
+    quote: '你是一位有洞察力的文案专家。请直接输出一句金句（20-40字），像朋友说的心里话，带一点自嘲或反差。只输出金句本身，不要引号不要解释。',
   };
 
   const systemPrompt = systemPrompts[mode] || systemPrompts.single;
@@ -2468,8 +2839,8 @@ async function callAI(env, prompt, mode, history) {
       return { error: 'AI 返回内容为空', raw: null };
     }
 
-    // deep 模式预期纯文本，直接返回 raw
-    if (mode === 'deep') {
+    // deep / quote 模式预期纯文本，直接返回 raw
+    if (mode === 'deep' || mode === 'quote') {
       return { raw: content };
     }
 
@@ -2604,14 +2975,14 @@ B的MIRA类型：${bInsight.miraType || 'BO'}
   }
 }
 
-// 异步保存单人分析结果到 single_analyses 表
+// 异步保存单人分析结果到 single_analyses 表（同时写入 analysis_history 和 insight_diaries）
 async function saveSingleAnalysis(env, prompt, result, uid = null) {
   try {
     const userInput = (prompt || '').substring(0, 500);
     // 把完整 AI 结果 JSON 序列化存入 report_json
     let reportJson = '{}';
     try { reportJson = JSON.stringify(result); } catch (e) { reportJson = '{}'; }
-    await env.DB.prepare(
+    const insertResult = await env.DB.prepare(
       'INSERT INTO single_analyses (user_input, fact, emotion, need, misread, status, insight, suggest, mira_type, user_id, report_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))'
     ).bind(
       userInput,
@@ -2626,6 +2997,58 @@ async function saveSingleAnalysis(env, prompt, result, uid = null) {
       uid,
       reportJson,
     ).run();
+
+    // 同步写入 analysis_history（用于动态画像趋势追踪）
+    if (uid) {
+      const sourceId = insertResult.meta ? insertResult.meta.last_row_id : null;
+      let dimsJson = '{}';
+      try {
+        if (result.scores) {
+          dimsJson = JSON.stringify({
+            expr_D: result.scores.expr_D || 0,
+            expr_S: result.scores.expr_S || 0,
+            expr_B: result.scores.expr_B || 0,
+            expr_R: result.scores.expr_R || 0,
+            focus_O: result.scores.focus_O || 0,
+            focus_T: result.scores.focus_T || 0,
+            focus_I: result.scores.focus_I || 0,
+            focus_N: result.scores.focus_N || 0,
+          });
+        }
+      } catch (e) { /* scores 解析失败 */ }
+
+      try {
+        await env.DB.prepare(
+          'INSERT INTO analysis_history (user_id, source_type, source_id, mira_type, dimensions_json, insight_summary, emotion_snapshot, need_snapshot, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now"))'
+        ).bind(
+          uid,
+          'single',
+          sourceId,
+          result.miraType || '',
+          dimsJson,
+          (result.insight || '').substring(0, 200),
+          (result.emotion || '').substring(0, 100),
+          (result.need || '').substring(0, 100),
+        ).run();
+      } catch (e) { console.error('analysis_history insert error:', e.message); }
+
+      // 写入洞察日记
+      try {
+        let diaryText = result.insight || result.summary || '';
+        if (diaryText.length > 0) {
+          await env.DB.prepare(
+            'INSERT INTO insight_diaries (user_id, source_type, source_id, diary_text, emotion_tag, growth_tag, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime("now"))'
+          ).bind(
+            uid,
+            'analyze',
+            sourceId,
+            diaryText.substring(0, 200),
+            (result.emotion || '').substring(0, 50),
+            '自我觉察',
+          ).run();
+        }
+      } catch (e) { console.error('insight_diaries insert error:', e.message); }
+    }
   } catch (err) {
     console.error('saveSingleAnalysis error:', err.message);
   }

@@ -84,6 +84,19 @@ tr:hover td{background:rgba(201,169,110,.03)}
 .log-type-btn:hover,.log-type-btn.active{border-color:var(--gold);color:var(--gold)}
 .empty{text-align:center;padding:40px;color:var(--text2);font-size:14px}
 .loading{text-align:center;padding:40px;color:var(--gold)}
+.dt-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.dt-form .full{grid-column:1/3}
+.dt-form label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.dt-form input,.dt-form select,.dt-form textarea{width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none}
+.dt-form input:focus,.dt-form select:focus,.dt-form textarea:focus{border-color:var(--gold)}
+.dt-form textarea{resize:vertical;min-height:80px;font-family:inherit}
+.dt-form .switch-row{display:flex;align-items:center;gap:8px}
+.dt-form .switch{position:relative;width:40px;height:22px;cursor:pointer}
+.dt-form .switch input{opacity:0;width:0;height:0}
+.dt-form .switch .slider{position:absolute;inset:0;background:var(--border);border-radius:11px;transition:.2s}
+.dt-form .switch .slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:var(--text2);border-radius:50%;transition:.2s}
+.dt-form .switch input:checked+.slider{background:var(--gold)}
+.dt-form .switch input:checked+.slider:before{transform:translateX(18px);background:#000}
 .toast{position:fixed;top:20px;right:20px;padding:12px 20px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);z-index:300;transform:translateX(120%);transition:.3s}
 .toast.show{transform:translateX(0)}
 .toast.success{border-color:var(--green)}
@@ -112,6 +125,7 @@ tr:hover td{background:rgba(201,169,110,.03)}
       <a href="#" data-page="reports"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>数据统计</a>
       <a href="#" data-page="security"><svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>安全日志</a>
       <a href="#" data-page="config"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L5.12 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.58 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>系统配置</a>
+      <a href="#" data-page="decision-tree"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>决策树</a>
     </nav>
     <button class="logout" onclick="doLogout()">退出登录</button>
   </aside>
@@ -179,7 +193,7 @@ function refreshCurrent(){loadPage(currentPage)}
 async function loadPage(page){
   currentPage=page;
   document.querySelectorAll('.sidebar nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===page));
-  document.getElementById('pageTitle').textContent={dashboard:'仪表盘',users:'用户管理',reports:'数据统计',security:'安全日志',config:'系统配置'}[page];
+  document.getElementById('pageTitle').textContent={dashboard:'仪表盘',users:'用户管理',reports:'数据统计',security:'安全日志',config:'系统配置','decision-tree':'决策树管理'}[page];
   const pc=document.getElementById('pageContent');
   pc.innerHTML='<div class="loading">加载中...</div>';
   try{
@@ -188,6 +202,7 @@ async function loadPage(page){
     else if(page==='reports')await loadReports(pc);
     else if(page==='security')await loadSecurity(pc);
     else if(page==='config')await loadConfig(pc);
+    else if(page==='decision-tree')await loadDecisionTree(pc);
   }catch(e){pc.innerHTML='<div class="empty">加载失败: '+e.message+'</div>'}
 }
 
@@ -487,6 +502,109 @@ async function saveConfig(){
 
 function exportUsers(){window.open(API_BASE+'/export/users','_blank')}
 function exportSecurity(){window.open(API_BASE+'/export/security-logs','_blank')}
+
+// ========== 决策树管理 ==========
+let dtNodes=[];
+const dtNodeTypes=['collect','ask','offer_analyze','analyze','end'];
+const dtConditionTypes=['has_fact','has_emotion','has_need','round_count',''];
+
+function escapeHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function truncate(s,n){if(!s)return'-';return s.length>n?s.substring(0,n)+'...':s}
+
+async function loadDecisionTree(el){
+  const d=await api('/decision-tree');
+  if(!d){el.innerHTML='<div class="empty">加载失败</div>';return}
+  dtNodes=Array.isArray(d.nodes)?d.nodes:Array.isArray(d)?d:[];
+  dtNodes.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  renderDecisionTree(el);
+}
+
+function renderDecisionTree(el){
+  let h='<div class="section">';
+  h+='<h3>决策树节点列表 <span class="actions"><button class="btn btn-primary" onclick="showDtNodeForm()">添加节点</button></span></h3>';
+  if(dtNodes.length===0){h+='<div class="empty">暂无节点数据</div></div>';el.innerHTML=h;return}
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>node_id</th><th>parent_id</th><th>node_type</th><th>condition_type</th><th>prompt_template</th><th>排序</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+  for(const n of dtNodes){
+    const activeClass=n.is_active!==false?'badge-normal':'badge-banned';
+    const activeText=n.is_active!==false?'启用':'禁用';
+    h+='<tr>';
+    h+='<td><span style="color:var(--gold);font-weight:600">'+escapeHtml(n.node_id)+'</span></td>';
+    h+='<td>'+escapeHtml(n.parent_id||'-')+'</td>';
+    h+='<td><span class="badge badge-guest">'+escapeHtml(n.node_type)+'</span></td>';
+    h+='<td>'+(n.condition_type?'<span class="badge badge-normal">'+escapeHtml(n.condition_type)+'</span>':'<span style="color:var(--text2)">-</span>')+'</td>';
+    h+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escapeHtml(n.prompt_template)+'">'+escapeHtml(truncate(n.prompt_template,60))+'</td>';
+    h+='<td>'+(n.sort_order||0)+'</td>';
+    h+='<td><span class="badge '+activeClass+'">'+activeText+'</span></td>';
+    h+='<td><button class="btn" onclick="showDtNodeForm(\''+escapeHtml(n.node_id)+'\')">编辑</button> <button class="btn btn-danger" onclick="deleteDtNode(\''+escapeHtml(n.node_id)+'\')">删除</button></td>';
+    h+='</tr>';
+  }
+  h+='</tbody></table></div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function showDtNodeForm(nodeId){
+  const node=nodeId?dtNodes.find(n=>n.node_id===nodeId):null;
+  const isEdit=!!node;
+  let h='<button class="close" onclick="closeModal()">&times;</button>';
+  h+='<h3>'+(isEdit?'编辑节点: '+escapeHtml(node.node_id):'添加节点')+'</h3>';
+  h+='<div class="dt-form">';
+  h+='<div><label>node_id</label><input id="dtNodeId" type="text" value="'+escapeHtml(node?node.node_id:'')+'" '+(isEdit?'readonly style="opacity:.6"':'')+' placeholder="例如: start"></div>';
+  h+='<div><label>parent_id</label><input id="dtParentId" type="text" value="'+escapeHtml(node?node.parent_id||'':'')+'" placeholder="父节点ID，留空表示根节点"></div>';
+  h+='<div><label>node_type</label><select id="dtNodeType">';
+  for(const t of dtNodeTypes){h+='<option value="'+t+'"'+(node&&node.node_type===t?' selected':'')+'>'+t+'</option>'}
+  h+='</select></div>';
+  h+='<div><label>condition_type</label><select id="dtConditionType"><option value="">（空）</option>';
+  for(const c of dtConditionTypes){if(c)h+='<option value="'+c+'"'+(node&&node.condition_type===c?' selected':'')+'>'+c+'</option>'}
+  h+='</select></div>';
+  h+='<div><label>condition_value</label><input id="dtConditionValue" type="text" value="'+escapeHtml(node?node.condition_value||'':'')+'" placeholder="条件值"></div>';
+  h+='<div><label>sort_order</label><input id="dtSortOrder" type="number" value="'+(node?node.sort_order||0:0)+'" placeholder="排序"></div>';
+  h+='<div class="full"><label>prompt_template</label><textarea id="dtPromptTemplate" placeholder="Prompt模板内容">'+escapeHtml(node?node.prompt_template||'':'')+'</textarea></div>';
+  h+='<div><label>next_node_sufficient</label><input id="dtNextSufficient" type="text" value="'+escapeHtml(node?node.next_node_sufficient||'':'')+'" placeholder="满足条件时的下一节点"></div>';
+  h+='<div><label>next_node_insufficient</label><input id="dtNextInsufficient" type="text" value="'+escapeHtml(node?node.next_node_insufficient||'':'')+'" placeholder="不满足条件时的下一节点"></div>';
+  h+='<div class="full"><label>description</label><input id="dtDescription" type="text" value="'+escapeHtml(node?node.description||'':'')+'" placeholder="节点描述"></div>';
+  h+='<div class="full"><div class="switch-row"><label style="margin-bottom:0">is_active</label><label class="switch"><input type="checkbox" id="dtIsActive" '+(node&&node.is_active===false?'':'checked')+'><span class="slider"></span></label><span style="font-size:13px;color:var(--text2)">'+(node&&node.is_active===false?'禁用':'启用')+'</span></div></div>';
+  h+='</div>';
+  h+='<div style="display:flex;gap:8px;justify-content:flex-end">';
+  h+='<button class="btn" onclick="closeModal()">取消</button>';
+  h+='<button class="btn btn-primary" onclick="saveDtNode(\''+escapeHtml(isEdit?node.node_id:'')+'\')">'+(isEdit?'保存修改':'创建节点')+'</button>';
+  h+='</div>';
+  document.getElementById('modalBody').innerHTML=h;
+  document.getElementById('modal').classList.add('show');
+  // 监听开关状态文本变化
+  document.getElementById('dtIsActive').addEventListener('change',function(){
+    this.parentElement.nextElementSibling.textContent=this.checked?'启用':'禁用';
+  });
+}
+
+async function saveDtNode(originalNodeId){
+  const nodeId=document.getElementById('dtNodeId').value.trim();
+  if(!nodeId){showToast('node_id 不能为空','error');return}
+  const payload={
+    node_id:nodeId,
+    parent_id:document.getElementById('dtParentId').value.trim()||null,
+    node_type:document.getElementById('dtNodeType').value,
+    condition_type:document.getElementById('dtConditionType').value||null,
+    condition_value:document.getElementById('dtConditionValue').value.trim()||null,
+    prompt_template:document.getElementById('dtPromptTemplate').value.trim()||null,
+    next_node_sufficient:document.getElementById('dtNextSufficient').value.trim()||null,
+    next_node_insufficient:document.getElementById('dtNextInsufficient').value.trim()||null,
+    description:document.getElementById('dtDescription').value.trim()||null,
+    is_active:document.getElementById('dtIsActive').checked,
+    sort_order:parseInt(document.getElementById('dtSortOrder').value)||0
+  };
+  const d=await api('/decision-tree',{method:'PUT',body:JSON.stringify(payload)});
+  if(d&&d.success){showToast(d.message||'保存成功','success');closeModal();loadDecisionTree(document.getElementById('pageContent'))}
+  else{showToast(d&&d.error||'保存失败','error')}
+}
+
+async function deleteDtNode(nodeId){
+  if(!confirm('确定删除节点 "'+nodeId+'" 吗？此操作不可撤销。'))return;
+  const d=await api('/decision-tree?node_id='+encodeURIComponent(nodeId),{method:'DELETE'});
+  if(d&&d.success){showToast(d.message||'删除成功','success');loadDecisionTree(document.getElementById('pageContent'))}
+  else{showToast(d&&d.error||'删除失败','error')}
+}
 
 document.querySelectorAll('.sidebar nav a').forEach(a=>{
   a.addEventListener('click',e=>{e.preventDefault();loadPage(a.dataset.page)});
