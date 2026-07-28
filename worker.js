@@ -506,7 +506,8 @@ async function signAdminJWT(env, payload) {
   const secret = env.ADMIN_JWT_SECRET || env.JWT_SECRET;
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, data);
-  return `${encodedHeader}.${encodedBody}.${base64urlEncode(sig)}`;
+  const sigBase64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${encodedHeader}.${encodedBody}.${sigBase64}`;
 }
 
 // 验证管理员JWT
@@ -1387,6 +1388,14 @@ export default {
           try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN a_uid INTEGER').run(); } catch(e) { /* 已存在 */ }
           try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN b_uid INTEGER').run(); } catch(e) { /* 已存在 */ }
 
+          // 为报告表增加查看/分享次数统计字段
+          try { await env.DB.prepare('ALTER TABLE single_analyses ADD COLUMN view_count INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE single_analyses ADD COLUMN share_count INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE mira_tests ADD COLUMN view_count INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE mira_tests ADD COLUMN share_count INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE user_room_records ADD COLUMN view_count INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE user_room_records ADD COLUMN share_count INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
+
           // 个人中心索引
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_single_analyses_user ON single_analyses(user_id, created_at)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_mira_tests_user ON mira_tests(user_id, created_at)').run();
@@ -1683,6 +1692,9 @@ export default {
         const row = await env.DB.prepare('SELECT * FROM single_analyses WHERE id = ? AND user_id = ?').bind(id, auth.uid).first();
         if (!row) return jsonResponse({ error: '记录不存在' }, 404, origin);
 
+        // 记录查看次数
+        ctx.waitUntil(env.DB.prepare('UPDATE single_analyses SET view_count = view_count + 1 WHERE id = ?').bind(id).run());
+
         let reportJson = null;
         try { reportJson = row.report_json ? JSON.parse(row.report_json) : null; } catch (e) { reportJson = null; }
 
@@ -1709,6 +1721,9 @@ export default {
 
         const row = await env.DB.prepare('SELECT * FROM mira_tests WHERE user_id = ? ORDER BY created_at DESC LIMIT 1').bind(auth.uid).first();
         if (!row) return jsonResponse({ mira: null }, 200, origin);
+
+        // 记录查看次数
+        ctx.waitUntil(env.DB.prepare('UPDATE mira_tests SET view_count = view_count + 1 WHERE id = ?').bind(row.id).run());
 
         let scoresJson = null, answersJson = null;
         try { scoresJson = row.scores_json ? JSON.parse(row.scores_json) : null; } catch (e) { scoresJson = null; }
@@ -1761,6 +1776,9 @@ export default {
         const row = await env.DB.prepare('SELECT * FROM user_room_records WHERE id = ? AND user_id = ?').bind(id, auth.uid).first();
         if (!row) return jsonResponse({ error: '记录不存在' }, 404, origin);
 
+        // 记录查看次数
+        ctx.waitUntil(env.DB.prepare('UPDATE user_room_records SET view_count = view_count + 1 WHERE id = ?').bind(id).run());
+
         let sharedReportJson = null, myInsightJson = null, partnerInsightJson = null;
         try { sharedReportJson = row.shared_report_json ? JSON.parse(row.shared_report_json) : null; } catch (e) { sharedReportJson = null; }
         try { myInsightJson = row.my_insight_json ? JSON.parse(row.my_insight_json) : null; } catch (e) { myInsightJson = null; }
@@ -1777,6 +1795,44 @@ export default {
           my_insight: myInsightJson,
           partner_insight: partnerInsightJson,
         }, 200, origin);
+      }
+
+      // ══════════════════════════════════════════ 报告分享 API（统计分享次数） ══════════════════════════════════════════
+
+      // 分享单人分析报告（POST /api/user/analyses/:id/share）
+      if (path.match(/^\/api\/user\/analyses\/\d+\/share$/) && request.method === 'POST') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        const id = parseInt(path.split('/')[4], 10);
+        if (!id) return jsonResponse({ error: '无效的记录ID' }, 400, origin);
+        const row = await env.DB.prepare('SELECT id FROM single_analyses WHERE id = ? AND user_id = ?').bind(id, auth.uid).first();
+        if (!row) return jsonResponse({ error: '记录不存在' }, 404, origin);
+        await env.DB.prepare('UPDATE single_analyses SET share_count = share_count + 1 WHERE id = ?').bind(id).run();
+        return jsonResponse({ success: true }, 200, origin);
+      }
+
+      // 分享双人房间记录（POST /api/user/rooms/:id/share）
+      if (path.match(/^\/api\/user\/rooms\/\d+\/share$/) && request.method === 'POST') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        const id = parseInt(path.split('/')[4], 10);
+        if (!id) return jsonResponse({ error: '无效的记录ID' }, 400, origin);
+        const row = await env.DB.prepare('SELECT id FROM user_room_records WHERE id = ? AND user_id = ?').bind(id, auth.uid).first();
+        if (!row) return jsonResponse({ error: '记录不存在' }, 404, origin);
+        await env.DB.prepare('UPDATE user_room_records SET share_count = share_count + 1 WHERE id = ?').bind(id).run();
+        return jsonResponse({ success: true }, 200, origin);
+      }
+
+      // 分享MIRA测试报告（POST /api/user/mira/:id/share）
+      if (path.match(/^\/api\/user\/mira\/\d+\/share$/) && request.method === 'POST') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        const id = parseInt(path.split('/')[4], 10);
+        if (!id) return jsonResponse({ error: '无效的记录ID' }, 400, origin);
+        const row = await env.DB.prepare('SELECT id FROM mira_tests WHERE id = ? AND user_id = ?').bind(id, auth.uid).first();
+        if (!row) return jsonResponse({ error: '记录不存在' }, 404, origin);
+        await env.DB.prepare('UPDATE mira_tests SET share_count = share_count + 1 WHERE id = ?').bind(id).run();
+        return jsonResponse({ success: true }, 200, origin);
       }
 
       // ══════════════════════════════════════════ 联系方式提交 API ══════════════════════════════════════════
@@ -1906,6 +1962,11 @@ export default {
           // MIRA类型TOP5
           const miraTypes = await env.DB.prepare("SELECT mira_type, COUNT(*) as cnt FROM users WHERE mira_type IS NOT NULL AND mira_type != '' GROUP BY mira_type ORDER BY cnt DESC LIMIT 5").all();
 
+          // 报告排行概览（各模块总数 + 查看/分享次数）
+          const reportMira = await env.DB.prepare("SELECT COUNT(*) as cnt, COALESCE(SUM(view_count),0) as views, COALESCE(SUM(share_count),0) as shares FROM mira_tests").first();
+          const reportSingle = await env.DB.prepare("SELECT COUNT(*) as cnt, COALESCE(SUM(view_count),0) as views, COALESCE(SUM(share_count),0) as shares FROM single_analyses").first();
+          const reportCouple = await env.DB.prepare("SELECT COUNT(*) as cnt, COALESCE(SUM(view_count),0) as views, COALESCE(SUM(share_count),0) as shares FROM user_room_records").first();
+
           return jsonResponse({
             users: {
               total: totalUsers ? totalUsers.cnt : 0,
@@ -1927,7 +1988,12 @@ export default {
             security: {
               rateLimit24h: rateLimitHits ? rateLimitHits.cnt : 0
             },
-            miraTop5: miraTypes.results || []
+            miraTop5: miraTypes.results || [],
+            reportSummary: {
+              miraTests: { count: reportMira ? reportMira.cnt : 0, views: reportMira ? reportMira.views : 0, shares: reportMira ? reportMira.shares : 0 },
+              singleAnalyses: { count: reportSingle ? reportSingle.cnt : 0, views: reportSingle ? reportSingle.views : 0, shares: reportSingle ? reportSingle.shares : 0 },
+              coupleRooms: { count: reportCouple ? reportCouple.cnt : 0, views: reportCouple ? reportCouple.views : 0, shares: reportCouple ? reportCouple.shares : 0 }
+            }
           }, 200, origin);
         } catch (e) {
           console.error('dashboard error:', e.message);
@@ -2075,6 +2141,7 @@ export default {
       }
 
       // 报告统计排行（GET /api/admin/report-stats）
+      // 双维度：按人格类型 + 按功能模块，含查看/分享次数
       if (path === '/api/admin/report-stats' && request.method === 'GET') {
         const auth = await checkAdminAuth(request, env);
         if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
@@ -2083,26 +2150,50 @@ export default {
           const days = parseInt(url.searchParams.get('days') || '30');
           const fromDate = new Date(Date.now() - days * 86400000).toISOString().replace('T', ' ').substring(0, 19);
 
-          // MIRA人格测试报告排行
-          const miraTestTypes = await env.DB.prepare(
-            "SELECT mira_type, COUNT(*) as cnt FROM mira_tests WHERE created_at >= ? AND mira_type IS NOT NULL AND mira_type != '' GROUP BY mira_type ORDER BY cnt DESC"
+          // ═══ 维度一：按人格类型排行（含查看/分享次数） ═══
+
+          // MIRA人格测试报告 - 按人格类型
+          const miraTestByType = await env.DB.prepare(
+            "SELECT mira_type, COUNT(*) as cnt, COALESCE(SUM(view_count),0) as views, COALESCE(SUM(share_count),0) as shares FROM mira_tests WHERE created_at >= ? AND mira_type IS NOT NULL AND mira_type != '' GROUP BY mira_type ORDER BY cnt DESC"
           ).bind(fromDate).all();
 
-          // 单人对话分析报告排行
-          const singleTypes = await env.DB.prepare(
-            "SELECT mira_type, COUNT(*) as cnt FROM single_analyses WHERE created_at >= ? AND mira_type IS NOT NULL AND mira_type != '' GROUP BY mira_type ORDER BY cnt DESC"
+          // 单人对话分析报告 - 按人格类型
+          const singleByType = await env.DB.prepare(
+            "SELECT mira_type, COUNT(*) as cnt, COALESCE(SUM(view_count),0) as views, COALESCE(SUM(share_count),0) as shares FROM single_analyses WHERE created_at >= ? AND mira_type IS NOT NULL AND mira_type != '' GROUP BY mira_type ORDER BY cnt DESC"
           ).bind(fromDate).all();
 
-          // 总报告数
-          const totalMiraTests = await env.DB.prepare("SELECT COUNT(*) as cnt FROM mira_tests WHERE created_at >= ?").bind(fromDate).first();
-          const totalSingleAnalyses = await env.DB.prepare("SELECT COUNT(*) as cnt FROM single_analyses WHERE created_at >= ?").bind(fromDate).first();
+          // 双人房间报告 - 按人格类型（取 my_mira_type）
+          const coupleByType = await env.DB.prepare(
+            "SELECT my_mira_type as mira_type, COUNT(*) as cnt, COALESCE(SUM(view_count),0) as views, COALESCE(SUM(share_count),0) as shares FROM user_room_records WHERE created_at >= ? AND my_mira_type IS NOT NULL AND my_mira_type != '' GROUP BY my_mira_type ORDER BY cnt DESC"
+          ).bind(fromDate).all();
+
+          // ═══ 维度二：按功能模块汇总 ═══
+
+          const miraModule = await env.DB.prepare(
+            "SELECT COUNT(*) as cnt, COALESCE(SUM(view_count),0) as views, COALESCE(SUM(share_count),0) as shares FROM mira_tests WHERE created_at >= ?"
+          ).bind(fromDate).first();
+          const singleModule = await env.DB.prepare(
+            "SELECT COUNT(*) as cnt, COALESCE(SUM(view_count),0) as views, COALESCE(SUM(share_count),0) as shares FROM single_analyses WHERE created_at >= ?"
+          ).bind(fromDate).first();
+          const coupleModule = await env.DB.prepare(
+            "SELECT COUNT(*) as cnt, COALESCE(SUM(view_count),0) as views, COALESCE(SUM(share_count),0) as shares FROM user_room_records WHERE created_at >= ?"
+          ).bind(fromDate).first();
 
           return jsonResponse({
-            miraTestRank: miraTestTypes.results || [],
-            singleAnalysisRank: singleTypes.results || [],
+            byType: {
+              miraTests: miraTestByType.results || [],
+              singleAnalyses: singleByType.results || [],
+              coupleRooms: coupleByType.results || []
+            },
+            byModule: {
+              miraTests: { count: miraModule ? miraModule.cnt : 0, views: miraModule ? miraModule.views : 0, shares: miraModule ? miraModule.shares : 0 },
+              singleAnalyses: { count: singleModule ? singleModule.cnt : 0, views: singleModule ? singleModule.views : 0, shares: singleModule ? singleModule.shares : 0 },
+              coupleRooms: { count: coupleModule ? coupleModule.cnt : 0, views: coupleModule ? coupleModule.views : 0, shares: coupleModule ? coupleModule.shares : 0 }
+            },
             totals: {
-              miraTests: totalMiraTests ? totalMiraTests.cnt : 0,
-              singleAnalyses: totalSingleAnalyses ? totalSingleAnalyses.cnt : 0
+              miraTests: miraModule ? miraModule.cnt : 0,
+              singleAnalyses: singleModule ? singleModule.cnt : 0,
+              coupleRooms: coupleModule ? coupleModule.cnt : 0
             }
           }, 200, origin);
         } catch (e) {

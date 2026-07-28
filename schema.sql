@@ -83,11 +83,15 @@ CREATE INDEX IF NOT EXISTS idx_api_rl_cleanup ON api_rate_limits(created_at_ms);
 -- 镜像对话分析记录表（新增 user_id + report_json 字段，通过 ALTER 增量添加）
 -- ALTER TABLE single_analyses ADD COLUMN user_id INTEGER;
 -- ALTER TABLE single_analyses ADD COLUMN report_json TEXT DEFAULT '{}';
+-- ALTER TABLE single_analyses ADD COLUMN view_count INTEGER DEFAULT 0;
+-- ALTER TABLE single_analyses ADD COLUMN share_count INTEGER DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_single_analyses_user ON single_analyses(user_id, created_at);
 
 -- MIRA 测试记录表（新增 user_id + deep_text 字段，通过 ALTER 增量添加）
 -- ALTER TABLE mira_tests ADD COLUMN user_id INTEGER;
 -- ALTER TABLE mira_tests ADD COLUMN deep_text TEXT DEFAULT '';
+-- ALTER TABLE mira_tests ADD COLUMN view_count INTEGER DEFAULT 0;
+-- ALTER TABLE mira_tests ADD COLUMN share_count INTEGER DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_mira_tests_user ON mira_tests(user_id, created_at);
 
 -- 房间表新增用户关联字段（通过 ALTER 增量添加）
@@ -105,6 +109,8 @@ CREATE TABLE IF NOT EXISTS user_room_records (
   shared_report_json TEXT,               -- 共同报告完整 JSON
   my_insight_json TEXT,                  -- 自己的洞察 JSON
   partner_insight_json TEXT,             -- 对方的洞察 JSON（已授权可见）
+  view_count INTEGER DEFAULT 0,          -- 报告查看次数
+  share_count INTEGER DEFAULT 0,         -- 报告分享次数
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   source_room_expires_at DATETIME        -- 原房间过期时间（仅记录用）
 );
