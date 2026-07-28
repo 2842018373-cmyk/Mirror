@@ -142,3 +142,13 @@ CREATE TABLE IF NOT EXISTS security_logs (
 CREATE INDEX IF NOT EXISTS idx_security_logs_type ON security_logs(event_type, created_at);
 CREATE INDEX IF NOT EXISTS idx_security_logs_ip ON security_logs(ip, created_at);
 CREATE INDEX IF NOT EXISTS idx_security_logs_created ON security_logs(created_at);
+
+-- 用户联系方式表（保存分析报告中的联系方式提交）
+CREATE TABLE IF NOT EXISTS user_contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  contact_type TEXT NOT NULL,            -- 联系类型: wechat/phone/email
+  contact_value TEXT NOT NULL,           -- 联系值
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_user_contacts_user ON user_contacts(user_id, created_at);

@@ -271,6 +271,8 @@ async function loadUsers(el){
 async function showUserDetail(userId){
   const d=await api('/users/'+userId);
   if(!d)return;
+  if(d.error){showToast(d.error,'error');return;}
+  if(!d.user){showToast('用户数据异常','error');return;}
   let h='<button class="close" onclick="closeModal()">&times;</button><h3>用户详情 #'+d.user.id+'</h3>';
   h+='<div class="detail-grid">';
   h+='<div class="detail-item"><div class="label">昵称</div><div class="value">'+(d.user.nickname||'-')+'</div></div>';

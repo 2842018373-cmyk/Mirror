@@ -1260,6 +1260,7 @@ export default {
           await env.DB.prepare(`
             CREATE TABLE IF NOT EXISTS user_contacts (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER,
               contact_type TEXT NOT NULL,
               contact_value TEXT NOT NULL,
               source TEXT DEFAULT '',
@@ -1267,6 +1268,7 @@ export default {
               created_at TEXT DEFAULT (datetime('now'))
             )
           `).run();
+          try { await env.DB.prepare("ALTER TABLE user_contacts ADD COLUMN user_id INTEGER").run(); } catch(e) { /* 已存在 */ }
 
           await env.DB.prepare(`
             CREATE TABLE IF NOT EXISTS users (
@@ -1858,9 +1860,12 @@ export default {
           return jsonResponse({ error: 'contact_value 过长' }, 400, origin);
         }
 
+        const auth = await getAuthUser(request, env);
+        const userId = auth && auth.uid ? auth.uid : null;
+
         await env.DB.prepare(
-          'INSERT INTO user_contacts (contact_type, contact_value, source, mira_type, created_at) VALUES (?, ?, ?, ?, datetime("now"))'
-        ).bind(contact_type, contact_value.trim(), source || '', mira_type || '').run();
+          'INSERT INTO user_contacts (user_id, contact_type, contact_value, source, mira_type, created_at) VALUES (?, ?, ?, ?, ?, datetime("now"))'
+        ).bind(userId, contact_type, contact_value.trim(), source || '', mira_type || '').run();
 
         return jsonResponse({ success: true, message: '联系方式已提交' }, 200, origin);
       }
