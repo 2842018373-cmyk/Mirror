@@ -128,7 +128,7 @@ tr:hover td{background:rgba(201,169,110,.03)}
 </div>
 <div id="toast" class="toast"></div>
 <script>
-const API_BASE='/api/admin';
+const API_BASE='https://api.mirrorsoul.top/api/admin';
 let adminToken=localStorage.getItem('admin_token');
 let currentPage='dashboard';
 let pageData={};
@@ -150,10 +150,20 @@ async function doLogin(){
   const u=document.getElementById('loginUser').value;
   const p=document.getElementById('loginPass').value;
   const e=document.getElementById('loginError');
+  const btn=e.parentElement.querySelector('button');
   e.textContent='';
-  const res=await fetch(API_BASE+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
-  const data=await res.json();
-  if(data.success){adminToken=data.token;localStorage.setItem('admin_token',adminToken);showApp()}else{e.textContent=data.error||'登录失败'}
+  btn.disabled=true;btn.textContent='登录中...';
+  try{
+    const res=await fetch(API_BASE+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    if(!res.ok){
+      let msg='服务器错误('+res.status+')';
+      try{ const data=await res.json(); if(data.error) msg=data.error; }catch(_){}
+      e.textContent=msg;btn.disabled=false;btn.textContent='登录';return
+    }
+    const data=await res.json();
+    if(data.success){adminToken=data.token;localStorage.setItem('admin_token',adminToken);showApp()}else{e.textContent=data.error||'登录失败'}
+  }catch(err){e.textContent='网络错误: '+err.message}
+  btn.disabled=false;btn.textContent='登录';
 }
 
 function showApp(){
@@ -202,6 +212,22 @@ async function loadDashboard(el){
     }
   }else{h+='<div class="empty">暂无数据</div>'}
   h+='</div>';
+  // 报告统计概览
+  if(d.reportSummary){
+    const rs=d.reportSummary;
+    h+='<div class="section"><h3>报告统计概览 <span class="actions"><button class="btn" onclick="loadPage(\'reports\')">查看完整排行 &rarr;</button></span></h3>';
+    h+='<div style="overflow-x:auto"><table><thead><tr><th>功能模块</th><th>报告总数</th><th>查看次数</th><th>分享次数</th></tr></thead><tbody>';
+    const modules=[
+      {key:'miraTests',label:'MIRA人格测试'},
+      {key:'singleAnalyses',label:'单人对话分析'},
+      {key:'coupleRooms',label:'双人房间报告'}
+    ];
+    for(const m of modules){
+      const v=rs[m.key]||{count:0,views:0,shares:0};
+      h+='<tr><td>'+m.label+'</td><td>'+formatNumber(v.count)+'</td><td>'+formatNumber(v.views)+'</td><td>'+formatNumber(v.shares)+'</td></tr>';
+    }
+    h+='</tbody></table></div></div>';
+  }
   el.innerHTML=h;
 }
 
@@ -255,7 +281,7 @@ async function showUserDetail(userId){
   h+='<div class="detail-item"><div class="label">注册时间</div><div class="value">'+formatDate(d.user.created_at)+'</div></div>';
   h+='</div>';
   h+='<div style="display:flex;gap:8px;margin-bottom:20px">';
-  h+='<button class="btn btn-danger" onclick="banUser('+userId+\',\''+(d.user.status==='banned'?'normal':'banned')+'\')">'+(d.user.status==='banned'?'解封用户':'封禁用户')+'</button>';
+  var banArg=(d.user.status==='banned'?'normal':'banned');h+='<button class="btn btn-danger" onclick="banUser('+userId+",'"+banArg+"')"+"'>"+(d.user.status==='banned'?'解封用户':'封禁用户')+'</button>';
   h+='<button class="btn" onclick="resetPassword('+userId+')">重置密码</button>';
   h+='</div>';
   h+='<h4 style="margin-bottom:12px;font-size:14px">分析记录 ('+d.analyses.length+')</h4>';
@@ -304,16 +330,101 @@ async function loadReports(el){
   else{h+='<div class="empty">暂无数据</div>'}
   h+='</div></div>';
   h+='<div id="report-mira" class="report-tab" style="display:none">';
-  const rep=await api('/report-stats?days=30');
-  h+='<div class="section"><h3>MIRA测试报告排行（近30天） 共'+formatNumber(rep?rep.totals.miraTests:0)+'份</h3>';
-  if(rep&&rep.miraTestRank&&rep.miraTestRank.length){const max=Math.max(...rep.miraTestRank.map(x=>x.cnt));for(const r of rep.miraTestRank){const pct=(r.cnt/max*100).toFixed(1);h+='<div class="chart-bar"><div class="label">'+r.mira_type+'</div><div class="bar"><div class="bar-fill" style="width:'+pct+'%"></div></div><div class="count">'+r.cnt+'</div></div>';}}
-  else{h+='<div class="empty">暂无数据</div>'}
+  h+='<div class="filters">';
+  h+='<select id="reportDays" onchange="loadReportRanking()"><option value="7">近7天</option><option value="30" selected>近30天</option><option value="90">近90天</option><option value="365">近1年</option></select>';
   h+='</div>';
-  h+='<div class="section"><h3>对话分析报告排行（近30天） 共'+formatNumber(rep?rep.totals.singleAnalyses:0)+'份</h3>';
-  if(rep&&rep.singleAnalysisRank&&rep.singleAnalysisRank.length){const max=Math.max(...rep.singleAnalysisRank.map(x=>x.cnt));for(const r of rep.singleAnalysisRank){const pct=(r.cnt/max*100).toFixed(1);h+='<div class="chart-bar"><div class="label">'+r.mira_type+'</div><div class="bar"><div class="bar-fill" style="width:'+pct+'%"></div></div><div class="count">'+r.cnt+'</div></div>';}}
-  else{h+='<div class="empty">暂无数据</div>'}
-  h+='</div></div>';
+  h+='<div class="tabs" style="margin-bottom:16px"><button class="tab-btn active" onclick="showRankSubTab(this,\'byType\')">按人格类型</button><button class="tab-btn" onclick="showRankSubTab(this,\'byModule\')">按功能模块</button></div>';
+  h+='<div id="rank-byType" class="rank-subtab"></div>';
+  h+='<div id="rank-byModule" class="rank-subtab" style="display:none"></div>';
+  h+='</div>';
   el.innerHTML=h;
+  await loadReportRanking();
+}
+
+async function loadReportRanking(){
+  const daysSel=document.getElementById('reportDays');
+  const days=daysSel?daysSel.value:30;
+  const rep=await api('/report-stats?days='+days);
+  if(!rep)return;
+  // 按人格类型
+  const byTypeEl=document.getElementById('rank-byType');
+  if(byTypeEl){
+    let ht='';
+    const typeModules=[
+      {key:'miraTests',label:'MIRA人格测试报告',data:rep.byType?.miraTests,total:rep.totals?.miraTests||0},
+      {key:'singleAnalyses',label:'单人对话分析报告',data:rep.byType?.singleAnalyses,total:rep.totals?.singleAnalyses||0},
+      {key:'coupleRooms',label:'双人房间报告',data:rep.byType?.coupleRooms,total:rep.totals?.coupleRooms||0}
+    ];
+    for(const m of typeModules){
+      ht+='<div class="section"><h3>'+m.label+'（共'+formatNumber(m.total)+'份）</h3>';
+      if(m.data&&m.data.length){
+        const maxCnt=Math.max(...m.data.map(x=>x.cnt));
+        ht+='<div style="overflow-x:auto"><table><thead><tr><th>排名</th><th>人格类型</th><th>报告数</th><th>查看次数</th><th>分享次数</th><th>占比</th></tr></thead><tbody>';
+        m.data.forEach((r,i)=>{
+          const pct=m.total>0?(r.cnt/m.total*100).toFixed(1):0;
+          const barPct=maxCnt>0?(r.cnt/maxCnt*100).toFixed(1):0;
+          ht+='<tr><td>'+(i+1)+'</td><td><span style="color:var(--gold);font-weight:600">'+r.mira_type+'</span></td>';
+          ht+='<td><div style="display:flex;align-items:center;gap:8px"><div style="width:80px;height:16px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+barPct+'%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:3px"></div></div>'+r.cnt+'</div></td>';
+          ht+='<td>'+formatNumber(r.views)+'</td><td>'+formatNumber(r.shares)+'</td><td>'+pct+'%</td></tr>';
+        });
+        ht+='</tbody></table></div>';
+      }else{ht+='<div class="empty">暂无数据</div>'}
+      ht+='</div>';
+    }
+    byTypeEl.innerHTML=ht;
+  }
+  // 按功能模块
+  const byModEl=document.getElementById('rank-byModule');
+  if(byModEl){
+    let hm='';
+    const modData=rep.byModule||{};
+    const modules=[
+      {key:'miraTests',label:'MIRA人格测试'},
+      {key:'singleAnalyses',label:'单人对话分析'},
+      {key:'coupleRooms',label:'双人房间报告'}
+    ];
+    hm+='<div class="section"><h3>功能模块对比</h3>';
+    hm+='<div style="overflow-x:auto"><table><thead><tr><th>功能模块</th><th>报告总数</th><th>查看次数</th><th>分享次数</th><th>查看率</th><th>分享率</th></tr></thead><tbody>';
+    for(const m of modules){
+      const v=modData[m.key]||{count:0,views:0,shares:0};
+      const viewRate=v.count>0?(v.views/v.count*100).toFixed(1):0;
+      const shareRate=v.count>0?(v.shares/v.count*100).toFixed(1):0;
+      hm+='<tr><td>'+m.label+'</td><td>'+formatNumber(v.count)+'</td><td>'+formatNumber(v.views)+'</td><td>'+formatNumber(v.shares)+'</td><td>'+viewRate+'%</td><td>'+shareRate+'%</td></tr>';
+    }
+    hm+='</tbody></table></div>';
+    // 柱状图对比
+    const allCounts=modules.map(m=>(modData[m.key]?.count)||0);
+    const allViews=modules.map(m=>(modData[m.key]?.views)||0);
+    const allShares=modules.map(m=>(modData[m.key]?.shares)||0);
+    const maxVal=Math.max(...allCounts,...allViews,...allShares,1);
+    hm+='<div style="margin-top:24px">';
+    hm+='<div class="chart-bar"><div class="label" style="width:120px">报告总数</div>';
+    hm+='<div class="bar" style="height:24px">';
+    for(let i=0;i<3;i++){const w=allCounts[i]/maxVal*100;hm+='<div style="display:inline-block;height:100%;width:'+(w/3)+'%;background:'+(i===0?'var(--gold)':i===1?'var(--blue)':'var(--green)')+';border-radius:3px;margin-right:2px" title="'+modules[i].label+': '+allCounts[i]+'"></div>'}
+    hm+='</div><div class="count">'+formatNumber(allCounts.reduce((a,b)=>a+b,0))+'</div></div>';
+    hm+='<div class="chart-bar"><div class="label" style="width:120px">查看次数</div>';
+    hm+='<div class="bar" style="height:24px">';
+    for(let i=0;i<3;i++){const w=allViews[i]/maxVal*100;hm+='<div style="display:inline-block;height:100%;width:'+(w/3)+'%;background:'+(i===0?'var(--gold)':i===1?'var(--blue)':'var(--green)')+';border-radius:3px;margin-right:2px" title="'+modules[i].label+': '+allViews[i]+'"></div>'}
+    hm+='</div><div class="count">'+formatNumber(allViews.reduce((a,b)=>a+b,0))+'</div></div>';
+    hm+='<div class="chart-bar"><div class="label" style="width:120px">分享次数</div>';
+    hm+='<div class="bar" style="height:24px">';
+    for(let i=0;i<3;i++){const w=allShares[i]/maxVal*100;hm+='<div style="display:inline-block;height:100%;width:'+(w/3)+'%;background:'+(i===0?'var(--gold)':i===1?'var(--blue)':'var(--green)')+';border-radius:3px;margin-right:2px" title="'+modules[i].label+': '+allShares[i]+'"></div>'}
+    hm+='</div><div class="count">'+formatNumber(allShares.reduce((a,b)=>a+b,0))+'</div></div>';
+    hm+='<div style="margin-top:12px;font-size:12px;color:var(--text2)">';
+    hm+='<span style="display:inline-block;width:12px;height:12px;background:var(--gold);border-radius:2px;margin-right:4px"></span>MIRA测试 &nbsp;&nbsp;';
+    hm+='<span style="display:inline-block;width:12px;height:12px;background:var(--blue);border-radius:2px;margin-right:4px"></span>单人分析 &nbsp;&nbsp;';
+    hm+='<span style="display:inline-block;width:12px;height:12px;background:var(--green);border-radius:2px;margin-right:4px"></span>双人房间';
+    hm+='</div>';
+    hm+='</div></div>';
+    byModEl.innerHTML=hm;
+  }
+}
+
+function showRankSubTab(btn,type){
+  document.querySelectorAll('.rank-subtab').forEach(t=>t.style.display='none');
+  document.getElementById('rank-'+type).style.display='block';
+  btn.parentElement.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
 }
 
 function showReportTab(btn,type){
@@ -359,7 +470,7 @@ async function loadConfig(el){
   h+='<div style="margin-top:16px"><button class="btn btn-primary" onclick="saveConfig()">保存配置</button></div>';
   h+='</div>';
   el.innerHTML=h;
-  fetch('/api/admin/config').then(r=>r.json()).then(d=>{
+  fetch(API_BASE+'/config').then(r=>r.json()).then(d=>{
     const ip=d&&d.ipWhitelist?d.ipWhitelist.join('\n'):'';
     document.getElementById('ipWhitelist').value=ip;
   });
