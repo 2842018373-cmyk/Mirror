@@ -1676,7 +1676,7 @@
 
 Session Memory：只使用短期会话记忆，不做长期人格存档。允许记住：当前关系状态、冲突点、当前目标、已确认事实、追问进度。禁止记住：人格诊断、长期心理标签、未证实隐私、未来必然预测、超出当前上下文的确定性判断。
 
-默认工作模式：80% 追问，20% 轻度引导，最多 5 轮，每轮最多 3 个问题。风格 50% 理性分析 + 50% 温暖共情。如果用户想要更偏理性，就更清晰地拆解事实、误读和需求。如果用户情绪很重，就先承接感受，再给出方向。
+默认工作模式：80% 追问，20% 轻度引导，最多 50 轮，每轮最多 2 个问题。风格 50% 理性分析 + 50% 温暖共情。如果用户想要更偏理性，就更清晰地拆解事实、误读和需求。如果用户情绪很重，就先承接感受，再给出方向。
 
 追问层级（从浅到深）：
 第一层·事实层：发生了什么？什么时候开始的？频率如何？说过哪些原话？做了哪些具体行为？
@@ -1887,7 +1887,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         var controller = window.AbortController ? new AbortController() : null;
         var analyzeTimeout = setTimeout(function() {
           if (controller) controller.abort();
-        }, 30000);
+        }, 45000);
 
         var response = await fetch(WORKER_API_BASE + '/api/analyze', {
           method: 'POST',
@@ -1903,6 +1903,27 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         return data;
       } catch (err) {
         console.error('AI 分析失败:', err);
+        // 网络错误时自动重试一次
+        if (err.name === 'AbortError' || err.message.indexOf('Failed to fetch') >= 0) {
+          console.log('网络波动，3秒后自动重试...');
+          await new Promise(function(r) { setTimeout(r, 3000); });
+          try {
+            var retryResp = await fetch(WORKER_API_BASE + '/api/analyze', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: userText + modeHint, mode: mode || 'single', history: messages })
+            });
+            if (retryResp.ok) {
+              var retryData = await retryResp.json();
+              if (!retryData.error) {
+                if (retryData.raw) { try { return JSON.parse(retryData.raw); } catch(e) {} }
+                return retryData;
+              }
+            }
+          } catch (retryErr) {
+            console.error('自动重试也失败:', retryErr);
+          }
+        }
         showRetryBar();
         return null;
       }
@@ -1918,7 +1939,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         var controller = window.AbortController ? new AbortController() : null;
         var chatTimeout = setTimeout(function() {
           if (controller) controller.abort();
-        }, 30000);
+        }, 45000);
 
         var response = await fetch(WORKER_API_BASE + '/api/chat-v2', {
           method: 'POST',
@@ -1943,6 +1964,36 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         return data;
       } catch (err) {
         console.error('咨询师对话失败:', err);
+        // 网络错误时自动重试一次，不再立即显示重试条
+        if (err.name === 'AbortError' || err.message.indexOf('Failed to fetch') >= 0) {
+          console.log('网络波动，3秒后自动重试...');
+          await new Promise(function(r) { setTimeout(r, 3000); });
+          try {
+            var retryResponse = await fetch(WORKER_API_BASE + '/api/chat-v2', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + (localStorage.getItem('mirror_token') || '')
+              },
+              body: JSON.stringify({
+                prompt: userText,
+                history: history || [],
+                currentNodeId: currentNodeId || 'start',
+                sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false },
+                round: chatRound + 1
+              })
+            });
+            if (retryResponse.ok) {
+              var retryData = await retryResponse.json();
+              if (!retryData.error) {
+                if (retryData.raw) { try { return JSON.parse(retryData.raw); } catch(e) {} }
+                return retryData;
+              }
+            }
+          } catch (retryErr) {
+            console.error('自动重试也失败:', retryErr);
+          }
+        }
         showRetryBar();
         return null;
       }
@@ -1977,6 +2028,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 显示重试条
     function showRetryBar() {
+      // 如果有加载中的消息，先移除（避免卡在加载状态）
+      var loadingMsgs = document.querySelectorAll('.msg-loading');
+      loadingMsgs.forEach(function(m) { m.remove(); });
+
       var bar = document.getElementById('retryBar');
       if (!bar) {
         bar = document.createElement('div');
