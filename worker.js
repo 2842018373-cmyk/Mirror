@@ -2836,39 +2836,48 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
       return { error: `AI 服务返回错误 (${status})`, raw: null };
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-
-    if (!content) {
-      return { error: 'AI 返回内容为空', raw: null };
-    }
-
-    // deep / quote 模式预期纯文本，直接返回 raw
-    if (mode === 'deep' || mode === 'quote') {
-      return { raw: content };
-    }
-
-    // 其他模式尝试解析 JSON
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+
+      if (!content) {
+        return { error: 'AI 返回内容为空', raw: null };
       }
-    } catch (e) {
-      // 解析失败
-    }
 
-    // chat 模式：JSON 解析失败时，将纯文本包装为有效响应（避免 500 导致前端降级）
-    if (mode === 'chat') {
-      return {
-        reply: content,
-        action: 'ask',
-        followUp: [],
-        attachment: { emotion: '', dimension: '', sufficientSignals: { hasFact: false, hasEmotion: false, hasNeed: false }, round: 1 }
-      };
-    }
+      // deep / quote 模式预期纯文本，直接返回 raw
+      if (mode === 'deep' || mode === 'quote') {
+        return { raw: content };
+      }
 
-    return { raw: content, error: 'JSON解析失败' };
+      // 其他模式尝试解析 JSON
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        // 解析失败
+      }
+
+      // chat 模式：JSON 解析失败时，将纯文本包装为有效响应（避免 500 导致前端降级）
+      if (mode === 'chat') {
+        return {
+          reply: content,
+          action: 'ask',
+          followUp: [],
+          attachment: { emotion: '', dimension: '', sufficientSignals: { hasFact: false, hasEmotion: false, hasNeed: false }, round: 1 }
+        };
+      }
+
+      return { raw: content, error: 'JSON解析失败' };
+    } catch (parseErr) {
+      // response.json() 失败（AI 返回了非 JSON 响应体），重试或返回错误
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+        continue;
+      }
+      return { error: 'AI 响应格式异常，请稍后重试', raw: null };
+    }
   }
 
   return { error: 'AI 服务暂时不可用，请稍后重试', raw: null };
