@@ -2786,8 +2786,8 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
   const basePrompt = systemPrompts[mode] || systemPrompts.single;
   const systemPrompt = systemPromptOverride ? basePrompt + '\n\n【当前阶段任务】' + systemPromptOverride : basePrompt;
 
+  // Anthropic 格式：system 单独字段，messages 只含 user/assistant
   const messages = [
-    { role: 'system', content: systemPrompt },
     ...(history || []),
     { role: 'user', content: prompt },
   ];
@@ -2798,17 +2798,19 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     let response;
     try {
-      response = await fetchWithTimeout('https://api.deepseek.com/v1/chat/completions', {
+      response = await fetchWithTimeout('https://api.deepseek.com/anthropic/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.AI_API_KEY}`,
+          'x-api-key': env.AI_API_KEY,
+          'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
           model: 'deepseek-v4-flash',
           messages,
-          temperature: 0.15,
           max_tokens: 2000,
+          system: systemPrompt,
+          thinking: { type: 'disabled' },
         }),
       }, timeoutMs);
     } catch (e) {
@@ -2826,7 +2828,7 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
       return { error: 'AI 服务连接失败', raw: null };
     }
 
-    // 对 401/502/503/504/429 错误进行重试（401 间歇性出现，重试可恢复）
+    // 对 401/502/503/504/429 错误进行重试
     if (!response.ok) {
       const status = response.status;
       if ((status === 401 || status === 502 || status === 503 || status === 504 || status === 429) && attempt < maxRetries) {
@@ -2838,7 +2840,15 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
 
     try {
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || '';
+      // Anthropic 格式：content 是数组，提取 type="text" 的 text 字段
+      let content = '';
+      if (data.content && Array.isArray(data.content)) {
+        for (const block of data.content) {
+          if (block.type === 'text' && block.text) {
+            content += block.text;
+          }
+        }
+      }
 
       if (!content) {
         return { error: 'AI 返回内容为空', raw: null };
@@ -2859,7 +2869,7 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
         // 解析失败
       }
 
-      // chat 模式：JSON 解析失败时，将纯文本包装为有效响应（避免 500 导致前端降级）
+      // chat 模式：JSON 解析失败时，将纯文本包装为有效响应
       if (mode === 'chat') {
         return {
           reply: content,
@@ -2871,7 +2881,6 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
 
       return { raw: content, error: 'JSON解析失败' };
     } catch (parseErr) {
-      // response.json() 失败（AI 返回了非 JSON 响应体），重试或返回错误
       if (attempt < maxRetries) {
         await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
         continue;
