@@ -2826,10 +2826,10 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
       return { error: 'AI 服务连接失败', raw: null };
     }
 
-    // 对 502/503/504/429 错误进行重试
+    // 对 401/502/503/504/429 错误进行重试（401 间歇性出现，重试可恢复）
     if (!response.ok) {
       const status = response.status;
-      if ((status === 502 || status === 503 || status === 504 || status === 429) && attempt < maxRetries) {
+      if ((status === 401 || status === 502 || status === 503 || status === 504 || status === 429) && attempt < maxRetries) {
         await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
         continue;
       }
