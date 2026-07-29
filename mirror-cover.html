@@ -5,7 +5,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Mirror - AI亲密关系镜像与低冲突沟通系统</title>
+  <script>
+    // 缓存版本检测：确保用户始终加载最新版本
+    (function() {
+      var CURRENT_VERSION = 'v7';
+      var stored = localStorage.getItem('mirror_cache_version');
+      if (stored && stored !== CURRENT_VERSION) {
+        // 版本不匹配，强制刷新（清除缓存后重载）
+        localStorage.setItem('mirror_cache_version', CURRENT_VERSION);
+        window.location.reload(true);
+      } else if (!stored) {
+        localStorage.setItem('mirror_cache_version', CURRENT_VERSION);
+      }
+    })();
+  </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪞</text></svg>" />
   <style>
     /* ══════════════════════════════════════════ CSS 变量 ══════════════════════════════════════════ */
