@@ -1141,7 +1141,12 @@ export default {
           if (!auth.error && auth.uid) uid = auth.uid;
         } catch (e) { /* 游客模式 */ }
 
-        const result = await callAI(env, prompt, mode || 'single', history || []);
+        let result;
+        try {
+          result = await callAI(env, prompt, mode || 'single', history || []);
+        } catch (e) {
+          return jsonResponse({ error: 'callAI 异常: ' + e.message }, 500, origin);
+        }
 
         if (!result.error && (mode || 'single') === 'single') {
           ctx.waitUntil(saveSingleAnalysis(env, prompt, result, uid));
