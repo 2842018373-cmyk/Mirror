@@ -2798,7 +2798,7 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
   ];
 
   const maxRetries = 2;
-  const timeoutMs = 15000;
+  const timeoutMs = 30000;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     let response;
