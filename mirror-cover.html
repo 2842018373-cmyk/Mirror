@@ -12,7 +12,7 @@
   <script>
     // 缓存版本检测：确保用户始终加载最新版本
     (function() {
-      var CURRENT_VERSION = 'v8';
+      var CURRENT_VERSION = 'v9';
       var stored = localStorage.getItem('mirror_cache_version');
       if (stored && stored !== CURRENT_VERSION) {
         // 版本不匹配，强制刷新（清除缓存后重载）
