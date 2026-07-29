@@ -1504,13 +1504,13 @@ MIRA类型：${miraType}
               nextNodeId = currentNode.next_node_sufficient;
             }
 
-            // 构建基于决策树的 system prompt
+            // 构建基于决策树的 system prompt 并传递给 AI
             const nodePrompt = currentNode.prompt_template
               .replace(/\{userInput\}/g, prompt.substring(0, 500))
               .replace(/\{round\}/g, currentRound)
               .replace(/\{emotion\}/g, signals.emotion || '');
 
-            const result = await callAI(env, prompt, 'chat', history || []);
+            const result = await callAI(env, prompt, 'chat', history || [], nodePrompt);
             return jsonResponse({
               ...result,
               currentNodeId: nextNodeId,
@@ -2720,7 +2720,7 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 }
 
 // 调用 Agnes AI（带超时、重试和错误处理）
-async function callAI(env, prompt, mode, history) {
+async function callAI(env, prompt, mode, history, systemPromptOverride) {
   const systemPrompts = {
     single: '你是 Mirror，一个关系理解与表达操作系统。你擅长通过5层深度提问（事实→情绪→需求→意义→行动）来理解用户的情感关系状态。请严格以JSON格式回复（不要包含任何其他文字），包含以下字段：fact(事实摘要)、emotion(情绪识别)、need(核心需求)、misread(可能误读)、misreadType(误读类型：状态误读/行为误读/表达误读/自我投射)、status(关系状态评估)、before(用户原始的攻击性表达，一句典型的话)、innerThought(用户内心的真实想法)、after(Mirror翻译后的非暴力表达)、insight(深度洞察，2-3句话)、suggest(改善建议，具体可执行)、summary(一句话总结用户真正想表达的)、scores(对象，包含8个字段：expr_D表达暗影倾向1-15、expr_S表达柔光倾向1-15、expr_B表达明光倾向1-15、expr_R表达辉光倾向1-15、focus_O关注向外倾向1-15、focus_T关注朝向倾向1-15、focus_I关注倾向倾向1-15、focus_N关注向内倾向1-15。8个字段之和应为32，每个字段1-15，代表用户在关系中各维度的强度。D=暗影内敛/S=柔光温和/B=明光积极/R=辉光强烈，O=向外关注对方/T=朝向关系平衡/I=倾向自我反思/N=向内关注自我)。',
     couple: '你是 Mirror 的双人分析模块。请基于两个人的洞察摘要，生成共同报告JSON，包含：commonNeed(共同需求)、commonMisread(共同误读点)、interactionPattern(互动模式)、suggest(改善建议)。',
@@ -2783,7 +2783,8 @@ async function callAI(env, prompt, mode, history) {
     quote: '你是一位有洞察力的文案专家。请直接输出一句金句（20-40字），像朋友说的心里话，带一点自嘲或反差。只输出金句本身，不要引号不要解释。',
   };
 
-  const systemPrompt = systemPrompts[mode] || systemPrompts.single;
+  const basePrompt = systemPrompts[mode] || systemPrompts.single;
+  const systemPrompt = systemPromptOverride ? basePrompt + '\n\n【当前阶段任务】' + systemPromptOverride : basePrompt;
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -2855,6 +2856,16 @@ async function callAI(env, prompt, mode, history) {
       }
     } catch (e) {
       // 解析失败
+    }
+
+    // chat 模式：JSON 解析失败时，将纯文本包装为有效响应（避免 500 导致前端降级）
+    if (mode === 'chat') {
+      return {
+        reply: content,
+        action: 'ask',
+        followUp: [],
+        attachment: { emotion: '', dimension: '', sufficientSignals: { hasFact: false, hasEmotion: false, hasNeed: false }, round: 1 }
+      };
     }
 
     return { raw: content, error: 'JSON解析失败' };

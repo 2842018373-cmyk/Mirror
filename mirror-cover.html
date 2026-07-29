@@ -12,7 +12,7 @@
   <script>
     // 缓存版本检测：确保用户始终加载最新版本
     (function() {
-      var CURRENT_VERSION = 'v7';
+      var CURRENT_VERSION = 'v8';
       var stored = localStorage.getItem('mirror_cache_version');
       if (stored && stored !== CURRENT_VERSION) {
         // 版本不匹配，强制刷新（清除缓存后重载）
@@ -1952,7 +1952,38 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         console.warn('Worker API 未配置，使用本地模板');
         return null;
       }
-      try {
+
+      var requestBody = JSON.stringify({
+        prompt: userText,
+        history: history || [],
+        currentNodeId: currentNodeId || 'start',
+        sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false },
+        round: chatRound + 1
+      });
+
+      var requestHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (localStorage.getItem('mirror_token') || '')
+      };
+
+      function tryExtractData(data) {
+        // 正常响应
+        if (data && data.reply) return data;
+        // AI 返回纯文本（raw），包装成有效响应
+        if (data && data.raw) {
+          return {
+            reply: data.raw,
+            action: data.action || 'ask',
+            followUp: data.followUp || [],
+            attachment: data.attachment || { emotion: '', dimension: '', sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false }, round: chatRound + 1 },
+            currentNodeId: data.currentNodeId || currentNodeId,
+            nodeType: data.nodeType || 'ask'
+          };
+        }
+        return null;
+      }
+
+      async function doFetch() {
         var controller = window.AbortController ? new AbortController() : null;
         var chatTimeout = setTimeout(function() {
           if (controller) controller.abort();
@@ -1960,56 +1991,34 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
         var response = await fetch(WORKER_API_BASE + '/api/chat-v2', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + (localStorage.getItem('mirror_token') || '')
-          },
-          body: JSON.stringify({
-            prompt: userText,
-            history: history || [],
-            currentNodeId: currentNodeId || 'start',
-            sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false },
-            round: chatRound + 1
-          }),
+          headers: requestHeaders,
+          body: requestBody,
           signal: controller ? controller.signal : undefined
         });
         clearTimeout(chatTimeout);
-        if (!response.ok) throw new Error('API 错误: ' + response.status);
-        var data = await response.json();
-        if (data.error) throw new Error(data.error);
-        if (data.raw) { try { return JSON.parse(data.raw); } catch(e) {} }
-        return data;
+
+        // 即使非 200，也尝试读取响应体（可能包含可用的 raw 内容）
+        var data = null;
+        try { data = await response.json(); } catch(e) {}
+
+        var extracted = tryExtractData(data);
+        if (extracted) return extracted;
+
+        // 响应体无法提取有效数据，抛出错误
+        throw new Error(data && data.error ? data.error : 'API 错误: ' + response.status);
+      }
+
+      try {
+        return await doFetch();
       } catch (err) {
         console.error('咨询师对话失败:', err);
-        // 网络错误时自动重试一次，不再立即显示重试条
-        if (err.name === 'AbortError' || err.message.indexOf('Failed to fetch') >= 0) {
-          console.log('网络波动，3秒后自动重试...');
-          await new Promise(function(r) { setTimeout(r, 3000); });
-          try {
-            var retryResponse = await fetch(WORKER_API_BASE + '/api/chat-v2', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + (localStorage.getItem('mirror_token') || '')
-              },
-              body: JSON.stringify({
-                prompt: userText,
-                history: history || [],
-                currentNodeId: currentNodeId || 'start',
-                sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false },
-                round: chatRound + 1
-              })
-            });
-            if (retryResponse.ok) {
-              var retryData = await retryResponse.json();
-              if (!retryData.error) {
-                if (retryData.raw) { try { return JSON.parse(retryData.raw); } catch(e) {} }
-                return retryData;
-              }
-            }
-          } catch (retryErr) {
-            console.error('自动重试也失败:', retryErr);
-          }
+        // 所有错误都自动重试一次（网络错误、500、超时等）
+        console.log('3秒后自动重试...');
+        await new Promise(function(r) { setTimeout(r, 3000); });
+        try {
+          return await doFetch();
+        } catch (retryErr) {
+          console.error('自动重试也失败:', retryErr);
         }
         showRetryBar();
         return null;
