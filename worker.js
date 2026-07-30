@@ -254,7 +254,8 @@ function cleanExpiredCaptchas() {
 // ══════════════════════════════════════════ AES-GCM 加密工具 ══════════════════════════════════════════
 
 async function getEncryptionKey(env) {
-  const secret = env.ENCRYPTION_KEY || 'mirror-dev-encryption-key-32';
+  const secret = env.ENCRYPTION_KEY;
+  if (!secret) throw new Error('ENCRYPTION_KEY not configured');
   const keyMaterial = new TextEncoder().encode(secret.padEnd(32, '0').slice(0, 32));
   return await crypto.subtle.importKey('raw', keyMaterial, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
 }
@@ -441,7 +442,8 @@ async function createJWT(env, payload) {
   }));
   const data = `${header}.${body}`;
 
-  const secret = env.JWT_SECRET || 'mirror-dev-jwt-secret-key';
+  const secret = env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET not configured');
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
@@ -460,7 +462,8 @@ async function verifyJWT(env, token) {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Invalid token format');
 
-  const secret = env.JWT_SECRET || 'mirror-dev-jwt-secret-key';
+  const secret = env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET not configured');
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
@@ -504,6 +507,7 @@ async function signAdminJWT(env, payload) {
   const encodedBody = base64urlEncode(JSON.stringify(body));
   const data = new TextEncoder().encode(`${encodedHeader}.${encodedBody}`);
   const secret = env.ADMIN_JWT_SECRET || env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET not configured');
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, data);
   const sigBase64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -515,6 +519,7 @@ async function verifyAdminJWT(env, token) {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Invalid token');
   const secret = env.ADMIN_JWT_SECRET || env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET not configured');
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
   const sig = new Uint8Array([...base64urlDecode(parts[2])].map(c => c.charCodeAt(0)));
   const valid = await crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
@@ -761,7 +766,6 @@ export default {
         if (!smsResult.success) {
           console.error('SMS send failed:', smsResult.error, 'Phone:', phone);
           if (smsResult.error === '短信服务未配置') {
-            console.log(`[SMS-DEV] 验证码: ${code}, 手机号: ${phone}`);
             return jsonResponse({ success: true, expireIn: 300, devCode: code }, 200, origin);
           }
           return jsonResponse({ error: '短信发送失败，请稍后重试' }, 500, origin);
@@ -1515,7 +1519,7 @@ MIRA类型：${miraType}
               .replace(/\{round\}/g, currentRound)
               .replace(/\{emotion\}/g, signals.emotion || '');
 
-            const result = await callAI(env, prompt, 'chat', history || [], nodePrompt);
+            const result = await callAI(env, prompt, 'chat', history || [], nodePrompt, currentRound);
             return jsonResponse({
               ...result,
               currentNodeId: nextNodeId,
@@ -1525,7 +1529,7 @@ MIRA类型：${miraType}
         }
 
         // 回退到旧逻辑
-        const result = await callAI(env, prompt, 'chat', history || []);
+        const result = await callAI(env, prompt, 'chat', history || [], null, round || 1);
         return jsonResponse(result, result.error ? 500 : 200, origin);
       }
 
@@ -1533,6 +1537,8 @@ MIRA类型：${miraType}
 
       // 初始化数据库表（GET /api/init-db）
       if (path === '/api/init-db' && request.method === 'GET') {
+        const auth = await checkAdminAuth(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
         try {
           await env.DB.prepare(`
             CREATE TABLE IF NOT EXISTS single_analyses (
@@ -1780,7 +1786,7 @@ MIRA类型：${miraType}
               ['ask_emotion', 'assess_emotion', 'ask', 'has_emotion', 'false', '用户缺少情绪表达。问：那时候你心里是什么感觉？', 'assess_need', null, '追问情绪', 1, 4],
               ['assess_need', 'assess_emotion', 'ask', 'has_need', 'true', '三个维度都充足。给用户选择权。', 'offer_analyze', 'ask_need', '评估需求维度是否充足', 1, 5],
               ['ask_need', 'assess_need', 'ask', 'has_need', 'false', '用户缺少需求表达。问：你真正想要的是什么？', 'offer_analyze', null, '追问需求', 1, 6],
-              ['offer_analyze', 'assess_need', 'offer_analyze', '', '', '聊了这么多，信息看起来够了。我来帮你梳理一下？还是你想再聊聊？', 'analyze', 'continue_chat', '信息充足，给用户选择', 1, 7],
+              ['offer_analyze', 'assess_need', 'offer_analyze', '', '', '能这样清晰地看见自己的变化，真的不容易。聊了这么多，信息差不多了，接下来怎么走交给你。', 'analyze', 'continue_chat', '信息充足，给用户选择', 1, 7],
               ['continue_chat', 'offer_analyze', 'ask', 'round_count', '>=50', '已达50轮软上限，自动切换到分析。', 'analyze', 'continue_chat', '继续对话（50轮后强制分析）', 1, 8],
               ['analyze', 'offer_analyze', 'analyze', '', '', '聊了这么多，我来帮你梳理一下。', 'end', null, '生成分析报告', 1, 9],
               ['end', 'analyze', 'end', '', '', '分析已完成。', null, null, '结束节点', 1, 10],
@@ -1970,7 +1976,6 @@ MIRA类型：${miraType}
         if (!smsResult.success) {
           console.error('SMS send failed:', smsResult.error, 'Phone:', newPhone);
           if (smsResult.error === '短信服务未配置') {
-            console.log(`[SMS-DEV] 换号验证码: ${code}, 手机号: ${newPhone}`);
             return jsonResponse({ success: true, expireIn: 300, devCode: code }, 200, origin);
           }
           return jsonResponse({ error: '短信发送失败，请稍后重试' }, 500, origin);
@@ -2725,7 +2730,7 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 }
 
 // 调用 Agnes AI（带超时、重试和错误处理）
-async function callAI(env, prompt, mode, history, systemPromptOverride) {
+async function callAI(env, prompt, mode, history, systemPromptOverride, round) {
   const systemPrompts = {
     single: '你是 Mirror，一个关系理解与表达操作系统。你擅长通过5层深度提问（事实→情绪→需求→意义→行动）来理解用户的情感关系状态。请严格以JSON格式回复（不要包含任何其他文字），包含以下字段：fact(事实摘要)、emotion(情绪识别)、need(核心需求)、misread(可能误读)、misreadType(误读类型：状态误读/行为误读/表达误读/自我投射)、status(关系状态评估)、before(用户原始的攻击性表达，一句典型的话)、innerThought(用户内心的真实想法)、after(Mirror翻译后的非暴力表达)、insight(深度洞察，2-3句话)、suggest(改善建议，具体可执行)、summary(一句话总结用户真正想表达的)、scores(对象，包含8个字段：expr_D表达暗影倾向1-15、expr_S表达柔光倾向1-15、expr_B表达明光倾向1-15、expr_R表达辉光倾向1-15、focus_O关注向外倾向1-15、focus_T关注朝向倾向1-15、focus_I关注倾向倾向1-15、focus_N关注向内倾向1-15。8个字段之和应为32，每个字段1-15，代表用户在关系中各维度的强度。D=暗影内敛/S=柔光温和/B=明光积极/R=辉光强烈，O=向外关注对方/T=朝向关系平衡/I=倾向自我反思/N=向内关注自我)。',
     couple: '你是 Mirror 的双人分析模块。请基于两个人的洞察摘要，生成共同报告JSON，包含：commonNeed(共同需求)、commonMisread(共同误读点)、interactionPattern(互动模式)、suggest(改善建议)。',
@@ -2759,7 +2764,7 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
 判断何时信息足够：
 - 信息充足标准：具体事实（发生了什么）+ 情绪感受（当下的感受）+ 核心需求（真正想要什么）
 - 当三个维度都有明确信息时，给用户选择权：设置 action 为 "offer_analyze"
-- offer_analyze 时回复："聊了这么多，信息看起来够了。我来帮你梳理一下？还是你想再聊聊？"
+- offer_analyze 时回复："能这样清晰地看见自己的变化，真的不容易。聊了这么多，信息差不多了，接下来怎么走交给你。"（不要用问句，下方会有按钮让用户选择）
 - 如果用户选继续聊，继续追问或倾听
 - 软上限 50 轮，第 50 轮自动切换到 analyze（"聊了这么多，我来帮你梳理一下"）
 - 如果信息不充足，继续追问缺失维度，同时给用户暗示方向
@@ -2781,7 +2786,7 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
 {"reply":"你对用户说的自然语言回复（2-4句话，先承接情绪再追问）","action":"ask","followUp":["1-2个追问问题"],"attachment":{"emotion":"识别到的核心情绪","dimension":"fact|emotion|need|meaning|action","sufficientSignals":{"hasFact":false,"hasEmotion":false,"hasNeed":false},"round":1}}
 
 当 action 为 "offer_analyze" 时（信息充足，给用户选择权）：
-{"reply":"聊了这么多，信息看起来够了。我来帮你梳理一下？还是你想再聊聊？","action":"offer_analyze","followUp":[],"attachment":{"emotion":"","dimension":"","sufficientSignals":{"hasFact":true,"hasEmotion":true,"hasNeed":true},"round":2}}
+{"reply":"能这样清晰地看见自己的变化，真的不容易。聊了这么多，信息差不多了，接下来怎么走交给你。","action":"offer_analyze","followUp":[],"attachment":{"emotion":"","dimension":"","sufficientSignals":{"hasFact":true,"hasEmotion":true,"hasNeed":true},"round":2}}
 
 当 action 为 "analyze" 时（出报告）：
 {"reply":"聊了这么多，我来帮你梳理一下。","action":"analyze","followUp":[],"attachment":{"emotion":"","dimension":"","sufficientSignals":{"hasFact":true,"hasEmotion":true,"hasNeed":true},"round":3}}`,
@@ -2874,13 +2879,32 @@ async function callAI(env, prompt, mode, history, systemPromptOverride) {
         // 解析失败
       }
 
-      // chat 模式：JSON 解析失败时，将纯文本包装为有效响应
+      // chat 模式：JSON 解析失败时，根据轮数智能判断下一步
       if (mode === 'chat') {
+        const r = round || 1;
+        if (r >= 50) {
+          // 达到硬上限，强制出报告
+          return {
+            reply: '聊了这么多，我来帮你梳理一下。',
+            action: 'analyze',
+            followUp: [],
+            attachment: { emotion: '', dimension: '', sufficientSignals: { hasFact: true, hasEmotion: true, hasNeed: true }, round: r }
+          };
+        } else if (r >= 3) {
+          // 超过3轮且AI返回非JSON，给用户选择权
+          return {
+            reply: '能这样清晰地看见自己的变化，真的不容易。聊了这么多，信息差不多了，接下来怎么走交给你。',
+            action: 'offer_analyze',
+            followUp: [],
+            attachment: { emotion: '', dimension: '', sufficientSignals: { hasFact: true, hasEmotion: true, hasNeed: true }, round: r }
+          };
+        }
+        // 3轮以内，继续追问
         return {
           reply: content,
           action: 'ask',
           followUp: [],
-          attachment: { emotion: '', dimension: '', sufficientSignals: { hasFact: false, hasEmotion: false, hasNeed: false }, round: 1 }
+          attachment: { emotion: '', dimension: '', sufficientSignals: { hasFact: false, hasEmotion: false, hasNeed: false }, round: r }
         };
       }
 
