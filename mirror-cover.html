@@ -521,6 +521,105 @@
     .profile-cta-id { font-size: 1.15rem; font-weight: 700; color: var(--ink); letter-spacing: 0.08em; font-family: 'Courier New', monospace; cursor: pointer; user-select: all; }
     .profile-cta-tip { font-size: 0.68rem; color: var(--faint); margin-top: 6px; }
 
+    /* ══════════════════════════════════════════ 双人模式新组件 ══════════════════════════════════════════ */
+
+    /* 问卷分组标题 */
+    .couple-q-group { margin-bottom: 28px; }
+    .couple-q-group-title { font-size: 0.95rem; font-weight: 600; color: var(--blue); margin-bottom: 4px; letter-spacing: 0.02em; display: flex; align-items: center; gap: 8px; }
+    .couple-q-group-title::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: var(--blue); display: inline-block; }
+    .couple-q-group-hint { font-size: 0.74rem; color: var(--faint); margin-bottom: 16px; }
+
+    /* 单道题目卡片 */
+    .couple-q-item { background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; transition: border-color 0.3s var(--ease); }
+    .couple-q-item:focus-within { border-color: rgba(126,167,255,0.3); }
+    .couple-q-num { display: inline-block; font-size: 0.68rem; font-weight: 600; color: var(--blue); background: rgba(126,167,255,0.1); padding: 2px 8px; border-radius: 6px; margin-bottom: 8px; letter-spacing: 0.05em; }
+    .couple-q-title { font-size: 0.92rem; font-weight: 500; color: var(--ink); margin-bottom: 4px; line-height: 1.5; }
+    .couple-q-hint { font-size: 0.76rem; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+    .couple-q-input { width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--rule); background: rgba(0,0,0,0.2); color: var(--ink); font-size: 0.88rem; line-height: 1.6; resize: vertical; min-height: 44px; font-family: inherit; outline: none; transition: border-color 0.3s var(--ease); }
+    .couple-q-input:focus { border-color: var(--blue); }
+    .couple-q-input::placeholder { color: var(--faint); }
+    .couple-q-skip { font-size: 0.72rem; color: var(--faint); margin-top: 6px; cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 4px; transition: color 0.3s var(--ease); }
+    .couple-q-skip:hover { color: var(--blue); }
+    .couple-q-skip.active { color: var(--blue); }
+
+    /* 问卷提交进度条 */
+    .couple-q-progress { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .couple-q-progress-bar { flex: 1; height: 4px; background: var(--surface); border-radius: 2px; overflow: hidden; }
+    .couple-q-progress-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.4s var(--ease); }
+    .couple-q-progress-text { font-size: 0.72rem; color: var(--faint); white-space: nowrap; }
+
+    /* 加载动画 */
+    .couple-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 16px; }
+    .couple-loading-spinner { width: 40px; height: 40px; border: 3px solid var(--surface); border-top-color: var(--blue); border-radius: 50%; animation: spin 1s linear infinite; }
+    .couple-loading-text { font-size: 0.85rem; color: var(--muted); text-align: center; line-height: 1.6; }
+    .couple-loading-sub { font-size: 0.72rem; color: var(--faint); text-align: center; }
+
+    /* 报告区块卡片 */
+    .couple-report-block { background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+    .couple-report-block-label { font-size: 0.74rem; font-weight: 600; color: var(--blue); margin-bottom: 8px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .couple-report-block-content { font-size: 0.9rem; color: var(--ink); line-height: 1.7; }
+    .couple-report-block-content.muted { color: var(--muted); }
+
+    /* 等待保温卡片 */
+    .couple-warm-card { background: linear-gradient(135deg, rgba(126,167,255,0.08), rgba(200,184,160,0.04)); border: 1px solid rgba(126,167,255,0.18); border-radius: 14px; padding: 20px 18px; margin-bottom: 16px; text-align: center; }
+    .couple-warm-icon { font-size: 2rem; margin-bottom: 12px; }
+    .couple-warm-title { font-size: 0.95rem; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+    .couple-warm-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+    .couple-warm-pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); margin-right: 6px; animation: couplePulse 1.5s ease-in-out infinite; }
+    @keyframes couplePulse { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+
+    /* MIRA 人格画像小卡片 */
+    .couple-mira-mini { display: flex; align-items: center; gap: 14px; background: var(--surface-glass); border: 1px solid rgba(200,184,160,0.2); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
+    .couple-mira-mini-img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(212,175,55,0.3); flex-shrink: 0; background: var(--surface); }
+    .couple-mira-mini-info { flex: 1; min-width: 0; }
+    .couple-mira-mini-code { font-size: 0.72rem; font-weight: 600; color: #D4AF37; letter-spacing: 0.08em; }
+    .couple-mira-mini-name { font-size: 0.92rem; font-weight: 600; color: var(--ink); margin-top: 2px; }
+    .couple-mira-mini-desc { font-size: 0.74rem; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+    /* 关系原型卡片 */
+    .couple-archetype-card { background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(126,167,255,0.06)); border: 1px solid rgba(212,175,55,0.25); border-radius: 14px; padding: 20px 18px; margin-bottom: 16px; text-align: center; }
+    .couple-archetype-label { font-size: 0.72rem; color: var(--faint); margin-bottom: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+    .couple-archetype-name { font-size: 1.3rem; font-weight: 700; color: #D4AF37; margin-bottom: 10px; letter-spacing: 0.02em; }
+    .couple-archetype-pattern { font-size: 0.88rem; color: var(--ink); margin-bottom: 8px; line-height: 1.6; }
+    .couple-archetype-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.7; }
+
+    /* 交叉验证对比卡片 */
+    .couple-cross-section { margin-bottom: 20px; }
+    .couple-cross-title { font-size: 0.92rem; font-weight: 600; color: var(--ink); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .couple-cross-title::before { content: ""; width: 4px; height: 16px; border-radius: 2px; background: var(--blue); display: inline-block; }
+    .couple-cross-card { display: flex; gap: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--rule); margin-bottom: 12px; }
+    .couple-cross-side { flex: 1; padding: 14px 16px; min-width: 0; }
+    .couple-cross-side.left { background: rgba(255,80,80,0.05); border-right: 1px solid var(--rule); }
+    .couple-cross-side.right { background: rgba(126,167,255,0.06); }
+    .couple-cross-side-label { font-size: 0.68rem; font-weight: 600; margin-bottom: 6px; letter-spacing: 0.03em; display: flex; align-items: center; gap: 4px; }
+    .couple-cross-side.left .couple-cross-side-label { color: #FF6B6B; }
+    .couple-cross-side.right .couple-cross-side-label { color: var(--blue); }
+    .couple-cross-side-text { font-size: 0.84rem; color: var(--muted); line-height: 1.6; word-break: break-word; }
+    @media (max-width: 420px) {
+      .couple-cross-card { flex-direction: column; }
+      .couple-cross-side.left { border-right: none; border-bottom: 1px solid var(--rule); }
+    }
+
+    /* 可执行建议列表 */
+    .couple-steps-list { list-style: none; padding: 0; margin: 0; }
+    .couple-steps-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+    .couple-steps-item:last-child { border-bottom: none; }
+    .couple-steps-num { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: rgba(126,167,255,0.12); color: var(--blue); font-size: 0.74rem; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+    .couple-steps-text { font-size: 0.86rem; color: var(--muted); line-height: 1.6; }
+
+    /* 准确度反馈组件 */
+    .couple-feedback-card { background: var(--surface-glass); border: 1px solid var(--rule); border-radius: 14px; padding: 20px 18px; margin-top: 24px; }
+    .couple-feedback-title { font-size: 0.92rem; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+    .couple-feedback-desc { font-size: 0.76rem; color: var(--faint); margin-bottom: 16px; }
+    .couple-feedback-options { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .couple-feedback-opt { flex: 1; min-width: 80px; padding: 12px 8px; border-radius: 12px; border: 1px solid var(--rule); background: var(--surface); color: var(--muted); font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.3s var(--ease); text-align: center; font-family: inherit; }
+    .couple-feedback-opt:hover { border-color: var(--blue); color: var(--ink); }
+    .couple-feedback-opt.active { background: rgba(126,167,255,0.15); border-color: var(--blue); color: var(--blue); }
+    .couple-feedback-input { width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--rule); background: rgba(0,0,0,0.2); color: var(--ink); font-size: 0.86rem; line-height: 1.6; resize: vertical; min-height: 60px; font-family: inherit; outline: none; transition: border-color 0.3s var(--ease); margin-bottom: 12px; }
+    .couple-feedback-input:focus { border-color: var(--blue); }
+    .couple-feedback-input::placeholder { color: var(--faint); }
+    .couple-feedback-done { text-align: center; padding: 16px; color: var(--blue); font-size: 0.88rem; }
+
     /* ══════════════════════════════════════════ 响应式 ══════════════════════════════════════════ */
     @media (max-width: 640px) {
       .cover { min-height: 100svh; }
@@ -1257,6 +1356,63 @@
     </div>
   </div>
 
+  <!-- 双人模式：18维度问卷填写 -->
+  <div class="chat-view" id="coupleQuestionnaireView" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-title" id="coupleQTitle">关系深度扫描</div>
+        <div class="chat-subtitle">18 个维度，看见彼此看不见的部分</div>
+      </div>
+    </div>
+    <div class="chat-thread" style="padding:20px 16px 120px; background:#08090B;">
+      <div class="couple-q-progress">
+        <div class="couple-q-progress-bar"><div class="couple-q-progress-fill" id="coupleQProgressFill" style="width:0%;"></div></div>
+        <div class="couple-q-progress-text" id="coupleQProgressText">0 / 18</div>
+      </div>
+      <div id="coupleQContent"></div>
+      <div style="margin-top:24px;">
+        <button class="btn btn-primary" id="coupleQSubmitBtn" style="width:100%;">提交问卷</button>
+        <div id="coupleQHint" style="font-size:0.74rem;color:var(--faint);margin-top:8px;text-align:center;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 双人模式：单人报告 + 等待保温 -->
+  <div class="chat-view" id="couplePersonalView" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <button class="chat-back-btn" id="couplePersonalBackBtn">&#8592; 返回</button>
+        <div>
+          <div class="chat-title">你的分析报告</div>
+          <div class="chat-subtitle">Mirror 从你的描述中提取的洞察</div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-thread" style="padding:20px 16px 120px; background:#08090B;">
+      <div id="couplePersonalContent"></div>
+      <div id="couplePersonalAction" style="margin-top:24px;"></div>
+    </div>
+  </div>
+
+  <!-- 双人模式：关系共同洞察 + 交叉验证 + 反馈 -->
+  <div class="chat-view" id="coupleSharedView" style="display:none;">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <button class="chat-back-btn" id="coupleSharedBackBtn">&#8592; 返回</button>
+        <div>
+          <div class="chat-title">关系共同洞察</div>
+          <div class="chat-subtitle">Mirror 为你们交叉验证的理解</div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-thread" style="padding:20px 16px 120px; background:#08090B;">
+      <div id="coupleSharedContent"></div>
+      <div style="margin-top:24px; text-align:center;">
+        <button class="btn btn-secondary" id="coupleSharedRestartBtn">完成，返回首页</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══════════════════════════════════════════ 设置面板 ══════════════════════════════════════════ -->
   <div class="settings-overlay" id="settingsOverlay"></div>
   <div class="settings-panel" id="settingsPanel">
@@ -1915,7 +2071,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     var aiMessages = []; // AI 对话历史
     var chatRound = 0; // 咨询师对话轮次计数
     var currentNodeId = 'start'; // 决策树当前节点
-    var sufficientSignals = { hasFact: false, hasEmotion: false, hasNeed: false }; // 信息充足信号
+    var sufficientSignals = { hasFact: false, hasEmotion: false, hasNeed: false, hasMisread: false }; // 信息充足信号
     var letterData = { original: '', empathy: '', guide: '', redemption: '' };
     var lastActionFn = null; // 用于重试
     var parallaxActive = true;
@@ -2026,9 +2182,12 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           if (controller) controller.abort();
         }, 45000);
 
+        var analyzeHeaders = { 'Content-Type': 'application/json' };
+        if (mirrorToken) analyzeHeaders['Authorization'] = 'Bearer ' + mirrorToken;
+
         var response = await fetch(WORKER_API_BASE + '/api/analyze', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: analyzeHeaders,
           body: JSON.stringify({ prompt: userText + modeHint, mode: mode || 'single', history: messages }),
           signal: controller ? controller.signal : undefined
         });
@@ -2047,7 +2206,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           try {
             var retryResp = await fetch(WORKER_API_BASE + '/api/analyze', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: analyzeHeaders,
               body: JSON.stringify({ prompt: userText + modeHint, mode: mode || 'single', history: messages })
             });
             if (retryResp.ok) {
@@ -2077,7 +2236,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         prompt: userText,
         history: history || [],
         currentNodeId: currentNodeId || 'start',
-        sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false },
+        sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false, hasMisread: false },
         round: chatRound + 1
       });
 
@@ -2095,7 +2254,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
             reply: data.raw,
             action: data.action || 'ask',
             followUp: data.followUp || [],
-            attachment: data.attachment || { emotion: '', dimension: '', sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false }, round: chatRound + 1 },
+            attachment: data.attachment || { emotion: '', dimension: '', sufficientSignals: sufficientSignals || { hasFact: false, hasEmotion: false, hasNeed: false, hasMisread: false }, round: chatRound + 1 },
             currentNodeId: data.currentNodeId || currentNodeId,
             nodeType: data.nodeType || 'ask'
           };
@@ -2493,7 +2652,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         overlayHtml +
         '<textarea id="mainInput" placeholder="" rows="' + textareaRows + '" style="width:100%;min-height:' + textareaMinHeight + ';padding:12px 16px;border-radius:14px;border:1px solid var(--rule);background:rgba(0,0,0,0.2);color:var(--ink);font-size:0.88rem;line-height:1.6;resize:none;font-family:inherit;outline:none;transition:border-color 0.3s;"></textarea>' +
         '</div>' +
-        '<button class="btn btn-primary" id="mainSendBtn" style="margin-top:8px;width:100%;">发送</button>';
+        '<button class="btn btn-primary" id="mainSendBtn" style="margin-top:8px;width:100%;">发送</button>' +
+        '<button class="btn btn-secondary" id="manualReportBtn" style="margin-top:6px;width:100%;font-size:0.8rem;display:none;opacity:0;transition:opacity 0.4s;">生成分析报告</button>';
 
       var textarea = document.getElementById('mainInput');
       var placeholder = document.getElementById('inputPlaceholder');
@@ -2524,6 +2684,21 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         if (!text) return;
         submitMainInput(text);
       };
+
+      // 主动出报告按钮（至少3轮后显示）
+      var manualBtn = document.getElementById('manualReportBtn');
+      if (manualBtn) {
+        manualBtn.onclick = function() {
+          if (chatRound >= 3 && aiMessages.length >= 4) {
+            addMessage('ai', '好的，我来帮你梳理一下。', { typewriter: true });
+            setTimeout(function() {
+              runFullAnalysis(aiMessages);
+            }, 800);
+          } else {
+            showToast('再聊聊吧，至少3轮对话后可以生成报告', 'info');
+          }
+        };
+      }
 
       // 回车发送
       textarea.addEventListener('keydown', function(e) {
@@ -2627,7 +2802,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         aiMessages = [];
         chatRound = 0;
         currentNodeId = 'start';
-        sufficientSignals = { hasFact: false, hasEmotion: false, hasNeed: false };
+        sufficientSignals = { hasFact: false, hasEmotion: false, hasNeed: false, hasMisread: false };
       }
       // 注意：不在这里 push 用户输入到 aiMessages
       // 因为 chatWithMirror 会把 text 作为 prompt 传给后端，后端会自动加到末尾
@@ -2665,6 +2840,15 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         }
 
         chatRound++;
+
+        // 3轮后显示"生成分析报告"按钮
+        if (chatRound >= 3) {
+          var mb = document.getElementById('manualReportBtn');
+          if (mb && mb.style.display === 'none') {
+            mb.style.display = 'block';
+            setTimeout(function() { mb.style.opacity = '1'; }, 50);
+          }
+        }
 
         // 更新决策树状态（从 AI 返回中提取）
         if (result.currentNodeId) currentNodeId = result.currentNodeId;
@@ -2887,6 +3071,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           body: function() {
             return '<div style="text-align:center;">' +
               '<div style="font-size:0.75rem;color:var(--faint);letter-spacing:2px;margin-bottom:12px;">Mirror Identity Reflection Archetype</div>' +
+              '<div style="display:inline-block;font-size:0.68rem;color:#D4AF37;background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);border-radius:8px;padding:4px 10px;margin-bottom:16px;letter-spacing:1px;">初步倾向 · 基于对话推断</div>' +
               '<div class="mira-result-card">' +
                 '<div class="mira-result-img-wrap">' +
                   '<img src="mira-images/' + miraType + '.jpg" alt="' + miraInfo.name + '">' +
@@ -2896,7 +3081,12 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
                 '<div class="mira-result-dims">' + miraInfo.dim + ' · ' + miraInfo.dir + '</div>' +
                 '<div class="mira-result-desc">' + miraInfo.desc + '</div>' +
               '</div>' +
-              '<div style="margin-top:16px;font-size:0.75rem;color:var(--faint);letter-spacing:1px;">点击保存图片，或前往「关系光谱」查看全部 16 种原型</div>' +
+              '<div style="margin-top:20px;padding:16px;background:rgba(126,167,255,0.06);border-radius:14px;border:1px solid rgba(126,167,255,0.12);">' +
+                '<div style="font-size:0.85rem;color:var(--ink);margin-bottom:8px;font-weight:500;">想让结果更精准？</div>' +
+                '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:12px;line-height:1.6;">这是基于你刚才对话推断的初步倾向。完成正式的 MIRA 人格测试（约5分钟），可以获得更精准的人格画像和深度解读。</div>' +
+                '<button class="btn btn-primary" style="width:100%;font-size:0.85rem;padding:10px;" onclick="document.getElementById(\'stepNext\').click();setTimeout(function(){startQuiz();},500);">去测 MIRA 人格 →</button>' +
+              '</div>' +
+              '<div style="margin-top:12px;font-size:0.75rem;color:var(--faint);letter-spacing:1px;">也可以稍后在「关系光谱」查看全部 16 种原型</div>' +
             '</div>';
           }
         }
@@ -3626,8 +3816,16 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         document.getElementById('coupleInputView').style.display = 'none';
         document.getElementById('coupleInsightView').style.display = 'none';
         document.getElementById('coupleReportView').style.display = 'none';
+        // V2 新增视图
+        var qView = document.getElementById('coupleQuestionnaireView');
+        if (qView) qView.style.display = 'none';
+        var pView = document.getElementById('couplePersonalView');
+        if (pView) pView.style.display = 'none';
+        var sView = document.getElementById('coupleSharedView');
+        if (sView) sView.style.display = 'none';
         // 停止轮询并清空房间
         stopPolling();
+        stopAllCouplePolls();
         currentRoom = null;
         // 重置输入按钮状态
         var submitBtn = document.getElementById('coupleSubmitBtn');
@@ -4520,6 +4718,28 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       // 提交输入
       document.getElementById('coupleSubmitBtn').onclick = submitCoupleInput;
 
+      // V2: 问卷提交
+      var qSubmitBtn = document.getElementById('coupleQSubmitBtn');
+      if (qSubmitBtn) qSubmitBtn.onclick = submitCoupleQuestionnaire;
+
+      // V2: 单人报告返回按钮 → 回到问卷
+      var personalBackBtn = document.getElementById('couplePersonalBackBtn');
+      if (personalBackBtn) personalBackBtn.onclick = function() {
+        stopAllCouplePolls();
+        showCoupleQuestionnaireView();
+      };
+
+      // V2: 共同洞察返回按钮 → 回到单人报告
+      var sharedBackBtn = document.getElementById('coupleSharedBackBtn');
+      if (sharedBackBtn) sharedBackBtn.onclick = function() {
+        stopSharedReportPoll();
+        showCouplePersonalView();
+      };
+
+      // V2: 共同洞察完成按钮
+      var sharedRestartBtn = document.getElementById('coupleSharedRestartBtn');
+      if (sharedRestartBtn) sharedRestartBtn.onclick = restartExperience;
+
       // 同意/不同意
       document.getElementById('consentYesBtn').onclick = function() { giveConsent(true); };
       document.getElementById('consentNoBtn').onclick = function() { giveConsent(false); };
@@ -4538,7 +4758,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // 创建房间
     async function createRoom() {
       try {
-        var response = await fetch(WORKER_API_BASE + '/api/room', { method: 'POST' });
+        var roomHeaders = {};
+        if (mirrorToken) roomHeaders['Authorization'] = 'Bearer ' + mirrorToken;
+        var response = await fetch(WORKER_API_BASE + '/api/room', { method: 'POST', headers: roomHeaders });
         var data = await response.json();
         if (data.code) {
           currentRoom = { code: data.code, role: 'a', status: 'waiting' };
@@ -4553,7 +4775,9 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // 加入房间
     async function joinRoom(code) {
       try {
-        var response = await fetch(WORKER_API_BASE + '/api/room/' + code + '/join', { method: 'POST' });
+        var joinHeaders = {};
+        if (mirrorToken) joinHeaders['Authorization'] = 'Bearer ' + mirrorToken;
+        var response = await fetch(WORKER_API_BASE + '/api/room/' + code + '/join', { method: 'POST', headers: joinHeaders });
         var data = await response.json();
         if (data.code) {
           currentRoom = { code: code, role: 'b', status: 'ready' };
@@ -4575,10 +4799,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 显示输入页面
     function showCoupleInputView() {
-      hideAllViews();
-      document.getElementById('coupleInputView').style.display = 'flex';
-      var title = currentRoom.role === 'a' ? '你是 A，输入你的描述' : '你是 B，输入你的描述';
-      document.getElementById('coupleInputTitle').textContent = title;
+      // V2: 跳转到18维度问卷界面
+      showCoupleQuestionnaireView();
     }
 
     // 提交输入
@@ -4616,22 +4838,22 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           var response = await fetch(WORKER_API_BASE + '/api/room/' + currentRoom.code);
           var data = await response.json();
 
-          // 等待页：对方已加入
+          // 等待页：对方已加入 → 跳转到18维度问卷
           if (currentRoom.role === 'a' && data.status === 'ready' && document.getElementById('coupleWaitView').style.display === 'flex') {
             stopPolling();
             showCoupleInputView();
           }
 
-          // 输入页：双方都已输入，分析完成
+          // V2: 分析完成 → 跳转到单人报告页
           if (data.status === 'analyzed') {
             stopPolling();
-            showCoupleInsightView();
+            showCouplePersonalView();
           }
 
-          // 洞察页：双方都同意，报告已生成
+          // V2: 报告完成 → 跳转到共同洞察页
           if (data.status === 'completed') {
             stopPolling();
-            showCoupleReportView();
+            showCoupleSharedView();
           }
 
           // 额外轮询 /api/room/{code}/status 获取倒计时及对方提交状态
@@ -4698,6 +4920,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 显示洞察页面
     async function showCoupleInsightView() {
+      // V2: 重定向到单人报告视图
+      showCouplePersonalView();
+      return;
+      // 以下旧逻辑保留但不执行
       hideAllViews();
       document.getElementById('coupleInsightView').style.display = 'flex';
 
@@ -4747,7 +4973,8 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         });
         var data = await response.json();
         if (data.bothConsented) {
-          showCoupleReportView();
+          // V2: 跳转到共同洞察视图
+          showCoupleSharedView();
         } else {
           showToast('已同意，等待对方也同意...', 'success');
           startPolling();
@@ -4759,6 +4986,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 显示共同报告
     async function showCoupleReportView() {
+      // V2: 重定向到共同洞察视图
+      showCoupleSharedView();
+      return;
+      // 以下旧逻辑保留但不执行
       hideAllViews();
       document.getElementById('coupleReportView').style.display = 'flex';
 
@@ -4824,6 +5055,736 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       }
     }
 
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // 双人模式 V2：18维度问卷 / 单人报告 / 共同洞察 / 反馈
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    var coupleDimensions = null;       // 缓存的18道维度题
+    var coupleQAnswers = {};           // { d1: '...', d2: '无', ... }
+    var personalPollInterval = null;   // 单人报告轮询
+    var sharedPollInterval = null;     // 共同报告轮询
+    var coupleFeedbackSelected = null; // 'accurate' | 'partial' | 'inaccurate'
+
+    // 带认证的请求头
+    function coupleAuthHeaders(extra) {
+      var h = extra || {};
+      if (mirrorToken) h['Authorization'] = 'Bearer ' + mirrorToken;
+      return h;
+    }
+
+    function coupleJsonHeaders() {
+      return coupleAuthHeaders({ 'Content-Type': 'application/json' });
+    }
+
+    // ── 1. 18维度问卷 ──────────────────────────────────────────────────────────────────────────
+
+    // 加载维度题目
+    async function loadCoupleDimensions() {
+      if (coupleDimensions) return coupleDimensions;
+      try {
+        var response = await fetch(WORKER_API_BASE + '/api/couple/dimensions', { headers: coupleAuthHeaders() });
+        var data = await response.json();
+        // 兼容 { dimensions: [...] } 或直接数组
+        var dims = data.dimensions || data.questions || data || [];
+        if (Array.isArray(dims) && dims.length > 0) {
+          coupleDimensions = dims;
+          return dims;
+        }
+        return null;
+      } catch (err) {
+        console.error('加载维度失败:', err);
+        return null;
+      }
+    }
+
+    // 显示问卷视图
+    async function showCoupleQuestionnaireView() {
+      hideAllViews();
+      document.getElementById('coupleQuestionnaireView').style.display = 'flex';
+
+      // 标题显示角色
+      var roleLabel = currentRoom.role === 'a' ? 'A' : 'B';
+      document.getElementById('coupleQTitle').textContent = roleLabel + ' · 关系深度扫描';
+
+      coupleQAnswers = {};
+
+      // 先显示加载状态
+      document.getElementById('coupleQContent').innerHTML =
+        '<div class="couple-loading"><div class="couple-loading-spinner"></div>' +
+        '<div class="couple-loading-text">正在准备问卷...</div></div>';
+      document.getElementById('coupleQSubmitBtn').style.display = 'none';
+
+      var dims = await loadCoupleDimensions();
+
+      if (!dims || dims.length === 0) {
+        // 后端未返回维度数据，使用内置兜底
+        dims = getCoupleFallbackDimensions();
+        coupleDimensions = dims;
+      }
+
+      renderCoupleQuestionnaire(dims);
+      document.getElementById('coupleQSubmitBtn').style.display = '';
+    }
+
+    // 内置兜底18题（当后端 /api/couple/dimensions 不可用时使用）
+    function getCoupleFallbackDimensions() {
+      var raw = [
+        { id:'d1',  group:'事实', title:'最近一次让你困扰的具体事件是什么？', hint:'描述发生了什么、时间、场景', placeholder:'例如：上周五晚上，他没有回我消息...' },
+        { id:'d2',  group:'事实', title:'这件事中，对方做了什么或说了什么？', hint:'尽量客观地描述对方的行为和言语', placeholder:'对方的行为和言语...' },
+        { id:'d3',  group:'事实', title:'你在这件事中做了什么或说了什么？', hint:'描述你自己的行为和言语', placeholder:'你的行为和言语...' },
+        { id:'d4',  group:'事实', title:'这件事发生的频率如何？', hint:'是一次性事件还是反复出现？', placeholder:'频率和模式...' },
+        { id:'d5',  group:'情绪', title:'这件事发生时，你最强烈的情绪是什么？', hint:'愤怒、委屈、恐惧、失望、还是其他？', placeholder:'我感到...' },
+        { id:'d6',  group:'情绪', title:'这种情绪在身体上的感受是怎样的？', hint:'胸口发紧、手心出汗、头脑空白等', placeholder:'身体感受...' },
+        { id:'d7',  group:'情绪', title:'这种情绪让你想起了过去的什么经历？', hint:'是否有相似的情境或感受', placeholder:'让我想起...' },
+        { id:'d8',  group:'情绪', title:'情绪最强烈的时刻是什么？', hint:'描述情绪达到顶点的那一刻', placeholder:'最强烈的时刻...' },
+        { id:'d9',  group:'需求', title:'在这段关系中，你最渴望从对方那里得到什么？', hint:'被理解、被重视、被陪伴、安全感等', placeholder:'我最需要...' },
+        { id:'d10', group:'需求', title:'这个需求对有多重要？', hint:'如果1-10分，你会打几分？为什么', placeholder:'重要性...' },
+        { id:'d11', group:'需求', title:'你认为对方知道你有这个需求吗？', hint:'对方是否意识到，还是你从未表达过', placeholder:'对方是否知道...' },
+        { id:'d12', group:'需求', title:'如果这个需求被满足了，关系会有什么不同？', hint:'描述满足后的理想状态', placeholder:'如果被满足...' },
+        { id:'d13', group:'误读', title:'你觉得对方行为背后的真正意图是什么？', hint:'你认为对方为什么这么做', placeholder:'我觉得对方是想...' },
+        { id:'d14', group:'误读', title:'你觉得对方怎么理解你的行为？', hint:'你觉得对方眼中的你是什么样的', placeholder:'对方可能觉得我...' },
+        { id:'d15', group:'误读', title:'有没有可能你们之间存在误解？', hint:'你有没有觉得被误读的时刻', placeholder:'可能的误解...' },
+        { id:'d16', group:'行动', title:'如果可以重来，你会怎么做？', hint:'描述你理想中的应对方式', placeholder:'如果重来...' },
+        { id:'d17', group:'行动', title:'你希望接下来发生什么？', hint:'你期待的下一步是什么', placeholder:'我希望...' },
+        { id:'d18', group:'行动', title:'你愿意为此做出什么改变？', hint:'描述你愿意迈出的一步', placeholder:'我愿意...' }
+      ];
+      return raw;
+    }
+
+    // 渲染问卷分组
+    function renderCoupleQuestionnaire(dims) {
+      // 按组分类
+      var groupOrder = ['事实', '情绪', '需求', '误读', '行动'];
+      var groupHints = {
+        '事实': '先回到事实层面，客观描述发生了什么',
+        '情绪': '感受你真实的情绪，不需要理性分析',
+        '需求': '看见表面之下你真正需要的是什么',
+        '误读': '觉察关系中可能的误解和错位',
+        '行动': '思考你愿意为这段关系迈出的一步'
+      };
+      var groups = {};
+      groupOrder.forEach(function(g) { groups[g] = []; });
+      dims.forEach(function(d) {
+        var g = d.group || d.category || '事实';
+        if (!groups[g]) { groups[g] = []; groupOrder.push(g); }
+        groups[g].push(d);
+      });
+
+      var html = '';
+      groupOrder.forEach(function(g) {
+        if (!groups[g] || groups[g].length === 0) return;
+        html += '<div class="couple-q-group">';
+        html += '<div class="couple-q-group-title">' + escapeHtml(g) + '<span style="font-size:0.72rem;color:var(--faint);font-weight:400;">(' + groups[g].length + '题)</span></div>';
+        if (groupHints[g]) html += '<div class="couple-q-group-hint">' + groupHints[g] + '</div>';
+        groups[g].forEach(function(q) {
+          var qid = q.id || q.key || ('d' + (q.index || ''));
+          var title = q.title || q.question || q.text || '';
+          var hint = q.hint || q.prompt || q.description || '';
+          var ph = q.placeholder || '';
+          html += '<div class="couple-q-item">';
+          html += '<span class="couple-q-num">' + escapeHtml(qid.toUpperCase()) + '</span>';
+          html += '<div class="couple-q-title">' + escapeHtml(title) + '</div>';
+          if (hint) html += '<div class="couple-q-hint">' + escapeHtml(hint) + '</div>';
+          html += '<textarea class="couple-q-input" data-qid="' + escapeHtml(qid) + '" placeholder="' + escapeHtml(ph || '请输入...') + '" rows="2"></textarea>';
+          html += '<span class="couple-q-skip" data-qid="' + escapeHtml(qid) + '">跳过此题（填"无"）</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+
+      document.getElementById('coupleQContent').innerHTML = html;
+
+      // 绑定输入和跳过事件
+      var inputs = document.querySelectorAll('.couple-q-input');
+      inputs.forEach(function(inp) {
+        inp.addEventListener('input', function() {
+          var qid = this.getAttribute('data-qid');
+          coupleQAnswers[qid] = this.value.trim();
+          if (this.value.trim()) {
+            var skip = document.querySelector('.couple-q-skip[data-qid="' + qid + '"]');
+            if (skip) skip.classList.remove('active');
+          }
+          updateCoupleQProgress(dims.length);
+        });
+      });
+
+      var skips = document.querySelectorAll('.couple-q-skip');
+      skips.forEach(function(sk) {
+        sk.addEventListener('click', function() {
+          var qid = this.getAttribute('data-qid');
+          coupleQAnswers[qid] = '无';
+          var inp = document.querySelector('.couple-q-input[data-qid="' + qid + '"]');
+          if (inp) { inp.value = '无'; inp.style.color = 'var(--faint)'; }
+          this.classList.add('active');
+          updateCoupleQProgress(dims.length);
+        });
+      });
+
+      updateCoupleQProgress(dims.length);
+    }
+
+    // 更新进度条
+    function updateCoupleQProgress(total) {
+      var filled = 0;
+      for (var k in coupleQAnswers) {
+        if (coupleQAnswers[k] && coupleQAnswers[k].trim()) filled++;
+      }
+      var pct = total > 0 ? Math.round((filled / total) * 100) : 0;
+      var fillEl = document.getElementById('coupleQProgressFill');
+      var textEl = document.getElementById('coupleQProgressText');
+      if (fillEl) fillEl.style.width = pct + '%';
+      if (textEl) textEl.textContent = filled + ' / ' + total;
+    }
+
+    // 提交问卷
+    async function submitCoupleQuestionnaire() {
+      var dims = coupleDimensions || [];
+      var filled = 0;
+      var dimensionsData = {};
+      dims.forEach(function(d) {
+        var qid = d.id || d.key || '';
+        var val = coupleQAnswers[qid] || '';
+        if (val.trim()) {
+          dimensionsData[qid] = val.trim();
+          filled++;
+        } else {
+          dimensionsData[qid] = '无';
+        }
+      });
+
+      if (filled === 0) {
+        showToast('请至少填写一道题', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('coupleQSubmitBtn');
+      btn.textContent = '提交中...';
+      btn.disabled = true;
+      var hintEl = document.getElementById('coupleQHint');
+      if (hintEl) hintEl.textContent = '';
+
+      try {
+        // 获取 miraType（如果有缓存的答题结果）
+        var miraType = '';
+        try {
+          var cached = localStorage.getItem('mira_type');
+          if (cached) miraType = cached;
+        } catch(e) {}
+
+        var body = {
+          roomCode: currentRoom.code,
+          role: currentRoom.role,
+          dimensions: dimensionsData,
+          miraType: miraType
+        };
+
+        var response = await fetch(WORKER_API_BASE + '/api/couple/questionnaire', {
+          method: 'POST',
+          headers: coupleJsonHeaders(),
+          body: JSON.stringify(body)
+        });
+        var data = await response.json();
+
+        if (data.success || data.ok || data.status === 'ok' || response.ok) {
+          // 提交成功，跳转到单人报告页
+          stopPolling();
+          showCouplePersonalView();
+        } else {
+          showToast(data.error || data.message || '提交失败，请重试', 'error');
+          btn.textContent = '提交问卷';
+          btn.disabled = false;
+        }
+      } catch (err) {
+        showToast('提交失败：' + err.message, 'error');
+        btn.textContent = '提交问卷';
+        btn.disabled = false;
+      }
+    }
+
+    // ── 2. 单人报告 + 等待保温 ────────────────────────────────────────────────────────────────
+
+    // 显示单人报告页
+    function showCouplePersonalView() {
+      hideAllViews();
+      document.getElementById('couplePersonalView').style.display = 'flex';
+
+      // 先显示加载动画
+      document.getElementById('couplePersonalContent').innerHTML =
+        '<div class="couple-loading"><div class="couple-loading-spinner"></div>' +
+        '<div class="couple-loading-text">Mirror 正在分析你的描述...</div>' +
+        '<div class="couple-loading-sub">提取事实、情绪、需求和误读</div></div>';
+      document.getElementById('couplePersonalAction').innerHTML = '';
+
+      startPersonalReportPoll();
+    }
+
+    // 轮询单人报告
+    function startPersonalReportPoll() {
+      stopPersonalReportPoll();
+      personalPollInterval = setInterval(async function() {
+        if (!currentRoom) return;
+        try {
+          var response = await fetch(
+            WORKER_API_BASE + '/api/couple/questionnaire/' + currentRoom.code + '/' + currentRoom.role,
+            { headers: coupleAuthHeaders() }
+          );
+          if (!response.ok) return;
+          var data = await response.json();
+
+          // 判断报告是否已生成
+          var report = data.report || data.analysis || data;
+          var isReady = data.ready || data.completed || data.status === 'ready' || data.status === 'completed' ||
+                        (report && (report.fact || report.emotion || report.need || report.insight));
+
+          if (isReady) {
+            stopPersonalReportPoll();
+            renderCouplePersonalReport(data);
+          }
+        } catch (err) {
+          console.error('单人报告轮询失败:', err);
+        }
+      }, 3000);
+    }
+
+    function stopPersonalReportPoll() {
+      if (personalPollInterval) {
+        clearInterval(personalPollInterval);
+        personalPollInterval = null;
+      }
+    }
+
+    // 渲染单人报告
+    function renderCouplePersonalReport(data) {
+      var report = data.report || data.analysis || data;
+      var partnerCompleted = data.partnerCompleted || data.partnerCompleted === true || false;
+      var miraType = report.miraType || data.miraType || '';
+
+      var html = '';
+
+      // MIRA 人格画像（如果有）
+      if (miraType) {
+        var mira = getMiraInfo(miraType);
+        html += '<div class="couple-mira-mini">';
+        html += '<img class="couple-mira-mini-img" src="mira-images/' + miraType + '.jpg" alt="' + mira.name + '">';
+        html += '<div class="couple-mira-mini-info">';
+        html += '<div class="couple-mira-mini-code">' + miraType + '</div>';
+        html += '<div class="couple-mira-mini-name">' + mira.name + '</div>';
+        html += '<div class="couple-mira-mini-desc">' + mira.dim + ' · ' + mira.dir + '</div>';
+        html += '</div></div>';
+      }
+
+      // 报告各字段
+      var fields = [
+        { key: 'fact',     label: '事实',     icon: '📋' },
+        { key: 'emotion',  label: '情绪',     icon: '💗' },
+        { key: 'need',     label: '核心需求', icon: '🎯' },
+        { key: 'misread',  label: '可能的误读', icon: '🔄' },
+        { key: 'insight',  label: '深度洞察', icon: '💡' },
+        { key: 'suggest',  label: '建议',     icon: '✨' }
+      ];
+      fields.forEach(function(f) {
+        var val = report[f.key];
+        if (val) {
+          html += '<div class="couple-report-block">';
+          html += '<div class="couple-report-block-label">' + f.icon + ' ' + f.label + '</div>';
+          html += '<div class="couple-report-block-content muted">' + safeText(val) + '</div>';
+          html += '</div>';
+        }
+      });
+
+      // 等待期保温 / 查看共同洞察
+      if (!partnerCompleted) {
+        html += '<div class="couple-warm-card">';
+        html += '<div class="couple-warm-icon">⏳</div>';
+        html += '<div class="couple-warm-title"><span class="couple-warm-pulse"></span>对方还在填写中</div>';
+        html += '<div class="couple-warm-desc">你的报告已生成。等对方完成后，Mirror 将为你们生成交叉验证的关系洞察。<br><br>';
+        html += '趁这个时间，你可以回顾上面的分析，看看有没有让你意外的地方。</div>';
+        html += '</div>';
+
+        // 如果有自我分析内容，展示
+        if (report.selfAnalysis || report.insight) {
+          html += '<div class="couple-report-block">';
+          html += '<div class="couple-report-block-label">🪞 自我反思</div>';
+          html += '<div class="couple-report-block-content muted">' + safeText(report.selfAnalysis || report.insight) + '</div>';
+          html += '</div>';
+        }
+
+        // 保持轮询等待对方完成
+        startPartnerWaitPoll();
+      } else {
+        html += '<div class="couple-warm-card" style="background:linear-gradient(135deg,rgba(126,167,255,0.12),rgba(200,184,160,0.06));">';
+        html += '<div class="couple-warm-icon">✅</div>';
+        html += '<div class="couple-warm-title">对方已完成</div>';
+        html += '<div class="couple-warm-desc">你们两个人的描述都已提交，可以查看关系共同洞察了。</div>';
+        html += '</div>';
+      }
+
+      document.getElementById('couplePersonalContent').innerHTML = html;
+
+      // 底部操作按钮
+      var actionHtml = '';
+      if (partnerCompleted) {
+        actionHtml += '<button class="btn btn-primary" id="viewSharedReportBtn" style="width:100%;">查看关系共同洞察 →</button>';
+      } else {
+        actionHtml += '<div style="text-align:center;font-size:0.78rem;color:var(--faint);">等待对方完成问卷后自动解锁共同洞察...</div>';
+      }
+      actionHtml += '<div style="text-align:center;margin-top:12px;"><button class="btn btn-ghost btn-sm" onclick="restartExperience()">返回首页</button></div>';
+      document.getElementById('couplePersonalAction').innerHTML = actionHtml;
+
+      if (partnerCompleted) {
+        var btn = document.getElementById('viewSharedReportBtn');
+        if (btn) btn.onclick = showCoupleSharedView;
+      }
+    }
+
+    // 轮询等待对方完成问卷
+    function startPartnerWaitPoll() {
+      stopPartnerWaitPoll();
+      personalPollInterval = setInterval(async function() {
+        if (!currentRoom) return;
+        try {
+          var response = await fetch(
+            WORKER_API_BASE + '/api/couple/questionnaire/' + currentRoom.code + '/' + currentRoom.role,
+            { headers: coupleAuthHeaders() }
+          );
+          if (!response.ok) return;
+          var data = await response.json();
+          var partnerCompleted = data.partnerCompleted || data.partnerCompleted === true || false;
+          if (partnerCompleted) {
+            stopPartnerWaitPoll();
+            renderCouplePersonalReport(data);
+          }
+        } catch (err) {
+          console.error('等待对方轮询失败:', err);
+        }
+      }, 5000);
+    }
+
+    function stopPartnerWaitPoll() {
+      if (personalPollInterval) {
+        clearInterval(personalPollInterval);
+        personalPollInterval = null;
+      }
+    }
+
+    // ── 3. 关系共同洞察 + 交叉验证 ────────────────────────────────────────────────────────────
+
+    // 显示共同洞察页
+    function showCoupleSharedView() {
+      hideAllViews();
+      document.getElementById('coupleSharedView').style.display = 'flex';
+
+      // 先显示加载动画
+      document.getElementById('coupleSharedContent').innerHTML =
+        '<div class="couple-loading"><div class="couple-loading-spinner"></div>' +
+        '<div class="couple-loading-text">Mirror 正在交叉验证你们的描述...</div>' +
+        '<div class="couple-loading-sub">对比双方的事实、情绪、需求和误读</div></div>';
+
+      loadSharedReport();
+    }
+
+    // 加载共同报告
+    async function loadSharedReport() {
+      try {
+        var response = await fetch(
+          WORKER_API_BASE + '/api/couple/shared/' + currentRoom.code,
+          { headers: coupleAuthHeaders() }
+        );
+        if (!response.ok) {
+          showToast('加载共同报告失败', 'error');
+          return;
+        }
+        var data = await response.json();
+
+        var isReady = data.ready || data.completed || data.status === 'ready' || data.status === 'completed' ||
+                      (data.report && (data.report.archetype || data.report.commonNeed));
+
+        if (isReady) {
+          stopSharedReportPoll();
+          renderCoupleSharedReport(data);
+        } else {
+          // 还在生成中，开始轮询
+          startSharedReportPoll();
+        }
+      } catch (err) {
+        console.error('加载共同报告失败:', err);
+        document.getElementById('coupleSharedContent').innerHTML =
+          '<div class="couple-loading"><div class="couple-loading-text" style="color:#ff6b6b;">加载失败，请稍后重试</div></div>';
+      }
+    }
+
+    // 轮询共同报告
+    function startSharedReportPoll() {
+      stopSharedReportPoll();
+      sharedPollInterval = setInterval(async function() {
+        if (!currentRoom) return;
+        try {
+          var response = await fetch(
+            WORKER_API_BASE + '/api/couple/shared/' + currentRoom.code,
+            { headers: coupleAuthHeaders() }
+          );
+          if (!response.ok) return;
+          var data = await response.json();
+          var isReady = data.ready || data.completed || data.status === 'ready' || data.status === 'completed' ||
+                        (data.report && (data.report.archetype || data.report.commonNeed));
+          if (isReady) {
+            stopSharedReportPoll();
+            renderCoupleSharedReport(data);
+          }
+        } catch (err) {
+          console.error('共同报告轮询失败:', err);
+        }
+      }, 4000);
+    }
+
+    function stopSharedReportPoll() {
+      if (sharedPollInterval) {
+        clearInterval(sharedPollInterval);
+        sharedPollInterval = null;
+      }
+    }
+
+    // 渲染共同报告
+    function renderCoupleSharedReport(data) {
+      var report = data.report || data.sharedReport || data;
+      var html = '';
+
+      // 关系原型
+      var archetype = report.archetype || {};
+      if (archetype.name || archetype.pattern || archetype.desc) {
+        html += '<div class="couple-archetype-card">';
+        html += '<div class="couple-archetype-label">关系原型</div>';
+        if (archetype.name) html += '<div class="couple-archetype-name">' + escapeHtml(archetype.name) + '</div>';
+        if (archetype.pattern) html += '<div class="couple-archetype-pattern">' + safeText(archetype.pattern) + '</div>';
+        if (archetype.desc) html += '<div class="couple-archetype-desc">' + safeText(archetype.desc) + '</div>';
+        html += '</div>';
+      }
+
+      // 共同需求
+      if (report.commonNeed) {
+        html += renderReportBlock('🤝 共同需求', report.commonNeed);
+      }
+
+      // 共同误读
+      if (report.commonMisread) {
+        html += renderReportBlock('🔀 共同误读', report.commonMisread);
+      }
+
+      // 交叉验证显性化
+      html += renderCrossValidation(report);
+
+      // 互动模式分析
+      if (report.interactionPattern) {
+        html += renderReportBlock('🎭 互动模式分析', report.interactionPattern);
+      }
+
+      // 成长方向
+      if (report.growthDirection) {
+        html += renderReportBlock('🌱 成长方向', report.growthDirection);
+      }
+
+      // 可执行建议
+      if (report.actionableSteps && Array.isArray(report.actionableSteps) && report.actionableSteps.length > 0) {
+        html += '<div class="couple-report-block">';
+        html += '<div class="couple-report-block-label">📝 可执行建议</div>';
+        html += '<ol class="couple-steps-list">';
+        report.actionableSteps.forEach(function(step, i) {
+          var text = typeof step === 'string' ? step : (step.text || step.content || step.desc || JSON.stringify(step));
+          html += '<li class="couple-steps-item">';
+          html += '<span class="couple-steps-num">' + (i + 1) + '</span>';
+          html += '<span class="couple-steps-text">' + safeText(text) + '</span>';
+          html += '</li>';
+        });
+        html += '</ol></div>';
+      }
+
+      // 准确度反馈组件
+      html += renderFeedbackComponent();
+
+      document.getElementById('coupleSharedContent').innerHTML = html;
+      bindFeedbackEvents();
+    }
+
+    // 渲染报告区块
+    function renderReportBlock(label, content) {
+      return '<div class="couple-report-block">' +
+        '<div class="couple-report-block-label">' + label + '</div>' +
+        '<div class="couple-report-block-content muted">' + safeText(content) + '</div>' +
+        '</div>';
+    }
+
+    // 渲染交叉验证对比卡片
+    function renderCrossValidation(report) {
+      var html = '';
+      var crossData = report.crossValidation || report.crossValidationData || null;
+
+      // 尝试多种数据结构
+      var pairs = [];
+
+      if (crossData) {
+        // 结构1: { aToB: {assumed, actual}, bToA: {assumed, actual} }
+        if (crossData.aToB) {
+          pairs.push({
+            title: 'A 对 B 的理解',
+            leftLabel: 'A 以为 B 的意思',
+            leftText: crossData.aToB.assumed || crossData.aToB.thought || crossData.aToB.misread || '',
+            rightLabel: 'B 实际表达的',
+            rightText: crossData.aToB.actual || crossData.aToB.expressed || crossData.aToB.real || ''
+          });
+        }
+        if (crossData.bToA) {
+          pairs.push({
+            title: 'B 对 A 的理解',
+            leftLabel: 'B 以为 A 的意思',
+            leftText: crossData.bToA.assumed || crossData.bToA.thought || crossData.bToA.misread || '',
+            rightLabel: 'A 实际表达的',
+            rightText: crossData.bToA.actual || crossData.bToA.expressed || crossData.bToA.real || ''
+          });
+        }
+        // 结构2: 数组 [{title, assumed, actual}, ...]
+        if (Array.isArray(crossData)) {
+          crossData.forEach(function(item) {
+            pairs.push({
+              title: item.title || item.label || '交叉验证',
+              leftLabel: item.assumedLabel || '以为的意思',
+              leftText: item.assumed || item.thought || item.misread || '',
+              rightLabel: item.actualLabel || '实际表达的',
+              rightText: item.actual || item.expressed || item.real || ''
+            });
+          });
+        }
+      }
+
+      // 结构3: 直接在 report 上有字段
+      if (pairs.length === 0) {
+        var aMisread = report.aMisread || report.aMisreadB || '';
+        var bExpressed = report.bExpressed || report.bActual || report.bExpression || '';
+        var bMisread = report.bMisread || report.bMisreadA || '';
+        var aExpressed = report.aExpressed || report.aActual || report.aExpression || '';
+        if (aMisread || bExpressed) {
+          pairs.push({
+            title: 'A 对 B 的理解',
+            leftLabel: 'A 以为 B 的意思',
+            leftText: aMisread,
+            rightLabel: 'B 实际表达的',
+            rightText: bExpressed
+          });
+        }
+        if (bMisread || aExpressed) {
+          pairs.push({
+            title: 'B 对 A 的理解',
+            leftLabel: 'B 以为 A 的意思',
+            leftText: bMisread,
+            rightLabel: 'A 实际表达的',
+            rightText: aExpressed
+          });
+        }
+      }
+
+      if (pairs.length === 0) return '';
+
+      html += '<div class="couple-cross-section">';
+      html += '<div class="couple-cross-title">🔍 交叉验证：你们以为的 vs 实际的</div>';
+      pairs.forEach(function(p) {
+        if (!p.leftText && !p.rightText) return;
+        html += '<div style="font-size:0.8rem;color:var(--muted);margin-bottom:6px;margin-top:8px;">' + escapeHtml(p.title) + '</div>';
+        html += '<div class="couple-cross-card">';
+        html += '<div class="couple-cross-side left">';
+        html += '<div class="couple-cross-side-label">💭 ' + escapeHtml(p.leftLabel) + '</div>';
+        html += '<div class="couple-cross-side-text">' + safeText(p.leftText || '（暂无）') + '</div>';
+        html += '</div>';
+        html += '<div class="couple-cross-side right">';
+        html += '<div class="couple-cross-side-label">✓ ' + escapeHtml(p.rightLabel) + '</div>';
+        html += '<div class="couple-cross-side-text">' + safeText(p.rightText || '（暂无）') + '</div>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      return html;
+    }
+
+    // ── 4. 准确度反馈组件 ────────────────────────────────────────────────────────────────────
+
+    function renderFeedbackComponent() {
+      return '<div class="couple-feedback-card">' +
+        '<div class="couple-feedback-title">这份洞察准确吗？</div>' +
+        '<div class="couple-feedback-desc">你的反馈能帮助 Mirror 提供更精准的分析</div>' +
+        '<div class="couple-feedback-options">' +
+          '<button class="couple-feedback-opt" data-acc="accurate">准</button>' +
+          '<button class="couple-feedback-opt" data-acc="partial">部分准</button>' +
+          '<button class="couple-feedback-opt" data-acc="inaccurate">不准</button>' +
+        '</div>' +
+        '<textarea class="couple-feedback-input" id="coupleFeedbackText" placeholder="补充你的感受（可选）" rows="3"></textarea>' +
+        '<button class="btn btn-primary" id="coupleFeedbackSubmitBtn" style="width:100%;" disabled>提交反馈</button>' +
+        '<div id="coupleFeedbackResult"></div>' +
+        '</div>';
+    }
+
+    function bindFeedbackEvents() {
+      coupleFeedbackSelected = null;
+      var opts = document.querySelectorAll('.couple-feedback-opt');
+      opts.forEach(function(opt) {
+        opt.onclick = function() {
+          opts.forEach(function(o) { o.classList.remove('active'); });
+          this.classList.add('active');
+          coupleFeedbackSelected = this.getAttribute('data-acc');
+          var submitBtn = document.getElementById('coupleFeedbackSubmitBtn');
+          if (submitBtn) submitBtn.disabled = false;
+        };
+      });
+
+      var submitBtn = document.getElementById('coupleFeedbackSubmitBtn');
+      if (submitBtn) submitBtn.onclick = submitCoupleFeedback;
+    }
+
+    async function submitCoupleFeedback() {
+      if (!coupleFeedbackSelected) {
+        showToast('请先选择准确度', 'error');
+        return;
+      }
+      var feedbackText = '';
+      var textEl = document.getElementById('coupleFeedbackText');
+      if (textEl) feedbackText = textEl.value.trim();
+
+      var btn = document.getElementById('coupleFeedbackSubmitBtn');
+      if (btn) { btn.textContent = '提交中...'; btn.disabled = true; }
+
+      try {
+        var body = {
+          roomCode: currentRoom.code,
+          role: currentRoom.role,
+          accuracy: coupleFeedbackSelected,
+          feedbackText: feedbackText,
+          feedbackType: 'shared'
+        };
+        var response = await fetch(WORKER_API_BASE + '/api/couple/feedback', {
+          method: 'POST',
+          headers: coupleJsonHeaders(),
+          body: JSON.stringify(body)
+        });
+        var data = await response.json();
+        if (data.success || data.ok || response.ok) {
+          var card = document.querySelector('.couple-feedback-card');
+          if (card) {
+            card.innerHTML = '<div class="couple-feedback-done">✓ 感谢你的反馈，Mirror 会继续改进</div>';
+          }
+          showToast('反馈已提交', 'success');
+        } else {
+          showToast(data.error || '提交失败', 'error');
+          if (btn) { btn.textContent = '提交反馈'; btn.disabled = false; }
+        }
+      } catch (err) {
+        showToast('提交失败：' + err.message, 'error');
+        if (btn) { btn.textContent = '提交反馈'; btn.disabled = false; }
+      }
+    }
+
+    // 停止所有双人模式轮询
+    function stopAllCouplePolls() {
+      stopPersonalReportPoll();
+      stopSharedReportPoll();
+    }
+
     // 双人模式下查看自己的人格画像
     window.viewMyProfileFromCouple = async function() {
       try {
@@ -4851,6 +5812,13 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       document.getElementById('coupleInputView').style.display = 'none';
       document.getElementById('coupleInsightView').style.display = 'none';
       document.getElementById('coupleReportView').style.display = 'none';
+      // V2 新增视图
+      var qView = document.getElementById('coupleQuestionnaireView');
+      if (qView) qView.style.display = 'none';
+      var pView = document.getElementById('couplePersonalView');
+      if (pView) pView.style.display = 'none';
+      var sView = document.getElementById('coupleSharedView');
+      if (sView) sView.style.display = 'none';
     }
 
     function fillInput(text) {
@@ -5376,8 +6344,13 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
               '<div class="empty-text">还没有双人房间记录</div>' +
               '<div class="empty-btn" onclick="switchTab(\'home\');setTimeout(function(){initCoupleMode();},300)">创建房间</div>' +
             '</div>';
+          document.getElementById('exportCoupleBtn').style.display = 'none';
           return;
         }
+
+        // 有数据时显示导出按钮
+        var exportBtn = document.getElementById('exportCoupleBtn');
+        if (exportBtn) exportBtn.style.display = 'block';
 
         var html = '<div class="mine-record-list">';
         list.forEach(function(item) {
@@ -5389,13 +6362,14 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
             miraInfo = ' · ' + item.my_mira_type;
           }
           html +=
-            '<div class="mine-record-item" onclick="viewRoomDetail(' + item.id + ')">' +
+            '<div class="mine-record-item" style="position:relative;" onclick="viewRoomDetail(' + item.id + ')">' +
               '<div class="mine-record-icon">🚪</div>' +
               '<div class="mine-record-body">' +
                 '<div class="mine-record-title">房间 ' + escapeHtml(item.room_code) + ' · ' + roleText + '</div>' +
                 '<div class="mine-record-meta">' + formatTime(item.created_at) + miraInfo + '</div>' +
               '</div>' +
               '<div class="mine-record-arrow">›</div>' +
+              '<button class="mine-record-delete" onclick="event.stopPropagation();deleteRoomRecord(' + item.id + ',\'' + escapeHtml(item.room_code) + '\')" style="position:absolute;right:28px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--faint);font-size:0.8rem;cursor:pointer;padding:4px 8px;border-radius:6px;" onmouseover="this.style.color=\'#ff6b6b\';this.style.background=\'rgba(255,107,107,0.08)\'" onmouseout="this.style.color=\'var(--faint)\';this.style.background=\'none\'">删除</button>' +
             '</div>';
         });
         html += '</div>';
@@ -6415,7 +7389,10 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         <div class="mine-section">
           <div class="mine-section-header">
             <div class="mine-section-title">双人房间记录</div>
-            <div class="mine-section-count" id="mineRoomsCount"></div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="mine-section-count" id="mineRoomsCount"></div>
+              <button id="exportCoupleBtn" style="display:none;font-size:0.7rem;padding:4px 10px;border-radius:8px;border:1px solid var(--rule);background:rgba(126,167,255,0.06);color:var(--blue);cursor:pointer;" onclick="exportCoupleData()">导出数据</button>
+            </div>
           </div>
           <div id="mineRoomsContainer">
             <div class="mine-loading">

@@ -10,9 +10,30 @@ on:
       - '.github/workflows/deploy-worker.yml'
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Run Tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: tests
+        run: npm ci
+
+      - name: Run tests
+        working-directory: tests
+        run: npm test
+
   deploy:
     runs-on: ubuntu-latest
     name: Deploy Worker to Cloudflare
+    needs: test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

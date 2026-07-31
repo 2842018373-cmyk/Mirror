@@ -8,6 +8,67 @@ const ALLOWED_ORIGINS = [
   'https://www.mirrorsoul.top',
 ];
 
+// ═══ 双人模式18维度问卷定义 ═══
+// 5大维度 × 3-4题 = 18题，每题可填"无"跳过
+const COUPLE_DIMENSIONS = [
+  // ── 事实（4题）──
+  { id: 'd1', group: 'fact', label: '让你困扰的具体事件是什么？', hint: '描述一件具体的事情，比如某次争吵、某句话、某个行为', placeholder: '例：上次我们因为谁来做饭吵了一架…' },
+  { id: 'd2', group: 'fact', label: '这件事通常在什么情境下发生？', hint: '场景、时间、在场的人', placeholder: '例：每次到了晚上，两个人都累了的时候…' },
+  { id: 'd3', group: 'fact', label: '你觉得事情的关键转折点在哪？', hint: '从什么时候开始变了的', placeholder: '例：从TA开始加班变多以后…' },
+  { id: 'd4', group: 'fact', label: '如果客观描述，事情的经过是怎样的？', hint: '不带评价地描述发生了什么', placeholder: '例：TA说了一句话，我没有回应，然后TA就…' },
+  // ── 情绪（4题）──
+  { id: 'd5', group: 'emotion', label: '当时你内心的第一反应是什么？', hint: '不是想法，是感受', placeholder: '例：心里一下子凉了…' },
+  { id: 'd6', group: 'emotion', label: '你身体有什么感受？', hint: '紧绷/胸闷/流泪/麻木等', placeholder: '例：胸口堵得慌，手心出汗…' },
+  { id: 'd7', group: 'emotion', label: '这种感觉持续了多久？', hint: '一阵子还是一直', placeholder: '例：那之后好几天都提不起精神…' },
+  { id: 'd8', group: 'emotion', label: '如果用一种颜色形容那种感觉，会是什么？', hint: '不需要解释为什么', placeholder: '例：灰蓝色，像阴天…' },
+  // ── 需求（4题）──
+  { id: 'd9', group: 'need', label: '你真正想要的是什么？', hint: '不是表面的诉求，是深层的需求', placeholder: '例：我只是想让TA看见我的付出…' },
+  { id: 'd10', group: 'need', label: '你最希望对方能给你什么？', hint: '一句话能描述的', placeholder: '例：一个拥抱，一句"辛苦了"…' },
+  { id: 'd11', group: 'need', label: '你觉得什么会让你安心？', hint: '什么能让你不那么不安', placeholder: '例：如果TA能主动告诉我TA的想法…' },
+  { id: 'd12', group: 'need', label: '你背后最在意的到底是什么？', hint: '剥开表层诉求', placeholder: '例：我在意的不是做饭本身，是TA有没有把我放在心上…' },
+  // ── 误读（3题）──
+  { id: 'd13', group: 'misread', label: '你觉得TA当时那么做，是什么意思？', hint: '你对TA行为的解读', placeholder: '例：我觉得TA就是不在乎我…' },
+  { id: 'd14', group: 'misread', label: '在你看来，TA为什么会那样反应？', hint: '你猜测的原因', placeholder: '例：可能TA觉得我太啰嗦了吧…' },
+  { id: 'd15', group: 'misread', label: '你觉得你们之间最大的误解可能在哪里？', hint: '不是谁对谁错，是哪里错位了', placeholder: '例：我说的关心，TA可能觉得是控制…' },
+  // ── 行动/关系（3题）──
+  { id: 'd16', group: 'action', label: '你尝试过什么来改善？', hint: '做过什么努力', placeholder: '例：我试过跟TA好好谈，但每次都不欢而散…' },
+  { id: 'd17', group: 'action', label: '如果能重新来过，你会怎么做？', hint: '回头看的新视角', placeholder: '例：可能我不会用那种语气说…' },
+  { id: 'd18', group: 'action', label: '你希望这段关系最终变成什么样？', hint: '你理想中的状态', placeholder: '例：不需要完美，但希望能好好说话…' },
+];
+
+// ═══ 关系原型规则引擎：4表达模式 × 4投射模式 = 16种核心互动结构 ═══
+// 表达模式: B(Bearer/明光) D(Discoverer/暗影) R(Reflector/柔光) S(Seeker/辉光)
+// 投射模式: I(Internalizing/向内) N(Neutral/中性) O(Outward/向外) T(Targeting/朝向)
+const RELATIONSHIP_ARCHETYPES = {
+  // 表达模式互动 (4×4=16) — 用双方表达模式的组合映射到4种互动
+  // BB: 双方都直接表达 → 碰撞型
+  // BD/DB: 一方直接一方内敛 → 追逃型
+  // BR/RB: 一方直接一方克制 → 引导型
+  // BS/SB: 一方直接一方压抑 → 爆发型
+  // DD: 双方都内敛 → 沉默型
+  // DR/RD: 一方内敛一方克制 → 缓流型
+  // DS/SD: 一方内敛一方压抑 → 冰封型
+  // RR: 双方都克制 → 礼貌型
+  // RS/SR: 一方克制一方压抑 → 隐忍型
+  // SS: 双方都压抑 → 窒息型
+  'BB': { name: '碰撞火焰', pattern: '直接对直接', desc: '双方都习惯直接表达，互动中充满火花。优势是沟通效率高，风险是容易升级为正面冲突。' },
+  'BD': { name: '追逃循环', pattern: '直接对内敛', desc: '一方越是直接追问，另一方越是退缩沉默。形成"追—逃"的恶性循环，双方都觉得自己是受害者。' },
+  'BR': { name: '引导前行', pattern: '直接对克制', desc: '一方的直接推动关系前进，另一方的克制提供缓冲。如果节奏合拍，是互补的；如果错位，会变成一方推一方退。' },
+  'BS': { name: '火山暗涌', pattern: '直接对压抑', desc: '一方的直接撞上另一方的压抑。表面上一方强势，实际上压抑方在默默积累，最终可能以意想不到的方式爆发。' },
+  'DD': { name: '沉默对峙', pattern: '内敛对内敛', desc: '双方都不习惯直接表达，关系中充满未说出口的话。表面平静，暗流涌动，容易在沉默中渐行渐远。' },
+  'DR': { name: '缓流共生', pattern: '内敛对克制', desc: '双方都偏安静，关系像一条缓流的小河。安全但缺乏活力，需要有人主动打破平静才能注入新的能量。' },
+  'DS': { name: '冰封深处', pattern: '内敛对压抑', desc: '一方退缩，一方压抑，关系像冰封的湖面。看似平静，实则两颗心都在水面下独自承受。' },
+  'RR': { name: '礼貌距离', pattern: '克制对克制', desc: '双方都太过克制，关系像两条平行线。礼貌但不亲密，安全但不温暖，需要有人先卸下盔甲。' },
+  'RS': { name: '隐忍博弈', pattern: '克制对压抑', desc: '一方克制自己的情绪，一方压抑自己的需求。双方都在忍，但忍的方向不同，容易在某个临界点同时崩塌。' },
+  'SS': { name: '窒息迷宫', pattern: '压抑对压抑', desc: '双方都习惯压抑，关系变成了一个密不透风的空间。爱还在，但谁都不知道怎么呼吸。需要一起打开一扇窗。' },
+  'DB': { name: '追逃循环', pattern: '内敛对直接', desc: '同BD模式，方向相反。一方退缩一方追问，形成"逃—追"循环。' },
+  'RB': { name: '引导前行', pattern: '克制对直接', desc: '同BR模式，方向相反。' },
+  'SB': { name: '火山暗涌', pattern: '压抑对直接', desc: '同BS模式，方向相反。' },
+  'RD': { name: '缓流共生', pattern: '克制对内敛', desc: '同DR模式，方向相反。' },
+  'SD': { name: '冰封深处', pattern: '压抑对内敛', desc: '同DS模式，方向相反。' },
+  'SR': { name: '隐忍博弈', pattern: '压抑对克制', desc: '同RS模式，方向相反。' },
+};
+
 function getCorsHeaders(origin) {
   const headers = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
@@ -955,6 +1016,13 @@ export default {
           return jsonResponse({ error: '创建房间过于频繁，请稍后再试' }, 429, origin);
         }
 
+        // 尝试获取创建者 uid
+        let creatorUid = null;
+        try {
+          const auth = await getAuthUser(request, env);
+          if (!auth.error && auth.uid) creatorUid = auth.uid;
+        } catch (e) { /* 游客模式 */ }
+
         const code = generateRoomCode();
         const existing = await env.DB.prepare('SELECT id FROM rooms WHERE id = ?').bind(code).first();
         if (existing) {
@@ -962,8 +1030,8 @@ export default {
         }
 
         await env.DB.prepare(
-          'INSERT INTO rooms (id, status, created_at, expires_at) VALUES (?, ?, datetime("now"), datetime("now", "+24 hours"))'
-        ).bind(code, 'waiting').run();
+          'INSERT INTO rooms (id, status, a_uid, created_at, expires_at) VALUES (?, ?, ?, datetime("now"), datetime("now", "+24 hours"))'
+        ).bind(code, 'waiting', creatorUid).run();
         return jsonResponse({ code, status: 'waiting' }, 200, origin);
       }
 
@@ -975,7 +1043,14 @@ export default {
         if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
         if (room.status !== 'waiting') return jsonResponse({ error: '房间已满或已开始' }, 400, origin);
 
-        await env.DB.prepare('UPDATE rooms SET status = ? WHERE id = ?').bind('ready', code).run();
+        // 尝试获取加入者 uid
+        let joinerUid = null;
+        try {
+          const auth = await getAuthUser(request, env);
+          if (!auth.error && auth.uid) joinerUid = auth.uid;
+        } catch (e) { /* 游客模式 */ }
+
+        await env.DB.prepare('UPDATE rooms SET status = ?, b_uid = ? WHERE id = ?').bind('ready', joinerUid, code).run();
         return jsonResponse({ code, status: 'ready' }, 200, origin);
       }
 
@@ -1104,6 +1179,214 @@ export default {
         if (room.status !== 'completed') return jsonResponse({ error: '报告尚未生成', status: room.status }, 200, origin);
 
         return jsonResponse({ report: room.shared_report, status: room.status }, 200, origin);
+      }
+
+      // ══════════════════════════════════════════ 双人模式重构 API（阶段六） ══════════════════════════════════════════
+
+      // 获取18维度问卷题目
+      if (path === '/api/couple/dimensions' && request.method === 'GET') {
+        return jsonResponse({ dimensions: COUPLE_DIMENSIONS }, 200, origin);
+      }
+
+      // 提交18维度问卷
+      if (path === '/api/couple/questionnaire' && request.method === 'POST') {
+        if (!await checkRateLimitD1(env, clientIP, 'couple_submit', 5, 60000)) {
+          return jsonResponse({ error: '提交过于频繁，请稍后再试' }, 429, origin);
+        }
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { roomCode, role, dimensions, miraType } = body;
+        const validatedRole = validateRole(role);
+        if (!validatedRole) return jsonResponse({ error: '角色错误，必须为 a 或 b' }, 400, origin);
+        if (!roomCode) return jsonResponse({ error: '房间码不能为空' }, 400, origin);
+
+        const room = await env.DB.prepare('SELECT id, status, expires_at, a_uid, b_uid FROM rooms WHERE id = ?').bind(roomCode).first();
+        if (!room) return jsonResponse({ error: '房间不存在' }, 404, origin);
+        if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
+        if (room.status !== 'ready') return jsonResponse({ error: '房间状态异常' }, 400, origin);
+
+        // 获取提交者 uid
+        let uid = null;
+        try {
+          const auth = await getAuthUser(request, env);
+          if (!auth.error && auth.uid) uid = auth.uid;
+        } catch (e) { /* 游客模式 */ }
+
+        // 验证维度数据
+        if (!dimensions || typeof dimensions !== 'object') {
+          return jsonResponse({ error: '维度数据格式错误' }, 400, origin);
+        }
+        // 每个维度最多 2000 字
+        const validatedDims = {};
+        for (const key of Object.keys(dimensions)) {
+          const val = String(dimensions[key] || '').trim();
+          if (val.length > 2000) return jsonResponse({ error: `维度 ${key} 内容过长` }, 400, origin);
+          validatedDims[key] = val || '无';
+        }
+
+        // 检查是否已提交
+        const existing = await env.DB.prepare(
+          'SELECT id, status FROM couple_questionnaires WHERE room_code = ? AND role = ?'
+        ).bind(roomCode, validatedRole).first();
+        if (existing && existing.status === 'completed') {
+          return jsonResponse({ error: '你已经提交过了' }, 400, origin);
+        }
+
+        const dimsJson = JSON.stringify(validatedDims);
+
+        if (existing) {
+          // 更新已有记录
+          await env.DB.prepare(
+            'UPDATE couple_questionnaires SET dimensions_json = ?, mira_type = ?, status = ?, updated_at = datetime("now") WHERE id = ?'
+          ).bind(dimsJson, miraType || '', 'completed', existing.id).run();
+        } else {
+          // 新建记录
+          await env.DB.prepare(
+            'INSERT INTO couple_questionnaires (room_code, role, user_id, mira_type, dimensions_json, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, "completed", datetime("now"), datetime("now"))'
+          ).bind(roomCode, validatedRole, uid, miraType || '', dimsJson).run();
+        }
+
+        // 异步生成单人报告
+        ctx.waitUntil(generateIndividualReport(env, roomCode, validatedRole));
+
+        // 检查对方是否也已完成
+        const otherRole = validatedRole === 'a' ? 'b' : 'a';
+        const partnerQ = await env.DB.prepare(
+          'SELECT status FROM couple_questionnaires WHERE room_code = ? AND role = ?'
+        ).bind(roomCode, otherRole).first();
+
+        const partnerReady = !!(partnerQ && partnerQ.status === 'completed');
+
+        return jsonResponse({
+          success: true,
+          individualReportReady: true,
+          partnerReady,
+          sharedReportReady: partnerReady,
+        }, 200, origin);
+      }
+
+      // 获取单人问卷状态及报告
+      if (path.match(/^\/api\/couple\/questionnaire\/[A-Z0-9]{6}\/[ab]$/) && request.method === 'GET') {
+        const code = path.split('/')[4];
+        const role = path.split('/')[5];
+
+        const room = await env.DB.prepare('SELECT id, status, expires_at FROM rooms WHERE id = ?').bind(code).first();
+        if (!room) return jsonResponse({ error: '房间不存在' }, 404, origin);
+        if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
+
+        const myQ = await env.DB.prepare(
+          'SELECT dimensions_json, individual_report_json, status, mira_type FROM couple_questionnaires WHERE room_code = ? AND role = ?'
+        ).bind(code, role).first();
+
+        const otherRole = role === 'a' ? 'b' : 'a';
+        const partnerQ = await env.DB.prepare(
+          'SELECT status FROM couple_questionnaires WHERE room_code = ? AND role = ?'
+        ).bind(code, otherRole).first();
+
+        let individualReport = null;
+        if (myQ && myQ.individual_report_json && myQ.individual_report_json !== '{}') {
+          try { individualReport = JSON.parse(myQ.individual_report_json); } catch (e) { /* 解析失败 */ }
+        }
+
+        return jsonResponse({
+          myStatus: myQ ? myQ.status : 'pending',
+          myDimensions: myQ ? JSON.parse(myQ.dimensions_json || '{}') : {},
+          myMiraType: myQ ? myQ.mira_type : '',
+          individualReport,
+          partnerCompleted: !!(partnerQ && partnerQ.status === 'completed'),
+          roomStatus: room.status,
+        }, 200, origin);
+      }
+
+      // 获取关系共同洞察（双方都完成后）
+      if (path.match(/^\/api\/couple\/shared\/[A-Z0-9]{6}$/) && request.method === 'GET') {
+        const code = path.split('/')[4];
+
+        const room = await env.DB.prepare('SELECT id, status, expires_at, shared_report FROM rooms WHERE id = ?').bind(code).first();
+        if (!room) return jsonResponse({ error: '房间不存在' }, 404, origin);
+        if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
+
+        // 检查双方是否都完成了问卷
+        const qA = await env.DB.prepare(
+          'SELECT dimensions_json, individual_report_json, mira_type, status FROM couple_questionnaires WHERE room_code = ? AND role = "a"'
+        ).bind(code).first();
+        const qB = await env.DB.prepare(
+          'SELECT dimensions_json, individual_report_json, mira_type, status FROM couple_questionnaires WHERE room_code = ? AND role = "b"'
+        ).bind(code).first();
+
+        if (!qA || !qB || qA.status !== 'completed' || qB.status !== 'completed') {
+          return jsonResponse({ error: '双方尚未完成问卷', ready: false }, 200, origin);
+        }
+
+        // 如果共同报告还没生成，触发生成
+        let sharedReport = null;
+        if (room.shared_report) {
+          try { sharedReport = JSON.parse(room.shared_report); } catch (e) { /* 解析失败 */ }
+        }
+
+        if (!sharedReport) {
+          if (room.status !== 'couple_analyzing' && room.status !== 'completed') {
+            // 异步生成共同报告
+            await env.DB.prepare('UPDATE rooms SET status = "couple_analyzing" WHERE id = ?').bind(code).run();
+            ctx.waitUntil(generateCoupleSharedReport(env, code));
+          }
+          return jsonResponse({ ready: false, message: '共同洞察正在生成中…' }, 200, origin);
+        }
+
+        // 构建交叉验证数据
+        const aDims = JSON.parse(qA.dimensions_json || '{}');
+        const bDims = JSON.parse(qB.dimensions_json || '{}');
+        const crossValidation = buildCrossValidation(aDims, bDims);
+
+        // 关系原型
+        const archetype = getRelationshipArchetype(qA.mira_type || 'ST', qB.mira_type || 'ST');
+
+        return jsonResponse({
+          ready: true,
+          sharedReport,
+          archetype,
+          crossValidation,
+          aMiraType: qA.mira_type || '',
+          bMiraType: qB.mira_type || '',
+        }, 200, origin);
+      }
+
+      // 提交准确度反馈
+      if (path === '/api/couple/feedback' && request.method === 'POST') {
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { roomCode, role, accuracy, feedbackText, feedbackType } = body;
+        const validatedRole = validateRole(role);
+        if (!validatedRole) return jsonResponse({ error: '角色错误' }, 400, origin);
+        if (!roomCode) return jsonResponse({ error: '房间码不能为空' }, 400, origin);
+        if (!['accurate', 'partial', 'inaccurate'].includes(accuracy)) {
+          return jsonResponse({ error: '准确度选项无效' }, 400, origin);
+        }
+
+        let uid = null;
+        try {
+          const auth = await getAuthUser(request, env);
+          if (!auth.error && auth.uid) uid = auth.uid;
+        } catch (e) { /* 游客模式 */ }
+
+        // 检查是否已反馈
+        const existing = await env.DB.prepare(
+          'SELECT id FROM couple_feedback WHERE room_code = ? AND role = ? AND feedback_type = ?'
+        ).bind(roomCode, validatedRole, feedbackType || 'shared').first();
+
+        if (existing) {
+          await env.DB.prepare(
+            'UPDATE couple_feedback SET accuracy = ?, feedback_text = ? WHERE id = ?'
+          ).bind(accuracy, (feedbackText || '').substring(0, 500), existing.id).run();
+        } else {
+          await env.DB.prepare(
+            'INSERT INTO couple_feedback (room_code, role, user_id, feedback_type, accuracy, feedback_text) VALUES (?, ?, ?, ?, ?, ?)'
+          ).bind(roomCode, validatedRole, uid, feedbackType || 'shared', accuracy, (feedbackText || '').substring(0, 500)).run();
+        }
+
+        return jsonResponse({ success: true }, 200, origin);
       }
 
       // ══════════════════════════════════════════ AI 代理 API ══════════════════════════════════════════
@@ -1507,6 +1790,8 @@ MIRA类型：${miraType}
               nextNodeId = signals.hasEmotion ? currentNode.next_node_sufficient : currentNode.next_node_insufficient;
             } else if (currentNode.condition_type === 'has_need') {
               nextNodeId = signals.hasNeed ? currentNode.next_node_sufficient : currentNode.next_node_insufficient;
+            } else if (currentNode.condition_type === 'has_misread') {
+              nextNodeId = signals.hasMisread ? currentNode.next_node_sufficient : currentNode.next_node_insufficient;
             } else if (currentNode.condition_type === 'round_count') {
               nextNodeId = currentRound >= parseInt(currentNode.condition_value) ? currentNode.next_node_sufficient : currentNode.next_node_insufficient;
             } else {
@@ -1520,8 +1805,17 @@ MIRA类型：${miraType}
               .replace(/\{emotion\}/g, signals.emotion || '');
 
             const result = await callAI(env, prompt, 'chat', history || [], nodePrompt, currentRound);
+
+            // 决策树完全控制流程：action 由 nodeType 决定，不依赖 AI 返回
+            const treeAction = currentNode.node_type === 'offer_analyze' ? 'offer_analyze'
+              : currentNode.node_type === 'analyze' ? 'analyze'
+              : 'ask';
+
             return jsonResponse({
-              ...result,
+              reply: result.reply || result.raw || '',
+              action: treeAction,
+              followUp: result.followUp || [],
+              attachment: result.attachment || { emotion: '', dimension: '', sufficientSignals: signals, round: currentRound },
               currentNodeId: nextNodeId,
               nodeType: currentNode.node_type,
             }, result.error ? 500 : 200, origin);
@@ -1775,21 +2069,46 @@ MIRA类型：${miraType}
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_chat_tree_parent ON chat_decision_tree(parent_id)').run();
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_chat_tree_active ON chat_decision_tree(is_active, sort_order)').run();
 
-          // 决策树种子数据（仅首次插入）
+          // 决策树种子数据 v2（4维度×多轮追问+循环结构）
+          // 维度顺序：事实→情绪→需求→误读，每维度最多追问2轮
           const treeCount = await env.DB.prepare('SELECT COUNT(*) as cnt FROM chat_decision_tree').first();
-          if (treeCount && treeCount.cnt === 0) {
+          const treeNeedsMigration = !treeCount || treeCount.cnt === 0 || treeCount.cnt <= 11; // 旧版最多11个节点
+          if (treeNeedsMigration) {
+            // 清空旧决策树数据
+            try { await env.DB.prepare('DELETE FROM chat_decision_tree').run(); } catch(e) {}
             const seedNodes = [
-              ['start', null, 'collect', '', '', '你是 Mirror，一位关系咨询师。用户刚开口说了：{userInput}。请用1句话承接情绪，然后基于依恋理论判断追问方向。', 'assess_fact', null, '起始节点：承接情绪+判断方向', 1, 0],
-              ['assess_fact', 'start', 'ask', 'has_fact', 'true', '用户已提供具体事实。检查是否需要追问情绪。', 'assess_emotion', 'ask_fact', '评估事实维度是否充足', 1, 1],
-              ['ask_fact', 'assess_fact', 'ask', 'has_fact', 'false', '用户缺少具体事实。问：能给我举个例子吗？或：具体是哪一次？', 'assess_emotion', null, '追问事实', 1, 2],
-              ['assess_emotion', 'assess_fact', 'ask', 'has_emotion', 'true', '用户已表达情绪。检查是否需要追问需求。', 'assess_need', 'ask_emotion', '评估情绪维度是否充足', 1, 3],
-              ['ask_emotion', 'assess_emotion', 'ask', 'has_emotion', 'false', '用户缺少情绪表达。问：那时候你心里是什么感觉？', 'assess_need', null, '追问情绪', 1, 4],
-              ['assess_need', 'assess_emotion', 'ask', 'has_need', 'true', '三个维度都充足。给用户选择权。', 'offer_analyze', 'ask_need', '评估需求维度是否充足', 1, 5],
-              ['ask_need', 'assess_need', 'ask', 'has_need', 'false', '用户缺少需求表达。问：你真正想要的是什么？', 'offer_analyze', null, '追问需求', 1, 6],
-              ['offer_analyze', 'assess_need', 'offer_analyze', '', '', '能这样清晰地看见自己的变化，真的不容易。聊了这么多，信息差不多了，接下来怎么走交给你。', 'analyze', 'continue_chat', '信息充足，给用户选择', 1, 7],
-              ['continue_chat', 'offer_analyze', 'ask', 'round_count', '>=50', '已达50轮软上限，自动切换到分析。', 'analyze', 'continue_chat', '继续对话（50轮后强制分析）', 1, 8],
-              ['analyze', 'offer_analyze', 'analyze', '', '', '聊了这么多，我来帮你梳理一下。', 'end', null, '生成分析报告', 1, 9],
-              ['end', 'analyze', 'end', '', '', '分析已完成。', null, null, '结束节点', 1, 10],
+              // ── 起始 ──
+              ['start', null, 'collect', '', '', '用户刚开口说了：{userInput}。请用1句话承接情绪（引用用户原话关键词），然后基于依恋理论判断最该追问的方向。回复2-4句话。', 'assess_fact', null, '起始：承接情绪+判断方向', 1, 0],
+
+              // ── 事实维度（最多2轮追问）──
+              ['assess_fact', 'start', 'ask', 'has_fact', '', '评估用户是否提供了具体事实（发生了什么、什么时候、具体情境）。如果已有具体事件描述，进入情绪维度；如果缺少，追问事实。', 'assess_emotion', 'ask_fact_1', '评估事实维度', 1, 1],
+              ['ask_fact_1', 'assess_fact', 'ask', '', '', '用户缺少具体事实。请温和追问一个事实性问题，如"能给我举个例子吗？""具体是哪一次？"不要一次问多个问题。回复2-3句话。', 'assess_fact_2', null, '追问事实第1轮', 1, 2],
+              ['assess_fact_2', 'ask_fact_1', 'ask', 'has_fact', '', '再次评估事实维度是否充足。', 'assess_emotion', 'ask_fact_2', '评估事实维度（第2次）', 1, 3],
+              ['ask_fact_2', 'assess_fact_2', 'ask', '', '', '事实仍不够具体。再追问一次，换一种问法，如"那件事发生的场景是什么样的？""当时你们各自在做什么？"回复2-3句话。', 'assess_emotion', null, '追问事实第2轮（最后一轮）', 1, 4],
+
+              // ── 情绪维度（最多2轮追问）──
+              ['assess_emotion', 'assess_fact', 'ask', 'has_emotion', '', '评估用户是否表达了情绪感受（当下的感觉、身体反应、情绪词）。如果已有，进入需求维度；如果缺少，追问情绪。', 'assess_need', 'ask_emotion_1', '评估情绪维度', 1, 5],
+              ['ask_emotion_1', 'assess_emotion', 'ask', '', '', '用户缺少情绪表达。请引导感受层，如"那时候你心里是什么感觉？""你身体有什么反应？"回复2-3句话。', 'assess_emotion_2', null, '追问情绪第1轮', 1, 6],
+              ['assess_emotion_2', 'ask_emotion_1', 'ask', 'has_emotion', '', '再次评估情绪维度是否充足。', 'assess_need', 'ask_emotion_2', '评估情绪维度（第2次）', 1, 7],
+              ['ask_emotion_2', 'assess_emotion_2', 'ask', '', '', '情绪仍不够清晰。再引导一次，如"如果把那种感觉比作一种天气，会是什么？""你说还好，但听起来好像有点委屈？"回复2-3句话。', 'assess_need', null, '追问情绪第2轮（最后一轮）', 1, 8],
+
+              // ── 需求维度（最多2轮追问）──
+              ['assess_need', 'assess_emotion', 'ask', 'has_need', '', '评估用户是否表达了核心需求（真正想要什么、希望对方怎么做）。如果已有，进入误读维度；如果缺少，追问需求。', 'assess_misread', 'ask_need_1', '评估需求维度', 1, 9],
+              ['ask_need_1', 'assess_need', 'ask', '', '', '用户缺少需求表达。请引导需求层，如"你真正想要的是什么？""你最希望TA能给你什么？"回复2-3句话。', 'assess_need_2', null, '追问需求第1轮', 1, 10],
+              ['assess_need_2', 'ask_need_1', 'ask', 'has_need', '', '再次评估需求维度是否充足。', 'assess_misread', 'ask_need_2', '评估需求维度（第2次）', 1, 11],
+              ['ask_need_2', 'assess_need_2', 'ask', '', '', '需求仍不够明确。再引导一次，如"如果TA能做一件事让你安心，你希望是什么？""你刚才说的那些，背后最在意的到底是什么？"回复2-3句话。', 'assess_misread', null, '追问需求第2轮（最后一轮）', 1, 12],
+
+              // ── 误读维度（最多2轮追问）──
+              ['assess_misread', 'assess_need', 'ask', 'has_misread', '', '评估用户是否透露了对对方意图的解读（"TA肯定是觉得…""TA就是不在乎我"）。如果有，进入出报告阶段；如果缺少，引导误读。', 'offer_analyze', 'ask_misread_1', '评估误读维度', 1, 13],
+              ['ask_misread_1', 'assess_misread', 'ask', '', '', '用户没有透露对对方意图的解读。请引导，如"你觉得TA当时那么做，是什么意思？""在你看来，TA为什么会那样反应？"回复2-3句话。', 'assess_misread_2', null, '追问误读第1轮', 1, 14],
+              ['assess_misread_2', 'ask_misread_1', 'ask', 'has_misread', '', '再次评估误读维度是否充足。', 'offer_analyze', 'ask_misread_2', '评估误读维度（第2次）', 1, 15],
+              ['ask_misread_2', 'assess_misread_2', 'ask', '', '', '误读仍不够明确。再引导一次，如"如果你站在TA的角度，你觉得TA当时在想什么？""你觉得你们之间最大的误解可能在哪里？"回复2-3句话。', 'offer_analyze', null, '追问误读第2轮（最后一轮）', 1, 16],
+
+              // ── 出报告/继续对话 ──
+              ['offer_analyze', 'assess_misread', 'offer_analyze', '', '', '四个维度的信息已经收集得差不多了。请用温暖的方式告诉用户：聊了这么多，信息看起来够了，接下来怎么走交给你。不要用问句，下方会有按钮让用户选择。', 'analyze', 'continue_chat', '信息充足，给用户选择', 1, 17],
+              ['continue_chat', 'offer_analyze', 'ask', 'round_count', '>=50', '已达50轮软上限，请温和地告诉用户：聊了这么多，我来帮你梳理一下吧。', 'analyze', 'continue_chat', '继续对话（50轮后强制分析）', 1, 18],
+              ['analyze', 'offer_analyze', 'analyze', '', '', '用户选择生成报告。请告诉用户：好的，我来帮你梳理一下。', 'end', null, '生成分析报告', 1, 19],
+              ['end', 'analyze', 'end', '', '', '分析已完成。', null, null, '结束节点', 1, 20],
             ];
             for (const node of seedNodes) {
               await env.DB.prepare(
@@ -1798,8 +2117,40 @@ MIRA类型：${miraType}
             }
           }
 
-          // 兼容旧数据：将 continue_chat 节点的轮次上限从 >=5 更新为 >=50
-          try { await env.DB.prepare("UPDATE chat_decision_tree SET condition_value = '>=50', prompt_template = '已达50轮软上限，自动切换到分析。' WHERE node_id = 'continue_chat' AND condition_value = '>=5'").run(); } catch(e) {}
+          // ═══ 阶段六：双人模式重构 — 18维度问卷 + 准确度反馈 ═══
+
+          // 双人模式18维度问卷表
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS couple_questionnaires (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              room_code TEXT NOT NULL,
+              role TEXT NOT NULL,
+              user_id INTEGER,
+              mira_type TEXT DEFAULT '',
+              dimensions_json TEXT DEFAULT '{}',
+              individual_report_json TEXT DEFAULT '{}',
+              status TEXT DEFAULT 'pending',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_couple_q_room ON couple_questionnaires(room_code, role)').run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_couple_q_user ON couple_questionnaires(user_id, created_at)').run();
+
+          // 准确度反馈表
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS couple_feedback (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              room_code TEXT NOT NULL,
+              role TEXT NOT NULL,
+              user_id INTEGER,
+              feedback_type TEXT DEFAULT 'shared',
+              accuracy TEXT DEFAULT '',
+              feedback_text TEXT DEFAULT '',
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+          `).run();
+          await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_couple_fb_room ON couple_feedback(room_code, role)').run();
 
           // schema_version 版本管理表
           await env.DB.prepare(`
@@ -1809,9 +2160,8 @@ MIRA类型：${miraType}
               applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
           `).run();
-          // 记录当前版本
           try {
-            await env.DB.prepare('INSERT OR IGNORE INTO schema_version (version, description) VALUES (?, ?)').bind(2, 'v2: analysis_history, insight_diaries, chat_decision_tree').run();
+            await env.DB.prepare('INSERT OR IGNORE INTO schema_version (version, description) VALUES (?, ?)').bind(3, 'v3: couple_questionnaires, couple_feedback (双人模式重构)').run();
           } catch(e) { /* 已存在 */ }
 
           return jsonResponse({ success: true, message: '数据库表创建/验证完成' }, 200, origin);
@@ -2227,6 +2577,94 @@ MIRA类型：${miraType}
         if (!row) return jsonResponse({ error: '记录不存在' }, 404, origin);
         await env.DB.prepare('UPDATE user_room_records SET share_count = share_count + 1 WHERE id = ?').bind(id).run();
         return jsonResponse({ success: true }, 200, origin);
+      }
+
+      // ══════════════════════════════════════════ 数据主权 API（阶段七） ══════════════════════════════════════════
+
+      // 导出双人数据（GET /api/user/couple/export）
+      if (path === '/api/user/couple/export' && request.method === 'GET') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+
+        // 获取所有双人房间记录
+        const rooms = await env.DB.prepare(
+          'SELECT id, room_code, role, my_mira_type, partner_mira_type, shared_report_json, my_insight_json, partner_insight_json, created_at FROM user_room_records WHERE user_id = ? ORDER BY created_at DESC'
+        ).bind(auth.uid).all();
+
+        // 获取所有双人问卷数据
+        const questionnaires = await env.DB.prepare(
+          'SELECT id, room_code, role, mira_type, dimensions_json, individual_report_json, status, created_at FROM couple_questionnaires WHERE user_id = ? ORDER BY created_at DESC'
+        ).bind(auth.uid).all();
+
+        // 获取所有反馈
+        const feedbacks = await env.DB.prepare(
+          'SELECT id, room_code, role, feedback_type, accuracy, feedback_text, created_at FROM couple_feedback WHERE user_id = ? ORDER BY created_at DESC'
+        ).bind(auth.uid).all();
+
+        const exportData = {
+          exportTime: new Date().toISOString(),
+          userId: auth.uid,
+          coupleRooms: (rooms.results || []).map(r => {
+            let shared = null, myInsight = null, partnerInsight = null;
+            try { shared = r.shared_report_json ? JSON.parse(r.shared_report_json) : null; } catch (e) {}
+            try { myInsight = r.my_insight_json ? JSON.parse(r.my_insight_json) : null; } catch (e) {}
+            try { partnerInsight = r.partner_insight_json ? JSON.parse(r.partner_insight_json) : null; } catch (e) {}
+            return {
+              id: r.id,
+              roomCode: r.room_code,
+              role: r.role,
+              myMiraType: r.my_mira_type,
+              partnerMiraType: r.partner_mira_type,
+              sharedReport: shared,
+              myInsight,
+              partnerInsight,
+              createdAt: r.created_at,
+            };
+          }),
+          questionnaires: (questionnaires.results || []).map(q => {
+            let dims = null, report = null;
+            try { dims = q.dimensions_json ? JSON.parse(q.dimensions_json) : null; } catch (e) {}
+            try { report = q.individual_report_json ? JSON.parse(q.individual_report_json) : null; } catch (e) {}
+            return {
+              id: q.id,
+              roomCode: q.room_code,
+              role: q.role,
+              miraType: q.mira_type,
+              dimensions: dims,
+              individualReport: report,
+              status: q.status,
+              createdAt: q.created_at,
+            };
+          }),
+          feedbacks: feedbacks.results || [],
+        };
+
+        return jsonResponse(exportData, 200, origin);
+      }
+
+      // 删除双人房间记录（DELETE /api/user/rooms/:id）
+      if (path.match(/^\/api\/user\/rooms\/\d+\/delete$/) && request.method === 'POST') {
+        const auth = await getAuthUser(request, env);
+        if (auth.error) return jsonResponse({ error: auth.error }, 401, origin);
+        const id = parseInt(path.split('/')[4], 10);
+        if (!id) return jsonResponse({ error: '无效的记录ID' }, 400, origin);
+
+        // 验证记录归属
+        const row = await env.DB.prepare('SELECT id, room_code FROM user_room_records WHERE id = ? AND user_id = ?').bind(id, auth.uid).first();
+        if (!row) return jsonResponse({ error: '记录不存在' }, 404, origin);
+
+        // 删除房间记录
+        await env.DB.prepare('DELETE FROM user_room_records WHERE id = ? AND user_id = ?').bind(id, auth.uid).run();
+
+        // 删除关联的问卷数据
+        try { await env.DB.prepare('DELETE FROM couple_questionnaires WHERE room_code = ? AND user_id = ?').bind(row.room_code, auth.uid).run(); } catch (e) {}
+
+        // 删除关联的反馈
+        try { await env.DB.prepare('DELETE FROM couple_feedback WHERE room_code = ? AND user_id = ?').bind(row.room_code, auth.uid).run(); } catch (e) {}
+
+        await logSecurityEvent(env, 'data_deletion', { type: 'couple_room', id, roomCode: row.room_code }, clientIP, path, auth.uid, null);
+
+        return jsonResponse({ success: true, message: '双人数据已删除' }, 200, origin);
       }
 
       // 分享MIRA测试报告（POST /api/user/mira/:id/share）
@@ -2748,31 +3186,23 @@ async function callAI(env, prompt, mode, history, systemPromptOverride, round) {
 
 对话节奏（像真人咨询师）：
 1. 先用 1 句话承接用户情绪（不要空洞的"我理解你"，要具体指向用户说的内容，引用用户原话中的关键词）
-2. 再基于依恋理论判断当前最该追问的方向：
-   - 安全型信号（能清晰表达感受和需求）→ 探索意义层或行动层
-   - 焦虑型信号（害怕失去、过度关注对方反应）→ 先稳定安全感，问"你此刻最害怕的是什么"
-   - 回避型信号（回避感受、只讲事实不讲情绪）→ 温和引导感受层，问"那件事发生时你身体有什么感觉"
-   - 混乱型信号（矛盾、混乱表达）→ 先帮整理事实，问"这件事最开始是什么时候"
+2. 再根据【当前阶段任务】的指引决定追问方向
 3. 每轮回复控制在 2-4 句话，不超过 80 字。不要长篇大论。
 
-追问策略（动态调整，不固定顺序）：
-- 用户说了很多感受但缺少具体事实 → 问"能给我举个例子吗"或"具体是哪一次"
-- 用户只说事实没说感受 → 问"那时候你心里是什么感觉"或"你身体有什么反应"
-- 用户事实+感受都有了但没说需求 → 问"你真正想要的是什么"或"你最希望对方给你什么"
-- 用户三个维度都有但想继续聊 → 继续对话，直到用户满意
+信息充足评估标准（你需要评估以下4个信号）：
+- hasFact（事实）：用户是否提供了具体事件描述（发生了什么、什么时候、具体情境）
+- hasEmotion（情绪）：用户是否表达了情绪感受（当下的感觉、身体反应、情绪词）
+- hasNeed（需求）：用户是否表达了核心需求（真正想要什么、希望对方怎么做）
+- hasMisread（误读）：用户是否透露了对对方意图的解读（"TA肯定是觉得…""TA就是不在乎我"）
 
-判断何时信息足够：
-- 信息充足标准：具体事实（发生了什么）+ 情绪感受（当下的感受）+ 核心需求（真正想要什么）
-- 当三个维度都有明确信息时，给用户选择权：设置 action 为 "offer_analyze"
-- offer_analyze 时回复："能这样清晰地看见自己的变化，真的不容易。聊了这么多，信息差不多了，接下来怎么走交给你。"（不要用问句，下方会有按钮让用户选择）
-- 如果用户选继续聊，继续追问或倾听
-- 软上限 50 轮，第 50 轮自动切换到 analyze（"聊了这么多，我来帮你梳理一下"）
-- 如果信息不充足，继续追问缺失维度，同时给用户暗示方向
+误读维度的评估要点：
+- 用户说的"TA怎么怎么样"都是用户的主观解读，不是客观事实
+- 你要识别用户对对方意图的归因方式（恶意归因 vs 善意归因）
+- 在回复中可以温和地提供另一种视角，但不要说教
 
 处理敷衍/恶意输入：
 - 如果用户回答很敷衍（只回"嗯""还好""不知道"），尝试换一种问法，给具体方向引导
 - 如果用户明显恶意（无意义文字、辱骂、挑衅），礼貌拒绝："Mirror 是帮助理解关系困惑的。如果你愿意说说发生了什么，我会认真听。"
-- 如果用户连续 2 轮敷衍，第 3 轮尝试最后一问，第 4 轮自动出报告
 
 绝对限制：
 - 禁止心理诊断、人格标签化结论
@@ -2781,15 +3211,9 @@ async function callAI(env, prompt, mode, history, systemPromptOverride, round) {
 - 如果出现家暴、自伤、自杀等高风险内容，立即停止常规对话，优先确认安全
 
 输出格式（严格 JSON，不要 Markdown 代码块，不要额外说明文字）：
+{"reply":"你对用户说的自然语言回复（2-4句话，先承接情绪再追问）","followUp":["1-2个追问问题"],"attachment":{"emotion":"识别到的核心情绪","dimension":"fact|emotion|need|misread","sufficientSignals":{"hasFact":false,"hasEmotion":false,"hasNeed":false,"hasMisread":false},"round":1}}
 
-当 action 为 "ask" 时（继续追问）：
-{"reply":"你对用户说的自然语言回复（2-4句话，先承接情绪再追问）","action":"ask","followUp":["1-2个追问问题"],"attachment":{"emotion":"识别到的核心情绪","dimension":"fact|emotion|need|meaning|action","sufficientSignals":{"hasFact":false,"hasEmotion":false,"hasNeed":false},"round":1}}
-
-当 action 为 "offer_analyze" 时（信息充足，给用户选择权）：
-{"reply":"能这样清晰地看见自己的变化，真的不容易。聊了这么多，信息差不多了，接下来怎么走交给你。","action":"offer_analyze","followUp":[],"attachment":{"emotion":"","dimension":"","sufficientSignals":{"hasFact":true,"hasEmotion":true,"hasNeed":true},"round":2}}
-
-当 action 为 "analyze" 时（出报告）：
-{"reply":"聊了这么多，我来帮你梳理一下。","action":"analyze","followUp":[],"attachment":{"emotion":"","dimension":"","sufficientSignals":{"hasFact":true,"hasEmotion":true,"hasNeed":true},"round":3}}`,
+注意：你不需要决定何时出报告，流程推进由决策树控制。你只需关注当前阶段的追问任务，并诚实评估4个信号。`,
     quote: '你是一位有洞察力的文案专家。请直接输出一句金句（20-40字），像朋友说的心里话，带一点自嘲或反差。只输出金句本身，不要引号不要解释。',
   };
 
@@ -3033,6 +3457,274 @@ B的MIRA类型：${bInsight.miraType || 'BO'}
   } catch (err) {
     console.error('generateSharedReport error:', err.message);
     await env.DB.prepare("UPDATE rooms SET status = 'error' WHERE id = ? AND status = 'analyzed'").bind(code).run();
+  }
+}
+
+// ══════════════════════════════════════════ 双人模式重构 — 核心函数 ══════════════════════════════════════════
+
+// 关系原型规则引擎：根据双方MIRA类型推导核心互动结构
+function getRelationshipArchetype(aMiraType, bMiraType) {
+  const aExpr = (aMiraType || 'S').charAt(0).toUpperCase();
+  const bExpr = (bMiraType || 'S').charAt(0).toUpperCase();
+  const key = aExpr + bExpr;
+  const archetype = RELATIONSHIP_ARCHETYPES[key] || RELATIONSHIP_ARCHETYPES['SS'];
+  return {
+    key,
+    name: archetype.name,
+    pattern: archetype.pattern,
+    desc: archetype.desc,
+    aExpression: aExpr,
+    bExpression: bExpr,
+  };
+}
+
+// 构建交叉验证数据：对比"你以为TA的意思" vs "TA实际表达的"
+function buildCrossValidation(aDims, bDims) {
+  // A对B的解读 vs B的实际表达
+  const aMisreadOfB = {
+    label: 'A以为B的意思',
+    interpretation: aDims.d13 || '无',  // A觉得B是什么意思
+    reason: aDims.d14 || '无',          // A猜测B为什么这样
+    biggestGap: aDims.d15 || '无',      // A觉得最大误解在哪
+  };
+  const bActualExpression = {
+    label: 'B实际表达的',
+    fact: bDims.d1 || '无',              // B描述的事实
+    context: bDims.d2 || '无',           // B描述的情境
+    process: bDims.d4 || '无',           // B描述的经过
+  };
+
+  // B对A的解读 vs A的实际表达
+  const bMisreadOfA = {
+    label: 'B以为A的意思',
+    interpretation: bDims.d13 || '无',
+    reason: bDims.d14 || '无',
+    biggestGap: bDims.d15 || '无',
+  };
+  const aActualExpression = {
+    label: 'A实际表达的',
+    fact: aDims.d1 || '无',
+    context: aDims.d2 || '无',
+    process: aDims.d4 || '无',
+  };
+
+  return {
+    aViewsB: { misread: aMisreadOfB, actual: bActualExpression },
+    bViewsA: { misread: bMisreadOfA, actual: aActualExpression },
+  };
+}
+
+// 生成单人报告（基于18维度问卷数据）
+async function generateIndividualReport(env, roomCode, role) {
+  try {
+    const q = await env.DB.prepare(
+      'SELECT dimensions_json, mira_type, user_id FROM couple_questionnaires WHERE room_code = ? AND role = ?'
+    ).bind(roomCode, role).first();
+    if (!q || !q.dimensions_json) {
+      console.error('generateIndividualReport: questionnaire not found', roomCode, role);
+      return;
+    }
+
+    const dims = JSON.parse(q.dimensions_json || '{}');
+
+    // 构建AI提示词
+    const dimText = COUPLE_DIMENSIONS.map(d => {
+      const answer = dims[d.id] || '无';
+      return `【${d.label}】\n${answer}`;
+    }).join('\n\n');
+
+    const prompt = `你是一位关系咨询师，基于依恋理论和非暴力沟通框架，分析以下用户的18维度关系问卷回答。
+
+用户的MIRA人格类型：${q.mira_type || '未知'}
+
+用户回答：
+${dimText}
+
+请生成单人分析报告，严格以JSON格式回复（不要包含任何其他文字），包含以下字段：
+- fact: 事实摘要，客观描述用户面临的关系困境（1-2句话）
+- emotion: 情绪识别，指出用户的核心情绪和深层感受（1-2句话）
+- need: 核心需求，用户真正想要的是什么（1-2句话）
+- misread: 可能的误读，用户对对方的解读中可能存在哪些偏差（1-2句话）
+- innerThought: 用户内心真实想法，可能自己都没意识到的（1-2句话）
+- translatedExpression: 用非暴力沟通的方式重新表达用户的核心诉求（1-2句话）
+- insight: 深度洞察，站在客观中立视角指出关键问题（2-3句话）
+- suggest: 具体可执行的改善建议（2-3条）
+- miraType: 直接使用用户提供的MIRA类型 "${q.mira_type || '未知'}"`;
+
+    const result = await callAI(env, prompt, 'single', []);
+
+    if (result.error) {
+      console.error('generateIndividualReport AI error:', result.error);
+      // 存储错误状态
+      await env.DB.prepare(
+        'UPDATE couple_questionnaires SET individual_report_json = ?, updated_at = datetime("now") WHERE room_code = ? AND role = ?'
+      ).bind(JSON.stringify({ error: '报告生成失败，请稍后重试' }), roomCode, role).run();
+      return;
+    }
+
+    // 确保miraType透传
+    if (!result.miraType) result.miraType = q.mira_type || '';
+    result.dimensions = dims;
+
+    const reportJson = JSON.stringify(result);
+    await env.DB.prepare(
+      'UPDATE couple_questionnaires SET individual_report_json = ?, updated_at = datetime("now") WHERE room_code = ? AND role = ?'
+    ).bind(reportJson, roomCode, role).run();
+
+    // 写入洞察日记
+    if (q.user_id && result.insight) {
+      try {
+        await env.DB.prepare(
+          'INSERT INTO insight_diaries (user_id, source_type, source_id, diary_text, emotion_tag, growth_tag, created_at) VALUES (?, "couple_individual", NULL, ?, ?, ?, datetime("now"))'
+        ).bind(
+          q.user_id,
+          (result.insight || '').substring(0, 500),
+          (result.emotion || '').substring(0, 50),
+          '关系觉察',
+        ).run();
+      } catch (e) { console.error('couple insight_diary insert error:', e.message); }
+    }
+
+    // 检查对方是否也完成了，如果是则触发共同报告
+    const otherRole = role === 'a' ? 'b' : 'a';
+    const partnerQ = await env.DB.prepare(
+      'SELECT status FROM couple_questionnaires WHERE room_code = ? AND role = ?'
+    ).bind(roomCode, otherRole).first();
+
+    if (partnerQ && partnerQ.status === 'completed') {
+      // 双方都完成了，触发共同报告生成
+      const room = await env.DB.prepare('SELECT status FROM rooms WHERE id = ?').bind(roomCode).first();
+      if (room && room.status !== 'couple_analyzing' && room.status !== 'completed') {
+        await env.DB.prepare('UPDATE rooms SET status = "couple_analyzing" WHERE id = ?').bind(roomCode).run();
+        // 使用 ctx.waitUntil 的替代方案 — 直接调用（在异步上下文中）
+        generateCoupleSharedReport(env, roomCode).catch(e => console.error('auto trigger shared report:', e.message));
+      }
+    }
+  } catch (err) {
+    console.error('generateIndividualReport error:', err.message);
+  }
+}
+
+// 生成双人共同洞察报告（含交叉验证）
+async function generateCoupleSharedReport(env, code) {
+  try {
+    const qA = await env.DB.prepare(
+      'SELECT dimensions_json, individual_report_json, mira_type, user_id FROM couple_questionnaires WHERE room_code = ? AND role = "a"'
+    ).bind(code).first();
+    const qB = await env.DB.prepare(
+      'SELECT dimensions_json, individual_report_json, mira_type, user_id FROM couple_questionnaires WHERE room_code = ? AND role = "b"'
+    ).bind(code).first();
+
+    if (!qA || !qB) {
+      await env.DB.prepare("UPDATE rooms SET status = 'error' WHERE id = ?").bind(code).run();
+      return;
+    }
+
+    const aDims = JSON.parse(qA.dimensions_json || '{}');
+    const bDims = JSON.parse(qB.dimensions_json || '{}');
+    const aReport = JSON.parse(qA.individual_report_json || '{}');
+    const bReport = JSON.parse(qB.individual_report_json || '{}');
+
+    // 构建交叉验证数据
+    const crossValidation = buildCrossValidation(aDims, bDims);
+    const archetype = getRelationshipArchetype(qA.mira_type || 'ST', qB.mira_type || 'ST');
+
+    // 构建AI提示词
+    const prompt = `你是Mirror的双人关系分析模块，基于依恋理论和非暴力沟通框架，分析两个人的关系问卷回答，生成共同洞察报告。
+
+【关系原型】${archetype.name}（${archetype.pattern}）
+${archetype.desc}
+
+【A的MIRA类型】${qA.mira_type || '未知'}
+【A的核心信息】
+- 事实：${aReport.fact || aDims.d1 || '未知'}
+- 情绪：${aReport.emotion || aDims.d5 || '未知'}
+- 需求：${aReport.need || aDims.d9 || '未知'}
+- 误读：${aReport.misread || aDims.d13 || '未知'}
+- A对B的解读：${aDims.d13 || '无'}（A以为B是这个意思）
+- A觉得最大误解：${aDims.d15 || '无'}
+
+【B的MIRA类型】${qB.mira_type || '未知'}
+【B的核心信息】
+- 事实：${bReport.fact || bDims.d1 || '未知'}
+- 情绪：${bReport.emotion || bDims.d5 || '未知'}
+- 需求：${bReport.need || bDims.d9 || '未知'}
+- 误读：${bReport.misread || bDims.d13 || '未知'}
+- B对A的解读：${bDims.d13 || '无'}（B以为A是这个意思）
+- B觉得最大误解：${bDims.d15 || '无'}
+
+【交叉验证关键点】
+- A以为B的意思："${aDims.d13 || '无'}" → B实际想表达的："${bDims.d9 || bDims.d10 || '无'}"
+- B以为A的意思："${bDims.d13 || '无'}" → A实际想表达的："${aDims.d9 || aDims.d10 || '无'}"
+
+请生成共同报告，严格以JSON格式回复（不要包含任何其他文字），包含以下字段：
+- commonNeed: 两人共同的核心需求（1-2句话）
+- commonMisread: 两人共同的误读模式，指出双方都在哪里误解了对方（2-3句话）
+- crossValidation: 对象，包含 aMisread（A对B的误读，1句话）和 bMisread（B对A的误读，1句话）和 aActualIntent（A的真实意图，1句话）和 bActualIntent（B的真实意图，1句话）
+- interactionPattern: 基于关系原型"${archetype.name}"的互动模式分析（2-3句话）
+- growthDirection: 两个人可以一起成长的方向（2-3句话）
+- actionableSteps: 数组，2-3条具体可执行的建议
+- archetypeName: "${archetype.name}"
+- archetypeDesc: "${archetype.desc}"
+- aMiraType: "${qA.mira_type || ''}"
+- bMiraType: "${qB.mira_type || ''}"`;
+
+    const result = await callAI(env, prompt, 'couple', []);
+
+    if (result.error) {
+      console.error('generateCoupleSharedReport AI error:', result.error);
+      await env.DB.prepare("UPDATE rooms SET status = 'error' WHERE id = ?").bind(code).run();
+      return;
+    }
+
+    // 补充规则引擎数据
+    result.archetype = archetype;
+    result.crossValidationData = crossValidation;
+
+    const sharedJson = JSON.stringify(result);
+    await env.DB.prepare(
+      'UPDATE rooms SET shared_report = ?, status = "completed" WHERE id = ?'
+    ).bind(sharedJson, code).run();
+
+    // 复制到双方 user_room_records
+    try {
+      await copyCoupleRoomToUserRecords(env, code, qA, qB, result);
+    } catch (copyErr) {
+      console.error('copyCoupleRoomToUserRecords error:', copyErr.message);
+    }
+  } catch (err) {
+    console.error('generateCoupleSharedReport error:', err.message);
+    await env.DB.prepare("UPDATE rooms SET status = 'error' WHERE id = ? AND status = 'couple_analyzing'").bind(code).run();
+  }
+}
+
+// 复制双人模式重构后的房间记录到双方 user_room_records
+async function copyCoupleRoomToUserRecords(env, code, qA, qB, sharedReport) {
+  const room = await env.DB.prepare('SELECT a_uid, b_uid, expires_at FROM rooms WHERE id = ?').bind(code).first();
+  if (!room) return;
+
+  const sharedJson = JSON.stringify(sharedReport);
+  const aReport = qA.individual_report_json || '{}';
+  const bReport = qB.individual_report_json || '{}';
+
+  // A的记录
+  if (room.a_uid) {
+    const existA = await env.DB.prepare('SELECT id FROM user_room_records WHERE room_code = ? AND user_id = ?').bind(code, room.a_uid).first();
+    if (!existA) {
+      await env.DB.prepare(
+        'INSERT INTO user_room_records (user_id, room_code, role, my_mira_type, partner_mira_type, shared_report_json, my_insight_json, partner_insight_json, created_at, source_room_expires_at) VALUES (?, ?, "a", ?, ?, ?, ?, ?, datetime("now"), ?)'
+      ).bind(room.a_uid, code, qA.mira_type || '', qB.mira_type || '', sharedJson, aReport, bReport, room.expires_at).run();
+    }
+  }
+
+  // B的记录
+  if (room.b_uid) {
+    const existB = await env.DB.prepare('SELECT id FROM user_room_records WHERE room_code = ? AND user_id = ?').bind(code, room.b_uid).first();
+    if (!existB) {
+      await env.DB.prepare(
+        'INSERT INTO user_room_records (user_id, room_code, role, my_mira_type, partner_mira_type, shared_report_json, my_insight_json, partner_insight_json, created_at, source_room_expires_at) VALUES (?, ?, "b", ?, ?, ?, ?, ?, datetime("now"), ?)'
+      ).bind(room.b_uid, code, qB.mira_type || '', qA.mira_type || '', sharedJson, bReport, aReport, room.expires_at).run();
+    }
   }
 }
 

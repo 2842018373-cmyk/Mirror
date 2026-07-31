@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BT · 坦诚的对话者 — MIRA 人格档案</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg: #08090B;
+    --bg2: #0D0E12;
+    --ink: #E8EDF5;
+    --muted: #5A6472;
+    --faint: #3A4149;
+    --rule: rgba(255,255,255,0.08);
+    --blue: #7EA7FF;
+    --gold: #D4AF37;
+    --gold-light: #F0D080;
+    --gold-dark: #B8962E;
+    --surface: rgba(255,255,255,0.03);
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Noto Sans SC","Inter","PingFang SC",sans-serif;
+    font-size: 15px;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 520px; margin: 0 auto; min-height: 100vh; }
+
+  /* Hero */
+  .hero { position: relative; padding: 60px 32px 48px; text-align: center; overflow: hidden; }
+  .hero::before {
+    content: ''; position: absolute; top: -60%; left: -30%; width: 160%; height: 160%;
+    background: radial-gradient(ellipse at center, rgba(212,175,55,0.08) 0%, transparent 60%); pointer-events: none;
+  }
+  .hero-top-line { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 0 auto 24px; }
+  .hero-brand { font-size: 0.65rem; letter-spacing: 8px; color: var(--blue); margin-bottom: 8px; }
+  .hero-type {
+    font-size: 4rem; font-weight: 800; letter-spacing: 12px;
+    background: linear-gradient(180deg, var(--gold-light), var(--gold), var(--gold-dark));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; margin-bottom: 12px;
+  }
+  .hero-name { font-size: 1.2rem; font-weight: 600; color: var(--ink); letter-spacing: 3px; margin-bottom: 16px; }
+  .hero-dim-tags { display: flex; justify-content: center; gap: 10px; margin-bottom: 28px; }
+  .hero-dim-tag {
+    font-size: 0.7rem; color: var(--blue); background: rgba(126,167,255,0.08);
+    border: 1px solid rgba(126,167,255,0.15); padding: 4px 14px; border-radius: 999px; letter-spacing: 1px;
+  }
+  .hero-desc { font-size: 0.9rem; color: #8892A0; line-height: 2; max-width: 400px; margin: 0 auto; }
+
+  /* Avatar */
+  .avatar-wrap { text-align: center; padding: 0 32px 40px; }
+  .avatar-wrap img {
+    width: 140px; height: 140px; border-radius: 50%; object-fit: cover;
+    border: 3px solid rgba(212,175,55,0.3); box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 60px rgba(212,175,55,0.08);
+  }
+
+  /* Divider */
+  .divider { width: 40px; height: 1px; background: rgba(212,175,55,0.3); margin: 0 auto 32px; }
+
+  /* Section */
+  .section { padding: 0 28px 32px; }
+  .section-label { font-size: 0.7rem; color: var(--blue); letter-spacing: 3px; font-weight: 600; margin-bottom: 14px; }
+  .section-title { font-size: 1rem; font-weight: 600; color: var(--ink); margin-bottom: 12px; }
+  .section-body { font-size: 0.9rem; color: #A8B2C1; line-height: 2; }
+  .section-body strong { color: var(--gold-light); font-weight: 600; }
+
+  /* Card */
+  .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 20px 22px; margin-bottom: 16px; }
+
+  /* Quote */
+  .quote {
+    position: relative; padding: 20px 24px; background: rgba(126,167,255,0.04);
+    border-left: 3px solid var(--blue); border-radius: 0 12px 12px 0;
+    font-size: 0.9rem; color: #A8B2C1; line-height: 2; font-style: italic; margin-bottom: 24px;
+  }
+
+  /* Info Grid */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .info-cell { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; text-align: center; }
+  .info-cell-label { font-size: 0.65rem; color: var(--muted); letter-spacing: 2px; margin-bottom: 6px; }
+  .info-cell-value { font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+  .info-cell-value.gold { color: var(--gold-light); }
+  .info-cell-value.blue { color: var(--blue); }
+
+  /* Bar chart */
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-label { width: 28px; font-size: 0.75rem; color: var(--muted); text-align: right; font-weight: 600; }
+  .bar-track { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 1.2s ease; }
+  .bar-fill.gold { background: linear-gradient(90deg, var(--gold-dark), var(--gold-light)); }
+  .bar-fill.blue { background: linear-gradient(90deg, #5A8DEE, var(--blue)); }
+  .bar-score { width: 24px; font-size: 0.75rem; color: #8892A0; }
+
+  /* Comparison */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .compare-cell { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 18px 16px; text-align: center; }
+  .compare-cell-icon { font-size: 1.6rem; margin-bottom: 8px; }
+  .compare-cell-title { font-size: 0.78rem; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .compare-cell-desc { font-size: 0.75rem; color: #8892A0; line-height: 1.6; }
+
+  /* Tags */
+  .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tag { font-size: 0.75rem; padding: 5px 14px; border-radius: 999px; letter-spacing: 0.5px; }
+  .tag-strength { background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.2); color: var(--gold-light); }
+  .tag-challenge { background: rgba(126,167,255,0.08); border: 1px solid rgba(126,167,255,0.15); color: var(--blue); }
+
+  /* Advice */
+  .advice-card {
+    background: linear-gradient(135deg, rgba(212,175,55,0.06), rgba(126,167,255,0.04));
+    border: 1px solid rgba(212,175,55,0.15); border-radius: 16px; padding: 24px; margin-bottom: 16px;
+  }
+  .advice-num { font-size: 0.65rem; color: var(--gold); letter-spacing: 2px; margin-bottom: 6px; }
+  .advice-title { font-size: 0.95rem; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+  .advice-body { font-size: 0.85rem; color: #8892A0; line-height: 1.8; }
+
+  /* Footer */
+  .footer { text-align: center; padding: 40px 28px 48px; border-top: 1px solid var(--rule); }
+  .footer-brand { font-size: 0.8rem; color: var(--muted); letter-spacing: 4px; margin-bottom: 6px; }
+  .footer-sub { font-size: 0.7rem; color: var(--faint); letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-top-line"></div>
+    <div class="hero-brand">M I R R O R</div>
+    <div class="hero-type">BT</div>
+    <div class="hero-name">坦诚的对话者</div>
+    <div class="hero-dim-tags">
+      <span class="hero-dim-tag">明光 Bright</span>
+      <span class="hero-dim-tag">朝向 Toward</span>
+    </div>
+    <div class="hero-desc">你相信沟通的力量。你愿意说出自己的想法，也愿意倾听对方的声音。你追求的是一种平等、开放的对话关系。你不害怕冲突，因为你觉得坦诚比和谐更重要。</div>
+  </div>
+
+  <!-- Avatar -->
+  <div class="avatar-wrap">
+    <img src="mira-images/BT.jpg" alt="BT 坦诚的对话者" onerror="this.style.display='none'">
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Core Identity -->
+  <div class="section">
+    <div class="card">
+      <div class="section-label">核心身份</div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-cell-label">表达维度</div><div class="info-cell-value gold">明光</div></div>
+        <div class="info-cell"><div class="info-cell-label">关注方向</div><div class="info-cell-value blue">朝向</div></div>
+        <div class="info-cell"><div class="info-cell-label">表达倾向</div><div class="info-cell-value">积极 · 坦率</div></div>
+        <div class="info-cell"><div class="info-cell-label">关系重心</div><div class="info-cell-value">对话 · 平衡</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quote -->
+  <div class="section">
+    <div class="quote">"我不需要你同意我，但我需要你听见我。真正的亲密不是两句话变成一句，而是两句话终于能被同时说出。"</div>
+  </div>
+
+  <!-- Dimension Distribution -->
+  <div class="section">
+    <div class="section-label">人格维度分布</div>
+    <div class="card">
+      <div style="margin-bottom:16px;">
+        <div style="font-size:0.75rem;color:var(--blue);letter-spacing:2px;margin-bottom:12px;font-weight:600;">表达方式维度</div>
+        <div class="bar-row"><div class="bar-label">D</div><div class="bar-track"><div class="bar-fill blue" style="width:20%"></div></div><div class="bar-score">3</div></div>
+        <div class="bar-row"><div class="bar-label">S</div><div class="bar-track"><div class="bar-fill blue" style="width:27%"></div></div><div class="bar-score">4</div></div>
+        <div class="bar-row"><div class="bar-label">B</div><div class="bar-track"><div class="bar-fill gold" style="width:80%"></div></div><div class="bar-score">12</div></div>
+        <div class="bar-row"><div class="bar-label">R</div><div class="bar-track"><div class="bar-fill gold" style="width:20%"></div></div><div class="bar-score">3</div></div>
+      </div>
+      <div>
+        <div style="font-size:0.75rem;color:var(--blue);letter-spacing:2px;margin-bottom:12px;font-weight:600;">关注方向维度</div>
+        <div class="bar-row"><div class="bar-label">O</div><div class="bar-track"><div class="bar-fill blue" style="width:27%"></div></div><div class="bar-score">4</div></div>
+        <div class="bar-row"><div class="bar-label">T</div><div class="bar-track"><div class="bar-fill gold" style="width:80%"></div></div><div class="bar-score">12</div></div>
+        <div class="bar-row"><div class="bar-label">I</div><div class="bar-track"><div class="bar-fill blue" style="width:27%"></div></div><div class="bar-score">4</div></div>
+        <div class="bar-row"><div class="bar-label">N</div><div class="bar-track"><div class="bar-fill gold" style="width:20%"></div></div><div class="bar-score">3</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Expression Style -->
+  <div class="section">
+    <div class="section-label">表达方式 · 明光</div>
+    <div class="section-body">
+      作为<strong>明光型</strong>表达者，你的沟通风格是<strong>主动、积极且透明的</strong>。你不会把想法藏在心里等对方猜——你会直接说出来。这不是因为你不顾及感受，而是因为你坚信：<strong>无法被说出口的感受，最终都会变成积怨</strong>。你的表达像一束清晰的光，照亮关系中被忽视的角落。
+    </div>
+  </div>
+
+  <!-- Focus Direction -->
+  <div class="section">
+    <div class="section-label">关注方向 · 朝向</div>
+    <div class="section-body">
+      <strong>朝向</strong>意味着你的注意力天然地投向<strong>关系本身</strong>——你关心的是"我们之间怎么了"，而不是"我怎么样"或"他怎么样"。你是关系中的平衡者，总是试图在自我和对方之间找到一个对话的空间。你不偏袒任何一方，因为你觉得<strong>关系是一个共同的作品</strong>。
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Portrait -->
+  <div class="section">
+    <div class="section-label">人格画像</div>
+    <div class="card">
+      <div class="section-body">
+        你是关系中<strong>最勇敢的对话者</strong>。当其他人选择沉默、回避或用暗示代替表达时，你会选择打开天窗说亮话。你相信每一段真正亲密的关系，都必须经历那些 uncomfortable 的对话——关于需求、关于边界、关于不满。你并不享受冲突，但你<strong>比大多数人更愿意面对它</strong>。
+        <br><br>
+        你的"朝向"特质让你不会把对话变成单方面的输出。你会认真倾听，会追问，会确认自己是否真的理解了对方。你的目标是<strong>两个人同时被看见</strong>，而不是一个人说服另一个人。
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Strengths & Challenges -->
+  <div class="section">
+    <div class="section-label">核心特质</div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:12px;">优势</div>
+      <div class="tag-list">
+        <span class="tag tag-strength">沟通勇气</span>
+        <span class="tag tag-strength">倾听能力</span>
+        <span class="tag tag-strength">关系意识</span>
+        <span class="tag tag-strength">真诚坦率</span>
+        <span class="tag tag-strength">冲突面对力</span>
+      </div>
+      <div style="height:16px"></div>
+      <div class="section-title" style="margin-bottom:12px;">挑战</div>
+      <div class="tag-list">
+        <span class="tag tag-challenge">过度理性化</span>
+        <span class="tag tag-challenge">忽视沉默的价值</span>
+        <span class="tag tag-challenge">对话疲劳</span>
+        <span class="tag tag-challenge">给对方压迫感</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Relationship Pattern -->
+  <div class="section">
+    <div class="section-label">亲密关系中的核心模式</div>
+    <div class="card">
+      <div class="section-body">
+        在亲密关系中，BT 型的人往往扮演<strong>"对话发起者"</strong>的角色。你是那个在冷战中第一个开口的人，是那个在沉默中问出"你怎么了"的人，是那个把难以启齿的话题摆到桌面上的人。
+        <br><br>
+        你的核心模式是：<strong>通过坦诚对话来维持关系的透明度和深度</strong>。对你来说，"不说"比"说错"更可怕。你宁愿因为说错而道歉，也不愿意因为不说而错过。
+        <br><br>
+        但这个模式也有代价——你可能会发现自己<strong>总是在推动对话</strong>，而对方似乎永远跟不上你的节奏。久而久之，你会感到一种"只有我一个人在努力"的孤独。
+      </div>
+    </div>
+  </div>
+
+  <!-- Conflict & Misunderstanding -->
+  <div class="section">
+    <div class="section-label">容易产生的冲突与误解</div>
+    <div class="card">
+      <div class="section-body">
+        <strong>1. "你太较真了"</strong><br>
+        对方可能觉得你把每件小事都拿出来讨论，是在"上纲上线"。他们不理解：对你来说，这不是小题大做，这是在维护关系的根基。
+        <br><br>
+        <strong>2. 沉默 ≠ 同意</strong><br>
+        当对方选择沉默时，你会默认他们同意或者不在意。但实际上，沉默可能意味着"我不认同但不想争吵"。你会因为没有察觉到这份隐忍而错过重要的信号。
+        <br><br>
+        <strong>3. 对话变成审讯</strong><br>
+        你的追问有时会让对方觉得被逼问。你越想弄清楚，对方越想逃。你需要的不是更多的对话，而是<strong>更好的时机</strong>。
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Advice -->
+  <div class="section">
+    <div class="section-label">改善建议</div>
+    <div class="advice-card">
+      <div class="advice-num">ADVICE 01</div>
+      <div class="advice-title">学会留白</div>
+      <div class="advice-body">不是所有的事情都需要立刻谈清楚。有些感受需要时间沉淀，有些答案会在沉默中自然浮现。试着在想要追问的时候，给自己和对方多留一点空间。</div>
+    </div>
+    <div class="advice-card">
+      <div class="advice-num">ADVICE 02</div>
+      <div class="advice-title">关注对方的沟通方式</div>
+      <div class="advice-body">不是每个人都擅长用语言表达。对方的沉默、行动、甚至回避，都是一种沟通方式。学会"听见"那些没有说出口的话，你的对话能力会上升一个维度。</div>
+    </div>
+    <div class="advice-card">
+      <div class="advice-num">ADVICE 03</div>
+      <div class="advice-title">区分"坦诚"和"直白"</div>
+      <div class="advice-body">坦诚是带着温度的真实，直白是忽略感受的表达。同样一句话，用不同的方式说出来，效果天差地别。练习在说真话的同时也照顾对方的接收能力——这不是虚伪，这是智慧。</div>
+    </div>
+    <div class="advice-card">
+      <div class="advice-num">ADVICE 04</div>
+      <div class="advice-title">允许自己不坚强</div>
+      <div class="advice-body">作为关系中最敢于面对问题的人，你承受了很多情绪劳动。偶尔也要允许自己不去分析、不去推动、不去解决。你也有权利只是被倾听，而不是总是那个主动沟通的人。</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Compatible Types -->
+  <div class="section">
+    <div class="section-label">与你互补的类型</div>
+    <div class="compare-grid">
+      <div class="compare-cell">
+        <div class="compare-cell-icon">&#128161;</div>
+        <div class="compare-cell-title">SO · 温柔的聆听者</div>
+        <div class="compare-cell-desc">你的坦诚 + TA的倾听，能创造最安全的对话空间</div>
+      </div>
+      <div class="compare-cell">
+        <div class="compare-cell-icon">&#9878;</div>
+        <div class="compare-cell-title">DT · 静默的共鸣者</div>
+        <div class="compare-cell-desc">你的主动 + TA的在场陪伴，形成安静但有温度的连接</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-brand">M I R R O R</div>
+    <div class="footer-sub">Mirror Identity Reflection Archetype</div>
+  </div>
+
+</div>
+</body>
+</html>
