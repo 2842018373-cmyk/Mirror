@@ -5561,8 +5561,22 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     // 轮询单人报告
     function startPersonalReportPoll() {
       stopPersonalReportPoll();
+      var pollCount = 0;
       personalPollInterval = setInterval(async function() {
         if (!currentRoom) return;
+        pollCount++;
+        // 超时保护：90秒（30次×3秒）后提示失败
+        if (pollCount > 30) {
+          stopPersonalReportPoll();
+          document.getElementById('couplePersonalContent').innerHTML =
+            '<div style="text-align:center;padding:40px 20px;">' +
+            '<div style="font-size:2rem;margin-bottom:12px;">⏰</div>' +
+            '<div style="font-size:0.95rem;color:var(--ink);margin-bottom:8px;">分析超时，请重试</div>' +
+            '<div style="font-size:0.8rem;color:var(--muted);margin-bottom:20px;">服务器生成报告时间过长</div>' +
+            '<button class="btn btn-primary" onclick="showCouplePersonalView()">重新加载</button>' +
+            '</div>';
+          return;
+        }
         try {
           var response = await fetch(
             WORKER_API_BASE + '/api/couple/questionnaire/' + currentRoom.code + '/' + currentRoom.role,
@@ -5571,10 +5585,12 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           if (!response.ok) return;
           var data = await response.json();
 
-          // 判断报告是否已生成
-          var report = data.report || data.analysis || data;
-          var isReady = data.ready || data.completed || data.status === 'ready' || data.status === 'completed' ||
-                        (report && (report.fact || report.emotion || report.need || report.insight));
+          // 后端返回 individualReport + myStatus，兼容多种字段名
+          var report = data.individualReport || data.report || data.analysis;
+          // 只有 status=completed 且 individualReport 有实际内容时才认为报告就绪
+          var hasReport = report && report !== data && (report.fact || report.emotion || report.need || report.insight);
+          var isReady = hasReport && (data.myStatus === 'completed' || data.ready || data.completed ||
+                        data.status === 'ready' || data.status === 'completed');
 
           if (isReady) {
             stopPersonalReportPoll();
@@ -5595,7 +5611,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
     // 渲染单人报告
     function renderCouplePersonalReport(data) {
-      var report = data.report || data.analysis || data;
+      var report = data.individualReport || data.report || data.analysis || data;
       var partnerCompleted = data.partnerCompleted || data.partnerCompleted === true || false;
       var miraType = report.miraType || data.miraType || '';
 
