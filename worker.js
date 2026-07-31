@@ -2,6 +2,26 @@
 // Cloudflare Workers + D1 后端
 // v3: 安全加固 + 数据隔离 + 认证系统 + AES加密 + 服务端验证码
 
+// ═══ Base64 编码/解码工具（处理中文）═══
+function base64Encode(str) {
+  if (!str) return '';
+  try {
+    const utf8Bytes = new TextEncoder().encode(str);
+    let binary = '';
+    utf8Bytes.forEach(b => binary += String.fromCharCode(b));
+    return btoa(binary);
+  } catch (e) { return str; }
+}
+function base64Decode(str) {
+  if (!str) return '';
+  try {
+    const binary = atob(str);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  } catch (e) { return str; }
+}
+
 // CORS 白名单（仅生产域名，移除测试域名减少攻击面）
 const ALLOWED_ORIGINS = [
   'https://mirrorsoul.top',
@@ -1390,6 +1410,47 @@ export default {
         return jsonResponse({ success: true }, 200, origin);
       }
 
+      // MIRA 准确度反馈（POST /api/mira-accuracy-feedback）
+      if (path === '/api/mira-accuracy-feedback' && request.method === 'POST') {
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { inferredType, testType, vote, source } = body;
+        if (!inferredType || !testType || !vote) {
+          return jsonResponse({ error: '缺少必要参数' }, 400, origin);
+        }
+        if (!['inferred', 'test', 'both'].includes(vote)) {
+          return jsonResponse({ error: '投票选项无效' }, 400, origin);
+        }
+
+        let uid = null;
+        try {
+          const auth = await getAuthUser(request, env);
+          if (!auth.error && auth.uid) uid = auth.uid;
+        } catch (e) { /* 游客模式 */ }
+
+        // 确保表存在（自动创建）
+        try {
+          await env.DB.prepare(`
+            CREATE TABLE IF NOT EXISTS mira_accuracy_feedback (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER,
+              inferred_type TEXT,
+              test_type TEXT,
+              vote TEXT,
+              source TEXT DEFAULT 'analysis_compare',
+              created_at TEXT DEFAULT (datetime('now'))
+            )
+          `).run();
+        } catch (tableErr) { /* 表可能已存在 */ }
+
+        await env.DB.prepare(
+          'INSERT INTO mira_accuracy_feedback (user_id, inferred_type, test_type, vote, source) VALUES (?, ?, ?, ?, ?)'
+        ).bind(uid, inferredType, testType, vote, source || 'analysis_compare').run();
+
+        return jsonResponse({ success: true }, 200, origin);
+      }
+
       // ══════════════════════════════════════════ AI 代理 API ══════════════════════════════════════════
 
       // 咨询师对话（速率限制：每 IP 每分钟 15 次）
@@ -1418,7 +1479,7 @@ export default {
         let body;
         try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
 
-        const { prompt, mode, history } = body;
+        const { prompt, mode, history, userInput } = body;
         if (!prompt || typeof prompt !== 'string') return jsonResponse({ error: 'prompt 不能为空' }, 400, origin);
         if (prompt.length > 10000) return jsonResponse({ error: 'prompt 过长' }, 400, origin);
 
@@ -1436,8 +1497,10 @@ export default {
           return jsonResponse({ error: 'callAI 异常: ' + e.message }, 500, origin);
         }
 
+        // 保存分析结果时，使用用户实际输入而非 AI 指令
+        const saveInput = userInput || prompt;
         if (!result.error && (mode || 'single') === 'single') {
-          ctx.waitUntil(saveSingleAnalysis(env, prompt, result, uid));
+          ctx.waitUntil(saveSingleAnalysis(env, saveInput, result, uid));
         }
 
         return jsonResponse(result, result.error ? 500 : 200, origin);
@@ -2457,7 +2520,7 @@ MIRA类型：${miraType}
 
         return jsonResponse({
           id: row.id,
-          user_input: row.user_input,
+          user_input: base64Decode(row.user_input),
           fact: row.fact,
           emotion: row.emotion,
           need: row.need,
@@ -3732,7 +3795,7 @@ async function copyCoupleRoomToUserRecords(env, code, qA, qB, sharedReport) {
 // 异步保存单人分析结果到 single_analyses 表（同时写入 analysis_history 和 insight_diaries）
 async function saveSingleAnalysis(env, prompt, result, uid = null) {
   try {
-    const userInput = (prompt || '').substring(0, 500);
+    const userInput = base64Encode((prompt || '').substring(0, 500));
     // 把完整 AI 结果 JSON 序列化存入 report_json
     let reportJson = '{}';
     try { reportJson = JSON.stringify(result); } catch (e) { reportJson = '{}'; }

@@ -3131,24 +3131,88 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
 
       function renderStep(idx) {
         if (idx >= steps.length) {
-          // 所有步骤完成，显示分支选择
-          overlay.innerHTML = '';
-          overlay.classList.remove('active');
-          showResultActions(data);
+          // 所有步骤完成，显示总览页面
+          renderOverview();
           return;
         }
         currentStep = idx;
         var step = steps[idx];
+        var nextText = idx === steps.length - 1 ? '查看总览 →' : '继续 →';
         overlay.innerHTML =
           '<div class="step-card">' +
           '<div class="step-header"><span class="step-counter">' + step.counter + '</span><button class="step-close" id="stepClose">&times;</button></div>' +
           '<div class="step-title">' + step.title + '</div>' +
           '<div class="step-body">' + step.body() + '</div>' +
-          '<div class="step-footer"><button class="step-next" id="stepNext">继续 →</button></div>' +
+          '<div class="step-footer"><button class="step-next" id="stepNext">' + nextText + '</button></div>' +
           '</div>';
         overlay.classList.add('active');
         document.getElementById('stepClose').onclick = function() { overlay.classList.remove('active'); showResultActions(data); };
         document.getElementById('stepNext').onclick = function() { renderStep(idx + 1); };
+      }
+
+      // 总览页面：汇总所有分析内容，支持保存分享
+      function renderOverview() {
+        var ovHtml =
+          '<div class="step-card" style="max-width:560px;">' +
+          '<div class="step-header"><span class="step-counter">总览</span><button class="step-close" id="ovClose">&times;</button></div>' +
+          '<div class="step-title">分析报告总览</div>' +
+          '<div class="step-body" style="max-height:65vh;overflow-y:auto;padding-right:8px;">' +
+            // Step 1 汇总
+            '<div style="margin-bottom:20px;padding:16px;background:var(--surface);border-radius:14px;border:1px solid var(--rule);">' +
+              '<div style="font-size:0.65rem;color:var(--faint);letter-spacing:2px;margin-bottom:10px;font-weight:600;">STEP 1 · MIRROR 分析</div>' +
+              '<div class="card-row"><div class="card-row-label">关系状态</div><div class="card-row-value">' + safeText(data.status || '存在误解') + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">事实</div><div class="card-row-value">' + safeText(data.fact) + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">情绪</div><div class="card-row-value">' + safeText(data.emotion) + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">需求</div><div class="card-row-value">' + safeText(data.need) + '</div></div>' +
+              '<div class="card-row"><div class="card-row-label">误解</div><div class="card-row-value">' + safeText(data.misread) + (data.misreadType ? '（' + safeText(data.misreadType) + '）' : '') + '</div></div>' +
+            '</div>' +
+            // Step 2 汇总
+            '<div style="margin-bottom:20px;padding:16px;background:var(--surface);border-radius:14px;border:1px solid var(--rule);">' +
+              '<div style="font-size:0.65rem;color:var(--faint);letter-spacing:2px;margin-bottom:10px;font-weight:600;">STEP 2 · 表达翻译</div>' +
+              '<div class="step-mirror-item attack" style="margin-bottom:8px;"><div class="step-mirror-label attack">你说的是</div><div class="step-mirror-text">"' + safeText(data.before) + '"</div></div>' +
+              '<div class="step-mirror-item inner" style="margin-bottom:8px;"><div class="step-mirror-label inner">真正想说</div><div class="step-mirror-text">"' + safeText(data.innerThought || data.inner) + '"</div></div>' +
+              '<div class="step-mirror-item mirror"><div class="step-mirror-label mirror">Mirror翻译</div><div class="step-mirror-text">"' + safeText(data.after) + '"</div></div>' +
+            '</div>' +
+            // Step 3 洞察
+            '<div style="margin-bottom:20px;padding:16px;background:var(--surface);border-radius:14px;border:1px solid var(--rule);">' +
+              '<div style="font-size:0.65rem;color:var(--faint);letter-spacing:2px;margin-bottom:10px;font-weight:600;">STEP 3 · 洞察</div>' +
+              '<p style="font-size:0.9rem;color:var(--ink);line-height:1.8;margin:0;">' + safeText(data.insight) + '</p>' +
+            '</div>' +
+            // Step 4 建议
+            '<div style="margin-bottom:20px;padding:16px;background:var(--surface);border-radius:14px;border:1px solid var(--rule);">' +
+              '<div style="font-size:0.65rem;color:var(--faint);letter-spacing:2px;margin-bottom:10px;font-weight:600;">STEP 4 · 建议</div>' +
+              '<p style="font-size:0.9rem;color:var(--ink);line-height:1.8;margin:0;">' + safeText(data.suggest) + '</p>' +
+            '</div>' +
+            // Step 5 MIRA
+            '<div style="margin-bottom:20px;padding:16px;background:rgba(212,175,55,0.04);border-radius:14px;border:1px solid rgba(212,175,55,0.15);text-align:center;">' +
+              '<div style="font-size:0.65rem;color:var(--faint);letter-spacing:2px;margin-bottom:10px;font-weight:600;">STEP 5 · MIRA 关系原型</div>' +
+              '<div style="display:inline-block;font-size:0.65rem;color:#D4AF37;background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);border-radius:6px;padding:3px 8px;margin-bottom:10px;letter-spacing:1px;">初步倾向 · 基于对话推断</div>' +
+              '<div style="font-size:1.4rem;font-weight:700;color:#D4AF37;margin-bottom:4px;">' + miraType + '</div>' +
+              '<div style="font-size:0.85rem;color:var(--ink);font-weight:500;margin-bottom:4px;">' + miraInfo.name + '</div>' +
+              '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;">' + miraInfo.dim + ' · ' + miraInfo.dir + '</div>' +
+              '<div style="font-size:0.78rem;color:var(--muted);line-height:1.6;">' + miraInfo.desc + '</div>' +
+            '</div>' +
+          '</div>' +
+          // 底部操作区
+          '<div style="padding-top:16px;border-top:1px solid var(--rule);">' +
+            '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">' +
+              '<button class="btn btn-primary" id="ovShare" style="flex:1;min-width:120px;font-size:0.85rem;padding:10px;">一键分享</button>' +
+              '<button class="btn btn-secondary" id="ovSave" style="flex:1;min-width:120px;font-size:0.85rem;padding:10px;">保存长图</button>' +
+              '<button class="btn-ghost" id="ovProfile" style="flex:1;min-width:120px;font-size:0.85rem;padding:10px;">查看完整画像</button>' +
+            '</div>' +
+            '<div style="text-align:center;margin-top:12px;">' +
+              '<button id="ovCloseBtn" style="background:none;border:none;color:var(--faint);font-size:0.75rem;cursor:pointer;">关闭总览</button>' +
+            '</div>' +
+          '</div>' +
+          '</div>';
+        overlay.innerHTML = ovHtml;
+        overlay.classList.add('active');
+
+        document.getElementById('ovClose').onclick = function() { overlay.classList.remove('active'); showResultActions(data); };
+        document.getElementById('ovCloseBtn').onclick = function() { overlay.classList.remove('active'); showResultActions(data); };
+        document.getElementById('ovShare').onclick = function() { generateShareCard('share'); };
+        document.getElementById('ovSave').onclick = function() { generateShareCard('save'); };
+        document.getElementById('ovProfile').onclick = function() { openProfileOverlay(data); };
       }
 
       // 显示第一步
@@ -3251,6 +3315,24 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           this.style.opacity = '1';
           this.style.transform = 'scale(1.02)';
           document.getElementById('miraVoteThanks').style.display = 'block';
+
+          // 如果用户认为正式测试更准确，更新报告中的 MIRA 类型
+          if ((vote === 'test' || vote === 'both') && testType && userData.aiData) {
+            var oldType = userData.aiData.miraType;
+            userData.aiData.miraType = testType;
+            userData.aiData._inferredMiraType = oldType;
+            userData.aiData._miraUpdated = true;
+            localStorage.setItem('mirror_aiData', JSON.stringify(userData.aiData));
+            // 显示更新提示
+            var updateTip = document.createElement('div');
+            updateTip.id = 'miraUpdateTip';
+            updateTip.style.cssText = 'margin-top:12px;padding:12px 16px;background:rgba(126,167,255,0.06);border-radius:12px;border:1px solid rgba(126,167,255,0.15);text-align:center;font-size:0.8rem;color:var(--ink);';
+            updateTip.innerHTML = '<span style="color:var(--blue);font-weight:600;">报告已更新</span>：MIRA 类型已从 ' + escapeHtml(oldType) + ' 调整为 ' + escapeHtml(testType) + '（基于正式测试结果）';
+            var thanksEl = document.getElementById('miraVoteThanks');
+            if (thanksEl && thanksEl.parentNode) {
+              thanksEl.parentNode.insertBefore(updateTip, thanksEl.nextSibling);
+            }
+          }
         };
       });
 
