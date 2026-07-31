@@ -1326,8 +1326,9 @@ export default {
         }
 
         if (!sharedReport) {
-          if (room.status !== 'couple_analyzing' && room.status !== 'completed') {
-            // 异步生成共同报告
+          // 没有共同报告时，触发或重新触发生成
+          // 如果状态不是 completed，都允许触发（防止上次 ctx.waitUntil 超时后卡死）
+          if (room.status !== 'completed') {
             await env.DB.prepare('UPDATE rooms SET status = "couple_analyzing" WHERE id = ?').bind(code).run();
             ctx.waitUntil(generateCoupleSharedReport(env, code));
           }
