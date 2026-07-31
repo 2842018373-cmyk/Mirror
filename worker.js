@@ -29,29 +29,29 @@ const ALLOWED_ORIGINS = [
 ];
 
 // ═══ 双人模式18维度问卷定义 ═══
-// 5大维度 × 3-4题 = 18题，每题可填"无"跳过
+// 5大维度 × 3-4题 = 18题，每题可填"无"跳过（必答题除外）
 const COUPLE_DIMENSIONS = [
-  // ── 事实（4题）──
-  { id: 'd1', group: 'fact', label: '让你困扰的具体事件是什么？', hint: '描述一件具体的事情，比如某次争吵、某句话、某个行为', placeholder: '例：上次我们因为谁来做饭吵了一架…' },
-  { id: 'd2', group: 'fact', label: '这件事通常在什么情境下发生？', hint: '场景、时间、在场的人', placeholder: '例：每次到了晚上，两个人都累了的时候…' },
-  { id: 'd3', group: 'fact', label: '你觉得事情的关键转折点在哪？', hint: '从什么时候开始变了的', placeholder: '例：从TA开始加班变多以后…' },
-  { id: 'd4', group: 'fact', label: '如果客观描述，事情的经过是怎样的？', hint: '不带评价地描述发生了什么', placeholder: '例：TA说了一句话，我没有回应，然后TA就…' },
+  // ── 事实（4题）── 聚焦到一件具体的事
+  { id: 'd1', group: 'fact', label: '最近一次让你心里不舒服的具体事情是什么？', hint: '就一件具体的事，越具体越好', placeholder: '例：上周五晚上，他回来后一直看手机，我跟他说话他没抬头', required: true },
+  { id: 'd2', group: 'fact', label: '当时是什么时间、在什么场景下发生的？', hint: '什么时候、在哪里、还有谁在场', placeholder: '例：晚上九点多，在家客厅，就我们两个人' },
+  { id: 'd3', group: 'fact', label: '事情是怎么发展到让你难受的那一步的？', hint: '从开始到难受，中间发生了什么', placeholder: '例：我先问他吃饭没，他嗯了一声没看我，我又说了一件事他还是没反应，我就不想说话了' },
+  { id: 'd4', group: 'fact', label: '对方做了什么、说了什么，让你产生了这种感受？', hint: '具体描述对方的言行，不用分析原因', placeholder: '例：他盯着手机说了句"你别老盯着我不行吗"，语气很不耐烦' },
   // ── 情绪（4题）──
-  { id: 'd5', group: 'emotion', label: '当时你内心的第一反应是什么？', hint: '不是想法，是感受', placeholder: '例：心里一下子凉了…' },
+  { id: 'd5', group: 'emotion', label: '当时你内心的第一反应是什么？', hint: '不是想法，是感受', placeholder: '例：心里一下子凉了…', required: true },
   { id: 'd6', group: 'emotion', label: '你身体有什么感受？', hint: '紧绷/胸闷/流泪/麻木等', placeholder: '例：胸口堵得慌，手心出汗…' },
   { id: 'd7', group: 'emotion', label: '这种感觉持续了多久？', hint: '一阵子还是一直', placeholder: '例：那之后好几天都提不起精神…' },
   { id: 'd8', group: 'emotion', label: '如果用一种颜色形容那种感觉，会是什么？', hint: '不需要解释为什么', placeholder: '例：灰蓝色，像阴天…' },
-  // ── 需求（4题）──
-  { id: 'd9', group: 'need', label: '你真正想要的是什么？', hint: '不是表面的诉求，是深层的需求', placeholder: '例：我只是想让TA看见我的付出…' },
-  { id: 'd10', group: 'need', label: '你最希望对方能给你什么？', hint: '一句话能描述的', placeholder: '例：一个拥抱，一句"辛苦了"…' },
-  { id: 'd11', group: 'need', label: '你觉得什么会让你安心？', hint: '什么能让你不那么不安', placeholder: '例：如果TA能主动告诉我TA的想法…' },
-  { id: 'd12', group: 'need', label: '你背后最在意的到底是什么？', hint: '剥开表层诉求', placeholder: '例：我在意的不是做饭本身，是TA有没有把我放在心上…' },
+  // ── 需求（4题）── 用具体场景引导用户说出需求
+  { id: 'd9', group: 'need', label: '如果对方做了一件事就能让你好受一些，你希望TA做什么？', hint: '不是大道理，是一件具体的小事', placeholder: '例：哪怕只是问我一句"今天还好吗"', required: true },
+  { id: 'd10', group: 'need', label: '这件事里，你最希望被对方怎么对待？', hint: '想想你被好好对待过的时刻', placeholder: '例：希望TA能先听我说完，不要急着反驳' },
+  { id: 'd11', group: 'need', label: '你现在的担心是什么？如果这个担心消失了会怎样？', hint: '你心里一直在怕什么', placeholder: '例：我怕TA根本不在乎我的感受，如果不在了我会松一口气' },
+  { id: 'd12', group: 'need', label: '如果这件事一直没解决，你最害怕失去的是什么？', hint: '最坏的结果是什么', placeholder: '例：怕我们越来越没话说，最后变成陌生人' },
   // ── 误读（3题）──
-  { id: 'd13', group: 'misread', label: '你觉得TA当时那么做，是什么意思？', hint: '你对TA行为的解读', placeholder: '例：我觉得TA就是不在乎我…' },
+  { id: 'd13', group: 'misread', label: '你觉得TA当时那么做，是什么意思？', hint: '你对TA行为的解读', placeholder: '例：我觉得TA就是不在乎我…', required: true },
   { id: 'd14', group: 'misread', label: '在你看来，TA为什么会那样反应？', hint: '你猜测的原因', placeholder: '例：可能TA觉得我太啰嗦了吧…' },
   { id: 'd15', group: 'misread', label: '你觉得你们之间最大的误解可能在哪里？', hint: '不是谁对谁错，是哪里错位了', placeholder: '例：我说的关心，TA可能觉得是控制…' },
   // ── 行动/关系（3题）──
-  { id: 'd16', group: 'action', label: '你尝试过什么来改善？', hint: '做过什么努力', placeholder: '例：我试过跟TA好好谈，但每次都不欢而散…' },
+  { id: 'd16', group: 'action', label: '你尝试过什么来改善？', hint: '做过什么努力', placeholder: '例：我试过跟TA好好谈，但每次都不欢而散…', required: true },
   { id: 'd17', group: 'action', label: '如果能重新来过，你会怎么做？', hint: '回头看的新视角', placeholder: '例：可能我不会用那种语气说…' },
   { id: 'd18', group: 'action', label: '你希望这段关系最终变成什么样？', hint: '你理想中的状态', placeholder: '例：不需要完美，但希望能好好说话…' },
 ];
@@ -3721,13 +3721,27 @@ ${archetype.desc}
 - A以为B的意思："${aDims.d13 || '无'}" → B实际想表达的："${bDims.d9 || bDims.d10 || '无'}"
 - B以为A的意思："${bDims.d13 || '无'}" → A实际想表达的："${aDims.d9 || aDims.d10 || '无'}"
 
+重要判断：请先判断A和B描述的是否是同一件事。
+- same: 明显是同一件事的不同视角
+- related: 不是同一件事但有关联（比如同一种反复出现的模式）
+- different: 完全不同的两件事
+
 请生成共同报告，严格以JSON格式回复（不要包含任何其他文字），包含以下字段：
+- eventAlignment: "same"或"related"或"different"，判断双方事件是否一致
+- eventAnalysis: 对A和B描述的事件对比分析（2-3句话），指出是同一件事还是不同的事
+- commonalities: 对象，包含五个维度的共同点分析：
+  - fact: 两人在事实层面是否有相似之处（1句话，无则填"无共同点"）
+  - emotion: 两人在情绪模式上的共通点（1句话，无则填"无共同点"）
+  - need: 两人在需求层面的共通点（1句话，无则填"无共同点"）
+  - misread: 两人在误读模式上的共通点（1句话，无则填"无共同点"）
+  - suggest: 两人在行动意愿上的共通点（1句话，无则填"无共同点"）
 - commonNeed: 两人共同的核心需求（1-2句话）
 - commonMisread: 两人共同的误读模式，指出双方都在哪里误解了对方（2-3句话）
 - crossValidation: 对象，包含 aMisread（A对B的误读，1句话）和 bMisread（B对A的误读，1句话）和 aActualIntent（A的真实意图，1句话）和 bActualIntent（B的真实意图，1句话）
 - interactionPattern: 基于关系原型"${archetype.name}"的互动模式分析（2-3句话）
 - growthDirection: 两个人可以一起成长的方向（2-3句话）
 - actionableSteps: 数组，2-3条具体可执行的建议
+- retraceSuggestion: 如果eventAlignment不是"same"，给出回溯建议——从哪个角色的事件切入回溯（"a"或"b"），以及理由（2-3句话）。如果eventAlignment是"same"则填空字符串""
 - archetypeName: "${archetype.name}"
 - archetypeDesc: "${archetype.desc}"
 - aMiraType: "${qA.mira_type || ''}"
