@@ -1410,7 +1410,205 @@ export default {
         return jsonResponse({ success: true }, 200, origin);
       }
 
-      // MIRA 准确度反馈（POST /api/mira-accuracy-feedback）
+      // ═══ 双人模式回溯流程 ═══
+
+      // 提交回溯问卷（POST /api/couple/retrace）
+      if (path === '/api/couple/retrace' && request.method === 'POST') {
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { roomCode, role, dimensions, miraType } = body;
+        const validatedRole = validateRole(role);
+        if (!validatedRole) return jsonResponse({ error: '角色错误' }, 400, origin);
+        if (!roomCode) return jsonResponse({ error: '房间码不能为空' }, 400, origin);
+
+        const room = await env.DB.prepare('SELECT id, status, expires_at, shared_report, retrace_status FROM rooms WHERE id = ?').bind(roomCode).first();
+        if (!room) return jsonResponse({ error: '房间不存在' }, 404, origin);
+        if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
+        if (!room.shared_report) return jsonResponse({ error: '共同报告尚未生成' }, 400, origin);
+
+        // 解析共同报告获取回溯建议
+        let sharedReport = null;
+        try { sharedReport = JSON.parse(room.shared_report); } catch (e) { /* 解析失败 */ }
+        const eventAlignment = sharedReport ? sharedReport.eventAlignment : '';
+        if (!eventAlignment || eventAlignment === 'same') {
+          return jsonResponse({ error: '事件一致，无需回溯' }, 400, origin);
+        }
+
+        // 验证必答题
+        const dimsJson = dimensions || {};
+        const requiredDims = COUPLE_DIMENSIONS.filter(d => d.required);
+        for (const d of requiredDims) {
+          if (!dimsJson[d.id] || !dimsJson[d.id].trim()) {
+            return jsonResponse({ error: '必答题 "' + d.label + '" 未填写' }, 400, origin);
+          }
+        }
+
+        let uid = null;
+        try {
+          const auth = await getAuthUser(request, env);
+          if (!auth.error && auth.uid) uid = auth.uid;
+        } catch (e) { /* 游客模式 */ }
+
+        // 存储回溯问卷
+        const retraceJson = JSON.stringify({
+          role: validatedRole,
+          dimensions: dimsJson,
+          miraType: miraType || '',
+          userId: uid,
+          createdAt: new Date().toISOString()
+        });
+
+        await env.DB.prepare(
+          'UPDATE rooms SET retrace_questionnaire = ?, retrace_role = ?, retrace_status = "analyzing" WHERE id = ?'
+        ).bind(retraceJson, validatedRole, roomCode).run();
+
+        // 触发回溯报告生成
+        ctx.waitUntil(generateRetraceReport(env, roomCode));
+
+        return jsonResponse({ success: true, message: '回溯问卷已提交，正在生成分析报告…' }, 200, origin);
+      }
+
+      // 轮询回溯报告状态（GET /api/couple/retrace/status?code=XXX）
+      if (path === '/api/couple/retrace/status' && request.method === 'GET') {
+        const code = url.searchParams.get('code');
+        if (!code) return jsonResponse({ error: '缺少房间码' }, 400, origin);
+
+        const room = await env.DB.prepare('SELECT id, status, expires_at, retrace_status, retrace_report, retrace_role, retrace_questionnaire, shared_report FROM rooms WHERE id = ?').bind(code).first();
+        if (!room) return jsonResponse({ error: '房间不存在' }, 404, origin);
+        if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
+
+        let retraceReport = null;
+        if (room.retrace_report) {
+          try { retraceReport = JSON.parse(room.retrace_report); } catch (e) { /* 解析失败 */ }
+        }
+
+        let sharedReport = null;
+        if (room.shared_report) {
+          try { sharedReport = JSON.parse(room.shared_report); } catch (e) { /* 解析失败 */ }
+        }
+
+        return jsonResponse({
+          retraceStatus: room.retrace_status || '',
+          retraceReport,
+          retraceRole: room.retrace_role || '',
+          hasRetraceQuestionnaire: !!(room.retrace_questionnaire),
+          eventAlignment: sharedReport ? sharedReport.eventAlignment : '',
+          ready: !!(retraceReport && room.retrace_status === 'completed')
+        }, 200, origin);
+      }
+
+      // 生成最终总结报告（POST /api/couple/final-report）
+      if (path === '/api/couple/final-report' && request.method === 'POST') {
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { roomCode } = body;
+        if (!roomCode) return jsonResponse({ error: '房间码不能为空' }, 400, origin);
+
+        const room = await env.DB.prepare('SELECT id, status, expires_at, shared_report, retrace_report, retrace_status, final_status FROM rooms WHERE id = ?').bind(roomCode).first();
+        if (!room) return jsonResponse({ error: '房间不存在' }, 404, origin);
+        if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
+        if (!room.shared_report) return jsonResponse({ error: '共同报告尚未生成' }, 400, origin);
+
+        // 如果已有最终报告，直接返回
+        if (room.final_report && room.final_status === 'completed') {
+          let finalReport = null;
+          try { finalReport = JSON.parse(room.final_report); } catch (e) { /* 解析失败 */ }
+          if (finalReport) {
+            return jsonResponse({ success: true, finalReport, status: 'completed' }, 200, origin);
+          }
+        }
+
+        // 触发最终报告生成
+        await env.DB.prepare('UPDATE rooms SET final_status = "analyzing" WHERE id = ?').bind(roomCode).run();
+        ctx.waitUntil(generateFinalSummaryReport(env, roomCode));
+
+        return jsonResponse({ success: true, message: '最终总结报告正在生成中…' }, 200, origin);
+      }
+
+      // 轮询最终报告状态（GET /api/couple/final-report/status?code=XXX）
+      if (path === '/api/couple/final-report/status' && request.method === 'GET') {
+        const code = url.searchParams.get('code');
+        if (!code) return jsonResponse({ error: '缺少房间码' }, 400, origin);
+
+        const room = await env.DB.prepare('SELECT id, expires_at, final_status, final_report FROM rooms WHERE id = ?').bind(code).first();
+        if (!room) return jsonResponse({ error: '房间不存在' }, 404, origin);
+        if (isExpired(room)) return jsonResponse({ error: '房间已过期' }, 410, origin);
+
+        let finalReport = null;
+        if (room.final_report) {
+          try { finalReport = JSON.parse(room.final_report); } catch (e) { /* 解析失败 */ }
+        }
+
+        return jsonResponse({
+          finalStatus: room.final_status || '',
+          finalReport,
+          ready: !!(finalReport && room.final_status === 'completed')
+        }, 200, origin);
+      }
+
+      // 提交评分（POST /api/couple/scoring）
+      if (path === '/api/couple/scoring' && request.method === 'POST') {
+        let body;
+        try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
+
+        const { roomCode, role, accuracy, helpfulness, feedback, reportType } = body;
+        const validatedRole = validateRole(role);
+        if (!validatedRole) return jsonResponse({ error: '角色错误' }, 400, origin);
+        if (!roomCode) return jsonResponse({ error: '房间码不能为空' }, 400, origin);
+        if (!['accurate', 'partial', 'inaccurate'].includes(accuracy)) {
+          return jsonResponse({ error: '准确度选项无效' }, 400, origin);
+        }
+        const helpfulnessScore = parseInt(helpfulness) || 0;
+        if (helpfulnessScore < 0 || helpfulnessScore > 5) {
+          return jsonResponse({ error: '有帮助程度分数无效（0-5）' }, 400, origin);
+        }
+
+        let uid = null;
+        try {
+          const auth = await getAuthUser(request, env);
+          if (!auth.error && auth.uid) uid = auth.uid;
+        } catch (e) { /* 游客模式 */ }
+
+        const rptType = reportType || 'final';
+
+        // 检查是否已评分
+        const existing = await env.DB.prepare(
+          'SELECT id FROM couple_feedback WHERE room_code = ? AND role = ? AND feedback_type = ? AND report_type = ?'
+        ).bind(roomCode, validatedRole, 'scoring', rptType).first();
+
+        if (existing) {
+          await env.DB.prepare(
+            'UPDATE couple_feedback SET accuracy = ?, helpfulness = ?, feedback_text = ? WHERE id = ?'
+          ).bind(accuracy, helpfulnessScore, (feedback || '').substring(0, 500), existing.id).run();
+        } else {
+          await env.DB.prepare(
+            'INSERT INTO couple_feedback (room_code, role, user_id, feedback_type, accuracy, helpfulness, feedback_text, report_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+          ).bind(roomCode, validatedRole, uid, 'scoring', accuracy, helpfulnessScore, (feedback || '').substring(0, 500), rptType).run();
+        }
+
+        // 同时记录到 analysis_history（成长板块）
+        if (uid) {
+          try {
+            const room = await env.DB.prepare('SELECT shared_report, retrace_report, final_report FROM rooms WHERE id = ?').bind(roomCode).first();
+            const reportSummary = room.final_report || room.retrace_report || room.shared_report || '{}';
+            let summaryText = '';
+            try {
+              const rpt = JSON.parse(reportSummary);
+              summaryText = rpt.eventAnalysis || rpt.commonNeed || rpt.interactionPattern || '双人模式分析';
+            } catch (e) { summaryText = '双人模式分析'; }
+
+            await env.DB.prepare(
+              'INSERT INTO analysis_history (user_id, source_type, source_id, mira_type, dimensions_json, insight_summary) VALUES (?, "couple_scoring", NULL, "", ?, ?)'
+            ).bind(uid, reportSummary.substring(0, 10000), (accuracy + '|' + helpfulnessScore + '|' + (feedback || '')).substring(0, 500)).run();
+          } catch (e) {
+            console.error('记录到成长板块失败:', e.message);
+          }
+        }
+
+        return jsonResponse({ success: true }, 200, origin);
+      }
       if (path === '/api/mira-accuracy-feedback' && request.method === 'POST') {
         let body;
         try { body = await request.json(); } catch (e) { return jsonResponse({ error: '请求格式错误' }, 400, origin); }
@@ -2067,6 +2265,18 @@ MIRA类型：${miraType}
           try { await env.DB.prepare('ALTER TABLE mira_tests ADD COLUMN share_count INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
           try { await env.DB.prepare('ALTER TABLE user_room_records ADD COLUMN view_count INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
           try { await env.DB.prepare('ALTER TABLE user_room_records ADD COLUMN share_count INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
+
+          // 双人模式回溯流程字段
+          try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN retrace_role TEXT DEFAULT ""').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN retrace_questionnaire TEXT DEFAULT ""').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN retrace_report TEXT DEFAULT ""').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN retrace_status TEXT DEFAULT ""').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN final_report TEXT DEFAULT ""').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE rooms ADD COLUMN final_status TEXT DEFAULT ""').run(); } catch(e) { /* 已存在 */ }
+
+          // 评分表扩展字段
+          try { await env.DB.prepare('ALTER TABLE couple_feedback ADD COLUMN helpfulness INTEGER DEFAULT 0').run(); } catch(e) { /* 已存在 */ }
+          try { await env.DB.prepare('ALTER TABLE couple_feedback ADD COLUMN report_type TEXT DEFAULT "shared"').run(); } catch(e) { /* 已存在 */ }
 
           // 个人中心索引
           await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_single_analyses_user ON single_analyses(user_id, created_at)').run();
@@ -3773,6 +3983,219 @@ ${archetype.desc}
   } catch (err) {
     console.error('generateCoupleSharedReport error:', err.message);
     await env.DB.prepare("UPDATE rooms SET status = 'error' WHERE id = ? AND status = 'couple_analyzing'").bind(code).run();
+  }
+}
+
+// ═══ 回溯报告生成 ═══
+async function generateRetraceReport(env, code) {
+  try {
+    const room = await env.DB.prepare(
+      'SELECT id, shared_report, retrace_questionnaire, retrace_role FROM rooms WHERE id = ?'
+    ).bind(code).first();
+    if (!room || !room.retrace_questionnaire) {
+      console.error('generateRetraceReport: no retrace questionnaire');
+      return;
+    }
+
+    // 解析数据
+    let sharedReport = null;
+    try { sharedReport = JSON.parse(room.shared_report); } catch (e) { /* 解析失败 */ }
+    if (!sharedReport) {
+      console.error('generateRetraceReport: no shared report');
+      await env.DB.prepare('UPDATE rooms SET retrace_status = "error" WHERE id = ?').bind(code).run();
+      return;
+    }
+
+    let retraceData = null;
+    try { retraceData = JSON.parse(room.retrace_questionnaire); } catch (e) { /* 解析失败 */ }
+    if (!retraceData) {
+      console.error('generateRetraceReport: invalid retrace data');
+      await env.DB.prepare('UPDATE rooms SET retrace_status = "error" WHERE id = ?').bind(code).run();
+      return;
+    }
+
+    const retraceRole = retraceData.role || room.retrace_role || 'b';
+    const originalRole = retraceRole === 'a' ? 'b' : 'a';
+
+    // 获取原始角色的问卷数据
+    const originalQ = await env.DB.prepare(
+      'SELECT dimensions_json, individual_report_json, mira_type FROM couple_questionnaires WHERE room_code = ? AND role = ?'
+    ).bind(code, originalRole).first();
+
+    if (!originalQ) {
+      console.error('generateRetraceReport: original questionnaire not found');
+      await env.DB.prepare('UPDATE rooms SET retrace_status = "error" WHERE id = ?').bind(code).run();
+      return;
+    }
+
+    const originalDims = JSON.parse(originalQ.dimensions_json || '{}');
+    const retraceDims = retraceData.dimensions || {};
+    const originalReport = JSON.parse(originalQ.individual_report_json || '{}');
+
+    // 构建维度文本
+    const originalDimText = COUPLE_DIMENSIONS.map(d => {
+      return `${d.id}. ${d.label}: ${originalDims[d.id] || '无'}`;
+    }).join('\n');
+
+    const retraceDimText = COUPLE_DIMENSIONS.map(d => {
+      return `${d.id}. ${d.label}: ${retraceDims[d.id] || '无'}`;
+    }).join('\n');
+
+    // 关系原型
+    const archetype = getRelationshipArchetype(
+      originalRole === 'a' ? (originalQ.mira_type || 'ST') : (retraceData.miraType || 'ST'),
+      originalRole === 'a' ? (retraceData.miraType || 'ST') : (originalQ.mira_type || 'ST')
+    );
+
+    const prompt = `你是Mirror的双人关系分析模块。现在进行回溯分析：双方最初描述了不同的事件，现在${retraceRole === 'a' ? 'A' : 'B'}围绕${originalRole === 'a' ? 'A' : 'B'}的事件重新填写了18维度问卷。
+
+【回溯背景】
+- 原始报告事件对齐：${sharedReport.eventAlignment || 'different'}
+- 原始报告事件分析：${sharedReport.eventAnalysis || '双方描述了不同的事件'}
+- 原始报告建议：${sharedReport.retraceSuggestion || '建议回溯'}
+
+【${originalRole === 'a' ? 'A' : 'B'}的原始问卷（事件提供方）】
+${originalDimText}
+
+【${originalRole === 'a' ? 'A' : 'B'}的MIRA类型】${originalQ.mira_type || '未知'}
+
+【${retraceRole === 'a' ? 'A' : 'B'}的回溯问卷（围绕对方事件重新填写）】
+${retraceDimText}
+
+【${retraceRole === 'a' ? 'A' : 'B'}的MIRA类型】${retraceData.miraType || '未知'}
+
+【原始共同报告的关键信息】
+- 共同需求：${sharedReport.commonNeed || '无'}
+- 共同误读：${sharedReport.commonMisread || '无'}
+- 互动模式：${sharedReport.interactionPattern || '无'}
+- 成长方向：${sharedReport.growthDirection || '无'}
+
+请生成回溯分析报告，严格以JSON格式回复（不要包含任何其他文字），包含以下字段：
+- retraceSummary: 回溯分析总结（3-4句话），说明围绕同一事件后双方视角的变化
+- newCommonalities: 对象，包含五个维度的共同点（回溯后的新发现）：
+  - fact: 事实层面新的共同点（1句话）
+  - emotion: 情绪模式新的共通点（1句话）
+  - need: 需求层面新的共通点（1句话）
+  - misread: 误读模式新的共通点（1句话）
+  - suggest: 行动意愿新的共通点（1句话）
+- newCrossValidation: 对象，包含 aMisread（A对B的误读，1句话）和 bMisread（B对A的误读，1句话）和 aActualIntent（A的真实意图，1句话）和 bActualIntent（B的真实意图，1句话）
+- improvement: 相比原始报告，回溯后的改善点（2-3句话）
+- remainingIssue: 回溯后仍然存在的问题或需要继续关注的点（2-3句话）
+- updatedActionableSteps: 数组，2-3条基于回溯结果的具体建议
+- eventResolution: 事件解决程度评估（"已理解"或"部分理解"或"仍需沟通"），附1句话说明
+- archetypeName: "${archetype.name}"
+- archetypeDesc: "${archetype.desc}"`;
+
+    const result = await callAI(env, prompt, 'couple', []);
+
+    if (result.error) {
+      console.error('generateRetraceReport AI error:', result.error);
+      await env.DB.prepare('UPDATE rooms SET retrace_status = "error" WHERE id = ?').bind(code).run();
+      return;
+    }
+
+    // 补充数据
+    result.retraceRole = retraceRole;
+    result.originalRole = originalRole;
+    result.archetype = archetype;
+
+    const retraceJson = JSON.stringify(result);
+    await env.DB.prepare(
+      'UPDATE rooms SET retrace_report = ?, retrace_status = "completed" WHERE id = ?'
+    ).bind(retraceJson, code).run();
+
+    console.log('generateRetraceReport completed for room:', code);
+  } catch (err) {
+    console.error('generateRetraceReport error:', err.message);
+    await env.DB.prepare('UPDATE rooms SET retrace_status = "error" WHERE id = ?').bind(code).run();
+  }
+}
+
+// ═══ 最终总结报告生成 ═══
+async function generateFinalSummaryReport(env, code) {
+  try {
+    const room = await env.DB.prepare(
+      'SELECT id, shared_report, retrace_report, retrace_status FROM rooms WHERE id = ?'
+    ).bind(code).first();
+    if (!room || !room.shared_report) {
+      console.error('generateFinalSummaryReport: no shared report');
+      return;
+    }
+
+    let sharedReport = null;
+    try { sharedReport = JSON.parse(room.shared_report); } catch (e) { /* 解析失败 */ }
+
+    let retraceReport = null;
+    if (room.retrace_report) {
+      try { retraceReport = JSON.parse(room.retrace_report); } catch (e) { /* 解析失败 */ }
+    }
+
+    // 获取双方问卷数据
+    const qA = await env.DB.prepare(
+      'SELECT dimensions_json, mira_type FROM couple_questionnaires WHERE room_code = ? AND role = "a"'
+    ).bind(code).first();
+    const qB = await env.DB.prepare(
+      'SELECT dimensions_json, mira_type FROM couple_questionnaires WHERE room_code = ? AND role = "b"'
+    ).bind(code).first();
+
+    const archetype = getRelationshipArchetype(qA?.mira_type || 'ST', qB?.mira_type || 'ST');
+
+    const prompt = `你是Mirror的双人关系分析模块，现在需要生成最终总结报告。这份报告汇总了整个分析过程中两个事件的解决情况。
+
+【关系原型】${archetype.name}（${archetype.pattern}）
+
+【A的MIRA类型】${qA?.mira_type || '未知'}
+【B的MIRA类型】${qB?.mira_type || '未知'}
+
+【第一份报告（原始共同报告）关键信息】
+- 事件对齐：${sharedReport?.eventAlignment || '未知'}
+- 事件分析：${sharedReport?.eventAnalysis || '未知'}
+- 共同需求：${sharedReport?.commonNeed || '无'}
+- 共同误读：${sharedReport?.commonMisread || '无'}
+- 互动模式：${sharedReport?.interactionPattern || '无'}
+- 成长方向：${sharedReport?.growthDirection || '无'}
+- 可执行建议：${JSON.stringify(sharedReport?.actionableSteps || [])}
+
+${retraceReport ? `【第二份报告（回溯报告）关键信息】
+- 回溯总结：${retraceReport.retraceSummary || '无'}
+- 改善点：${retraceReport.improvement || '无'}
+- 仍存在的问题：${retraceReport.remainingIssue || '无'}
+- 事件解决程度：${retraceReport.eventResolution || '未知'}
+- 更新后的建议：${JSON.stringify(retraceReport.updatedActionableSteps || [])}` : '【无回溯报告，事件一致无需回溯】'}
+
+请生成最终总结报告，严格以JSON格式回复（不要包含任何其他文字），包含以下字段：
+- overallSummary: 整体关系总结（3-4句话），涵盖整个分析过程的核心发现
+- eventResolutionStatus: 对象，包含两个事件的解决情况：
+  - event1: ${sharedReport?.eventAlignment === 'same' ? '同一事件的解决情况' : '第一个事件（双方原始描述）的解决情况'}（2-3句话）
+  - event2: ${retraceReport ? '回溯事件的解决情况（2-3句话）' : '无需回溯，事件一致'}
+- keyInsights: 数组，3-4条整个过程中最重要的关系洞察
+- relationshipProgress: 关系进展评估（2-3句话），说明通过这次分析双方可以期待的变化
+- finalRecommendations: 数组，3-4条最终的长期关系建议
+- growthMilestone: 成长里程碑（1-2句话），标注这次分析在关系成长中的意义
+- archetypeName: "${archetype.name}"
+- archetypeDesc: "${archetype.desc}"
+- aMiraType: "${qA?.mira_type || ''}"
+- bMiraType: "${qB?.mira_type || ''}"`;
+
+    const result = await callAI(env, prompt, 'couple', []);
+
+    if (result.error) {
+      console.error('generateFinalSummaryReport AI error:', result.error);
+      await env.DB.prepare('UPDATE rooms SET final_status = "error" WHERE id = ?').bind(code).run();
+      return;
+    }
+
+    result.archetype = archetype;
+
+    const finalJson = JSON.stringify(result);
+    await env.DB.prepare(
+      'UPDATE rooms SET final_report = ?, final_status = "completed" WHERE id = ?'
+    ).bind(finalJson, code).run();
+
+    console.log('generateFinalSummaryReport completed for room:', code);
+  } catch (err) {
+    console.error('generateFinalSummaryReport error:', err.message);
+    await env.DB.prepare('UPDATE rooms SET final_status = "error" WHERE id = ?').bind(code).run();
   }
 }
 

@@ -547,6 +547,12 @@
     .couple-q-skip.active { color: var(--blue); }
     .couple-q-required-tip { font-size: 0.72rem; color: #ff6b6b; margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; opacity: 0.8; }
 
+    /* 评分星级 */
+    .scoring-stars { display: flex; gap: 8px; }
+    .scoring-star { font-size: 1.6rem; color: var(--rule); cursor: pointer; transition: color 0.2s var(--ease), transform 0.15s var(--ease); user-select: none; }
+    .scoring-star:hover { color: rgba(250,173,20,0.5); transform: scale(1.15); }
+    .scoring-star.active { color: #faad14; }
+
     /* 问卷提交进度条 */
     .couple-q-progress { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
     .couple-q-progress-bar { flex: 1; height: 4px; background: var(--surface); border-radius: 2px; overflow: hidden; }
@@ -4991,9 +4997,15 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       // 提交输入
       document.getElementById('coupleSubmitBtn').onclick = submitCoupleInput;
 
-      // V2: 问卷提交
+      // V2: 问卷提交（根据是否回溯模式选择不同处理）
       var qSubmitBtn = document.getElementById('coupleQSubmitBtn');
-      if (qSubmitBtn) qSubmitBtn.onclick = submitCoupleQuestionnaire;
+      if (qSubmitBtn) qSubmitBtn.onclick = function() {
+        if (isRetraceMode) {
+          submitRetraceQuestionnaire();
+        } else {
+          submitCoupleQuestionnaire();
+        }
+      };
 
       // V2: 单人报告返回按钮 → 回到问卷
       var personalBackBtn = document.getElementById('couplePersonalBackBtn');
@@ -5337,6 +5349,12 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     var personalPollInterval = null;   // 单人报告轮询
     var sharedPollInterval = null;     // 共同报告轮询
     var coupleFeedbackSelected = null; // 'accurate' | 'partial' | 'inaccurate'
+    var retracePollInterval = null;    // 回溯报告轮询
+    var finalPollInterval = null;      // 最终报告轮询
+    var isRetraceMode = false;         // 是否处于回溯问卷模式
+    var retraceRole = '';              // 回溯角色
+    var scoringAccuracy = null;        // 评分-准确度
+    var scoringHelpfulness = 0;        // 评分-有帮助程度(1-5)
 
     // 带认证的请求头
     function coupleAuthHeaders(extra) {
@@ -5982,6 +6000,13 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         html += '<div class="couple-retrace-desc">' + safeText(retraceSuggestion) + '</div>';
         html += '<div class="couple-retrace-btn" id="retraceBtn">点击开始回溯 →</div>';
         html += '</div>';
+      } else {
+        // 事件一致，无需回溯，直接显示生成最终报告按钮
+        html += '<div class="couple-retrace-card" style="border-color:rgba(126,167,255,0.25);">';
+        html += '<div class="couple-retrace-title" style="color:var(--blue);">📋 最终总结报告</div>';
+        html += '<div class="couple-retrace-desc">生成最终总结报告，汇总这次关系分析的核心发现和长期建议</div>';
+        html += '<div class="couple-retrace-btn" id="generateFinalBtn" style="background:rgba(126,167,255,0.15);color:var(--blue);border-color:rgba(126,167,255,0.3);">生成最终总结报告 →</div>';
+        html += '</div>';
       }
 
       // 准确度反馈组件
@@ -5990,6 +6015,14 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       document.getElementById('coupleSharedContent').innerHTML = html;
       bindFeedbackEvents();
       bindRetraceEvent(eventAlignment, retraceSuggestion);
+
+      // 绑定最终报告按钮（事件一致时）
+      var finalBtn = document.getElementById('generateFinalBtn');
+      if (finalBtn && !retraceSuggestion) {
+        finalBtn.onclick = function() {
+          generateFinalReport();
+        };
+      }
     }
 
     // 绑定回溯按钮事件
@@ -6011,10 +6044,557 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       }
     }
 
-    // 开始回溯流程（占位，第二批实现）
-    function startRetraceFlow(retraceRole, retraceSuggestion) {
-      showToast('回溯功能即将上线，敬请期待', 'info');
-      console.log('[Retrace] role:', retraceRole, 'suggestion:', retraceSuggestion);
+    // 开始回溯流程
+    function startRetraceFlow(suggestedRole, retraceSuggestion) {
+      // 确定回溯角色：建议中提到的角色是"事件提供方"，另一方是回溯方
+      // 例如：建议"从角色A的事件切入回溯"，则B是回溯方
+      var eventProviderRole = suggestedRole || 'a';
+      retraceRole = eventProviderRole === 'a' ? 'b' : 'a';
+      isRetraceMode = true;
+
+      // 重置问卷答案
+      coupleQAnswers = {};
+
+      // 显示回溯问卷视图
+      var titleEl = document.getElementById('coupleQTitle');
+      if (titleEl) titleEl.textContent = '回溯问卷 · 围绕对方的事件';
+
+      // 渲染问卷
+      var dims = coupleDimensions || getCoupleFallbackDimensions();
+      coupleDimensions = dims;
+      renderCoupleQuestionnaire(dims);
+
+      // 修改提交按钮文本
+      var submitBtn = document.getElementById('coupleQSubmitBtn');
+      if (submitBtn) submitBtn.textContent = '提交回溯问卷';
+
+      // 切换视图
+      showView('coupleQuestionnaireView');
+
+      // 添加回溯说明
+      var hintEl = document.getElementById('coupleQHint');
+      if (hintEl) {
+        hintEl.innerHTML = '请围绕' + (eventProviderRole === 'a' ? 'A' : 'B') + '描述的事件，从你的视角重新填写这18道题';
+      }
+
+      showToast('请围绕对方的事件重新填写问卷', 'info');
+    }
+
+    // 提交回溯问卷（替换原有提交逻辑）
+    async function submitRetraceQuestionnaire() {
+      var dims = coupleDimensions || getCoupleFallbackDimensions();
+      var dimensionsData = {};
+      var missingRequired = [];
+
+      dims.forEach(function(d) {
+        var qid = d.id || d.key || '';
+        var val = coupleQAnswers[qid] || '';
+        var isRequired = d.required === true;
+        if (val.trim()) {
+          dimensionsData[qid] = val.trim();
+        } else if (isRequired) {
+          missingRequired.push(qid);
+          dimensionsData[qid] = '';
+        } else {
+          dimensionsData[qid] = '无';
+        }
+      });
+
+      if (missingRequired.length > 0) {
+        missingRequired.forEach(function(qid) {
+          var inp = document.querySelector('.couple-q-input[data-qid="' + qid + '"]');
+          if (inp) inp.classList.add('error');
+        });
+        if (missingRequired[0]) {
+          var firstEl = document.querySelector('.couple-q-input[data-qid="' + missingRequired[0] + '"]');
+          if (firstEl) firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        showToast('还有 ' + missingRequired.length + ' 道必答题未填写', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('coupleQSubmitBtn');
+      btn.textContent = '提交中...';
+      btn.disabled = true;
+
+      try {
+        var miraType = '';
+        try {
+          var cached = localStorage.getItem('mira_type');
+          if (cached) miraType = cached;
+        } catch(e) {}
+
+        var body = {
+          roomCode: currentRoom.code,
+          role: retraceRole,
+          dimensions: dimensionsData,
+          miraType: miraType
+        };
+
+        var response = await fetch(WORKER_API_BASE + '/api/couple/retrace', {
+          method: 'POST',
+          headers: coupleJsonHeaders(),
+          body: JSON.stringify(body)
+        });
+        var data = await response.json();
+
+        if (data.success || data.ok || response.ok) {
+          // 提交成功，显示加载页并轮询回溯报告
+          isRetraceMode = false;
+          showRetraceLoading();
+          startRetracePolling();
+        } else {
+          showToast(data.error || data.message || '提交失败', 'error');
+          btn.textContent = '提交回溯问卷';
+          btn.disabled = false;
+        }
+      } catch (err) {
+        showToast('提交失败：' + err.message, 'error');
+        btn.textContent = '提交回溯问卷';
+        btn.disabled = false;
+      }
+    }
+
+    // 显示回溯报告加载页
+    function showRetraceLoading() {
+      var html = '<div class="couple-loading">' +
+        '<div class="couple-loading-spinner"></div>' +
+        '<div class="couple-loading-text">Mirror 正在分析回溯数据...<br>请稍候</div>' +
+        '</div>';
+      document.getElementById('coupleSharedContent').innerHTML = html;
+      document.getElementById('coupleSharedRestartBtn').style.display = 'none';
+      showView('coupleSharedView');
+    }
+
+    // 轮询回溯报告
+    function startRetracePolling() {
+      stopRetracePolling();
+      var elapsed = 0;
+      var maxWait = 90000; // 90秒超时
+
+      retracePollInterval = setInterval(async function() {
+        elapsed += 3000;
+        if (elapsed > maxWait) {
+          stopRetracePolling();
+          document.getElementById('coupleSharedContent').innerHTML =
+            '<div class="couple-loading"><div class="couple-loading-text">分析超时，请稍后重试<br>' +
+            '<button class="btn btn-primary" onclick="startRetracePolling()" style="margin-top:16px;">重新加载</button></div></div>';
+          return;
+        }
+
+        try {
+          var response = await fetch(WORKER_API_BASE + '/api/couple/retrace/status?code=' + currentRoom.code, {
+            headers: coupleAuthHeaders({})
+          });
+          var data = await response.json();
+
+          if (data.ready && data.retraceReport) {
+            stopRetracePolling();
+            renderRetraceReport(data.retraceReport);
+          } else if (data.retraceStatus === 'error') {
+            stopRetracePolling();
+            document.getElementById('coupleSharedContent').innerHTML =
+              '<div class="couple-loading"><div class="couple-loading-text">分析失败，请稍后重试</div></div>';
+          }
+        } catch (err) {
+          console.error('回溯报告轮询失败:', err);
+        }
+      }, 3000);
+    }
+
+    function stopRetracePolling() {
+      if (retracePollInterval) {
+        clearInterval(retracePollInterval);
+        retracePollInterval = null;
+      }
+    }
+
+    // 渲染回溯报告
+    function renderRetraceReport(report) {
+      var html = '';
+
+      // 回溯报告标题
+      html += '<div class="couple-archetype-card" style="border-color:rgba(250,173,20,0.25);">';
+      html += '<div class="couple-archetype-label">🔄 回溯分析报告</div>';
+      html += '<div class="couple-archetype-name" style="color:#faad14;font-size:1.1rem;">基于同一事件的深度分析</div>';
+      html += '</div>';
+
+      // 回溯总结
+      if (report.retraceSummary) {
+        html += renderReportBlock('📋 回溯总结', report.retraceSummary);
+      }
+
+      // 五维度新共同点
+      if (report.newCommonalities) {
+        var dimConfig = [
+          { key: 'fact', label: '事实层面', icon: '📋' },
+          { key: 'emotion', label: '情绪模式', icon: '💛' },
+          { key: 'need', label: '需求层面', icon: '🌱' },
+          { key: 'misread', label: '误读模式', icon: '🔀' },
+          { key: 'suggest', label: '行动意愿', icon: '🤝' }
+        ];
+        html += '<div class="couple-cross-section">';
+        html += '<div class="couple-cross-title">🔍 回溯后五维度共同点</div>';
+        html += '<div class="couple-common-grid">';
+        dimConfig.forEach(function(d) {
+          var val = report.newCommonalities[d.key] || '';
+          if (val) {
+            html += '<div class="couple-common-item">';
+            html += '<div class="couple-common-icon ' + d.key + '">' + d.icon + '</div>';
+            html += '<div class="couple-common-body">';
+            html += '<div class="couple-common-label">' + escapeHtml(d.label) + '</div>';
+            html += '<div class="couple-common-text">' + safeText(val) + '</div>';
+            html += '</div></div>';
+          }
+        });
+        html += '</div></div>';
+      }
+
+      // 新交叉验证
+      if (report.newCrossValidation) {
+        html += renderCrossValidation({ crossValidation: report.newCrossValidation });
+      }
+
+      // 改善点
+      if (report.improvement) {
+        html += renderReportBlock('✨ 相比原始报告的改善', report.improvement);
+      }
+
+      // 仍存在的问题
+      if (report.remainingIssue) {
+        html += renderReportBlock('⚠️ 仍需关注', report.remainingIssue);
+      }
+
+      // 更新后的建议
+      if (report.updatedActionableSteps && Array.isArray(report.updatedActionableSteps) && report.updatedActionableSteps.length > 0) {
+        html += '<div class="couple-report-block">';
+        html += '<div class="couple-report-block-label">📝 更新后的建议</div>';
+        html += '<ol class="couple-steps-list">';
+        report.updatedActionableSteps.forEach(function(step, i) {
+          var text = typeof step === 'string' ? step : (step.text || step.content || step.desc || JSON.stringify(step));
+          html += '<li class="couple-steps-item">';
+          html += '<span class="couple-steps-num">' + (i + 1) + '</span>';
+          html += '<span class="couple-steps-text">' + safeText(text) + '</span>';
+          html += '</li>';
+        });
+        html += '</ol></div>';
+      }
+
+      // 事件解决程度
+      if (report.eventResolution) {
+        html += '<div class="couple-report-block" style="border-color:rgba(82,196,26,0.2);">';
+        html += '<div class="couple-report-block-label" style="color:#52c41a;">📊 事件解决程度</div>';
+        html += '<div class="couple-report-block-content">' + safeText(report.eventResolution) + '</div>';
+        html += '</div>';
+      }
+
+      // 生成最终总结报告按钮
+      html += '<div class="couple-retrace-card" style="border-color:rgba(126,167,255,0.25);">';
+      html += '<div class="couple-retrace-title" style="color:var(--blue);">📋 最终总结报告</div>';
+      html += '<div class="couple-retrace-desc">两个事件都已分析完成，生成最终总结报告汇总解决情况</div>';
+      html += '<div class="couple-retrace-btn" id="generateFinalBtn" style="background:rgba(126,167,255,0.15);color:var(--blue);border-color:rgba(126,167,255,0.3);">生成最终总结报告 →</div>';
+      html += '</div>';
+
+      document.getElementById('coupleSharedContent').innerHTML = html;
+      document.getElementById('coupleSharedRestartBtn').style.display = 'none';
+
+      // 绑定生成最终报告按钮
+      var finalBtn = document.getElementById('generateFinalBtn');
+      if (finalBtn) {
+        finalBtn.onclick = function() {
+          generateFinalReport();
+        };
+      }
+    }
+
+    // 生成最终总结报告
+    async function generateFinalReport() {
+      var html = '<div class="couple-loading">' +
+        '<div class="couple-loading-spinner"></div>' +
+        '<div class="couple-loading-text">Mirror 正在生成最终总结报告...<br>请稍候</div>' +
+        '</div>';
+      document.getElementById('coupleSharedContent').innerHTML = html;
+
+      try {
+        var response = await fetch(WORKER_API_BASE + '/api/couple/final-report', {
+          method: 'POST',
+          headers: coupleJsonHeaders(),
+          body: JSON.stringify({ roomCode: currentRoom.code })
+        });
+        var data = await response.json();
+
+        if (data.success && data.finalReport) {
+          renderFinalReport(data.finalReport);
+        } else if (data.success) {
+          // 报告正在生成，开始轮询
+          startFinalPolling();
+        } else {
+          showToast(data.error || '生成失败', 'error');
+        }
+      } catch (err) {
+        showToast('生成失败：' + err.message, 'error');
+      }
+    }
+
+    // 轮询最终报告
+    function startFinalPolling() {
+      stopFinalPolling();
+      var elapsed = 0;
+      var maxWait = 90000;
+
+      finalPollInterval = setInterval(async function() {
+        elapsed += 3000;
+        if (elapsed > maxWait) {
+          stopFinalPolling();
+          document.getElementById('coupleSharedContent').innerHTML =
+            '<div class="couple-loading"><div class="couple-loading-text">生成超时，请稍后重试<br>' +
+            '<button class="btn btn-primary" onclick="generateFinalReport()" style="margin-top:16px;">重新生成</button></div></div>';
+          return;
+        }
+
+        try {
+          var response = await fetch(WORKER_API_BASE + '/api/couple/final-report/status?code=' + currentRoom.code, {
+            headers: coupleAuthHeaders({})
+          });
+          var data = await response.json();
+
+          if (data.ready && data.finalReport) {
+            stopFinalPolling();
+            renderFinalReport(data.finalReport);
+          } else if (data.finalStatus === 'error') {
+            stopFinalPolling();
+            document.getElementById('coupleSharedContent').innerHTML =
+              '<div class="couple-loading"><div class="couple-loading-text">生成失败，请稍后重试</div></div>';
+          }
+        } catch (err) {
+          console.error('最终报告轮询失败:', err);
+        }
+      }, 3000);
+    }
+
+    function stopFinalPolling() {
+      if (finalPollInterval) {
+        clearInterval(finalPollInterval);
+        finalPollInterval = null;
+      }
+    }
+
+    // 渲染最终总结报告
+    function renderFinalReport(report) {
+      var html = '';
+
+      // 最终报告标题
+      html += '<div class="couple-archetype-card" style="border-color:rgba(212,175,55,0.3);">';
+      html += '<div class="couple-archetype-label">🏆 最终总结报告</div>';
+      html += '<div class="couple-archetype-name" style="font-size:1.1rem;">关系分析全程总结</div>';
+      html += '</div>';
+
+      // 整体总结
+      if (report.overallSummary) {
+        html += renderReportBlock('📋 整体关系总结', report.overallSummary);
+      }
+
+      // 事件解决情况
+      if (report.eventResolutionStatus) {
+        html += '<div class="couple-cross-section">';
+        html += '<div class="couple-cross-title">📊 事件解决情况</div>';
+        if (report.eventResolutionStatus.event1) {
+          html += '<div class="couple-report-block">';
+          html += '<div class="couple-report-block-label">事件一</div>';
+          html += '<div class="couple-report-block-content muted">' + safeText(report.eventResolutionStatus.event1) + '</div>';
+          html += '</div>';
+        }
+        if (report.eventResolutionStatus.event2) {
+          html += '<div class="couple-report-block">';
+          html += '<div class="couple-report-block-label">事件二</div>';
+          html += '<div class="couple-report-block-content muted">' + safeText(report.eventResolutionStatus.event2) + '</div>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      // 关键洞察
+      if (report.keyInsights && Array.isArray(report.keyInsights) && report.keyInsights.length > 0) {
+        html += '<div class="couple-report-block">';
+        html += '<div class="couple-report-block-label">💡 关键洞察</div>';
+        html += '<div style="padding:0 8px;">';
+        report.keyInsights.forEach(function(insight, i) {
+          var text = typeof insight === 'string' ? insight : (insight.text || insight.content || JSON.stringify(insight));
+          html += '<div style="font-size:0.86rem;color:var(--muted);line-height:1.7;margin-bottom:8px;padding-left:20px;position:relative;">' +
+            '<span style="position:absolute;left:0;color:var(--blue);">' + (i+1) + '.</span>' + safeText(text) + '</div>';
+        });
+        html += '</div></div>';
+      }
+
+      // 关系进展评估
+      if (report.relationshipProgress) {
+        html += renderReportBlock('📈 关系进展评估', report.relationshipProgress);
+      }
+
+      // 最终建议
+      if (report.finalRecommendations && Array.isArray(report.finalRecommendations) && report.finalRecommendations.length > 0) {
+        html += '<div class="couple-report-block">';
+        html += '<div class="couple-report-block-label">📝 最终长期建议</div>';
+        html += '<ol class="couple-steps-list">';
+        report.finalRecommendations.forEach(function(step, i) {
+          var text = typeof step === 'string' ? step : (step.text || step.content || step.desc || JSON.stringify(step));
+          html += '<li class="couple-steps-item">';
+          html += '<span class="couple-steps-num">' + (i + 1) + '</span>';
+          html += '<span class="couple-steps-text">' + safeText(text) + '</span>';
+          html += '</li>';
+        });
+        html += '</ol></div>';
+      }
+
+      // 成长里程碑
+      if (report.growthMilestone) {
+        html += '<div class="couple-archetype-card" style="border-color:rgba(82,196,26,0.2);">';
+        html += '<div class="couple-archetype-label">🌱 成长里程碑</div>';
+        html += '<div class="couple-archetype-desc">' + safeText(report.growthMilestone) + '</div>';
+        html += '</div>';
+      }
+
+      // 评分表
+      html += renderScoringForm();
+
+      document.getElementById('coupleSharedContent').innerHTML = html;
+      document.getElementById('coupleSharedRestartBtn').style.display = 'none';
+
+      bindScoringEvents();
+    }
+
+    // 渲染评分表
+    function renderScoringForm() {
+      return '<div class="couple-feedback-card" style="margin-top:24px;">' +
+        '<div class="couple-feedback-title">📊 为这次分析评分</div>' +
+        '<div class="couple-feedback-desc">你的评分帮助 Mirror 不断优化</div>' +
+
+        '<div style="margin-bottom:16px;">' +
+          '<div style="font-size:0.82rem;color:var(--muted);margin-bottom:8px;">准确度</div>' +
+          '<div class="couple-feedback-options">' +
+            '<button class="couple-feedback-opt" data-acc="accurate">准</button>' +
+            '<button class="couple-feedback-opt" data-acc="partial">部分准</button>' +
+            '<button class="couple-feedback-opt" data-acc="inaccurate">不准</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="margin-bottom:16px;">' +
+          '<div style="font-size:0.82rem;color:var(--muted);margin-bottom:8px;">有帮助程度</div>' +
+          '<div class="scoring-stars" id="scoringStars">' +
+            '<span class="scoring-star" data-score="1">★</span>' +
+            '<span class="scoring-star" data-score="2">★</span>' +
+            '<span class="scoring-star" data-score="3">★</span>' +
+            '<span class="scoring-star" data-score="4">★</span>' +
+            '<span class="scoring-star" data-score="5">★</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="margin-bottom:16px;">' +
+          '<div style="font-size:0.82rem;color:var(--muted);margin-bottom:8px;">具体反馈（可选，可填"无"）</div>' +
+          '<textarea class="couple-feedback-input" id="scoringFeedbackText" placeholder="你对这次分析的感受和建议..." rows="3"></textarea>' +
+        '</div>' +
+
+        '<button class="btn btn-primary" id="scoringSubmitBtn" style="width:100%;" disabled>提交评分</button>' +
+        '<div id="scoringResult"></div>' +
+        '</div>';
+    }
+
+    // 绑定评分表事件
+    function bindScoringEvents() {
+      scoringAccuracy = null;
+      scoringHelpfulness = 0;
+
+      // 准确度按钮
+      var accOpts = document.querySelectorAll('.couple-feedback-opt');
+      accOpts.forEach(function(opt) {
+        opt.onclick = function() {
+          accOpts.forEach(function(o) { o.classList.remove('active'); });
+          this.classList.add('active');
+          scoringAccuracy = this.getAttribute('data-acc');
+          checkScoringSubmit();
+        };
+      });
+
+      // 星级评分
+      var stars = document.querySelectorAll('.scoring-star');
+      stars.forEach(function(star) {
+        star.onclick = function() {
+          var score = parseInt(this.getAttribute('data-score'));
+          scoringHelpfulness = score;
+          stars.forEach(function(s) {
+            var sScore = parseInt(s.getAttribute('data-score'));
+            if (sScore <= score) s.classList.add('active');
+            else s.classList.remove('active');
+          });
+          checkScoringSubmit();
+        };
+      });
+
+      // 提交按钮
+      var submitBtn = document.getElementById('scoringSubmitBtn');
+      if (submitBtn) submitBtn.onclick = submitScoring;
+    }
+
+    function checkScoringSubmit() {
+      var submitBtn = document.getElementById('scoringSubmitBtn');
+      if (submitBtn) {
+        submitBtn.disabled = !(scoringAccuracy && scoringHelpfulness > 0);
+      }
+    }
+
+    // 提交评分
+    async function submitScoring() {
+      if (!scoringAccuracy || scoringHelpfulness === 0) {
+        showToast('请完成准确度和有帮助程度评分', 'error');
+        return;
+      }
+
+      var feedbackText = '';
+      var textEl = document.getElementById('scoringFeedbackText');
+      if (textEl) feedbackText = textEl.value.trim() || '无';
+
+      var btn = document.getElementById('scoringSubmitBtn');
+      if (btn) { btn.textContent = '提交中...'; btn.disabled = true; }
+
+      try {
+        var body = {
+          roomCode: currentRoom.code,
+          role: currentRoom.role,
+          accuracy: scoringAccuracy,
+          helpfulness: scoringHelpfulness,
+          feedback: feedbackText,
+          reportType: 'final'
+        };
+
+        var response = await fetch(WORKER_API_BASE + '/api/couple/scoring', {
+          method: 'POST',
+          headers: coupleJsonHeaders(),
+          body: JSON.stringify(body)
+        });
+        var data = await response.json();
+
+        if (data.success) {
+          var resultEl = document.getElementById('scoringResult');
+          if (resultEl) {
+            resultEl.innerHTML = '<div style="text-align:center;padding:16px;color:#52c41a;font-size:0.88rem;">✓ 评分已提交，感谢你的反馈！</div>';
+          }
+          if (btn) { btn.style.display = 'none'; }
+
+          // 显示完成按钮
+          var restartBtn = document.getElementById('coupleSharedRestartBtn');
+          if (restartBtn) {
+            restartBtn.style.display = 'block';
+            restartBtn.textContent = '完成，返回首页';
+          }
+          showToast('评分已提交', 'success');
+        } else {
+          showToast(data.error || '提交失败', 'error');
+          if (btn) { btn.textContent = '提交评分'; btn.disabled = false; }
+        }
+      } catch (err) {
+        showToast('提交失败：' + err.message, 'error');
+        if (btn) { btn.textContent = '提交评分'; btn.disabled = false; }
+      }
     }
 
     // 渲染报告区块
