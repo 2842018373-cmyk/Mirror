@@ -2166,7 +2166,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     }
 
     // AI 分析（通过 Worker 代理，API Key 不暴露在前端）
-    async function aiAnalyze(userText, mode, history) {
+    async function aiAnalyze(userText, mode, history, userInputForSave) {
       if (typeof WORKER_API_BASE === 'undefined' || !WORKER_API_BASE) {
         console.warn('Worker API 未配置，使用本地模板');
         return null;
@@ -2188,7 +2188,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
         var response = await fetch(WORKER_API_BASE + '/api/analyze', {
           method: 'POST',
           headers: analyzeHeaders,
-          body: JSON.stringify({ prompt: userText + modeHint, mode: mode || 'single', history: messages }),
+          body: JSON.stringify({ prompt: userText + modeHint, mode: mode || 'single', history: messages, userInput: userInputForSave || '' }),
           signal: controller ? controller.signal : undefined
         });
         clearTimeout(analyzeTimeout);
@@ -2896,30 +2896,49 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       });
     }
 
-    // 显示"出报告"或"继续聊"选择按钮
+    // 显示"出报告"或"继续聊"选择弹窗（Modal 交互）
     function showAnalyzeChoice() {
-      var thread = document.getElementById('chatThread');
-      var el = document.createElement('div');
-      el.className = 'msg msg-actions';
-      el.innerHTML =
-        '<button class="btn btn-primary" id="btnAnalyze">生成分析报告</button>' +
-        '<button class="btn-ghost" id="btnContinue" style="flex-direction:column;gap:2px;line-height:1.4;">' +
-          '<span>继续聊聊</span>' +
-          '<span style="font-size:0.72rem;color:var(--faint);font-weight:400;">还有想说的，继续聊，随时可以出报告</span>' +
-        '</button>';
-      thread.appendChild(el);
-      scrollThread();
+      var overlay = document.createElement('div');
+      overlay.id = 'analyzeChoiceModal';
+      overlay.className = 'step-overlay';
+      overlay.innerHTML =
+        '<div class="step-card" style="text-align:center;max-width:420px;padding:40px 32px;">' +
+          '<div style="font-size:3rem;margin-bottom:16px;">✨</div>' +
+          '<div style="font-size:1.15rem;font-weight:600;color:var(--ink);margin-bottom:8px;">信息看起来足够了</div>' +
+          '<div style="font-size:0.85rem;color:var(--muted);line-height:1.7;margin-bottom:28px;">Mirror 已经理解了你的情况<br>现在可以生成分析报告，也可以继续聊聊</div>' +
+          '<button class="btn btn-primary" id="btnAnalyze" style="width:100%;margin-bottom:12px;padding:14px;font-size:0.95rem;">生成分析报告</button>' +
+          '<button class="btn-ghost" id="btnContinue" style="width:100%;padding:12px;font-size:0.9rem;flex-direction:column;gap:2px;">' +
+            '<span>继续聊聊</span>' +
+            '<span style="font-size:0.72rem;color:var(--faint);font-weight:400;">还有想说的，继续聊，随时可以出报告</span>' +
+          '</button>' +
+          '<button id="btnCloseModal" style="margin-top:16px;background:none;border:none;color:var(--faint);font-size:0.78rem;cursor:pointer;">稍后再说</button>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      // 触发动画
+      requestAnimationFrame(function() {
+        overlay.classList.add('active');
+      });
+
+      function closeModal() {
+        overlay.classList.remove('active');
+        setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 400);
+      }
 
       document.getElementById('btnAnalyze').onclick = function() {
-        // 移除选择按钮
-        el.remove();
+        closeModal();
         runFullAnalysis(aiMessages);
       };
       document.getElementById('btnContinue').onclick = function() {
-        // 移除选择按钮，用户继续在输入框输入
-        el.remove();
+        closeModal();
         // 保持 CHATTING 状态，用户继续输入即可
       };
+      document.getElementById('btnCloseModal').onclick = function() {
+        closeModal();
+      };
+      // 点击遮罩关闭
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeModal();
+      });
     }
 
     // 旧函数已废弃（保留空函数避免引用错误，后续可删除）
@@ -2931,9 +2950,20 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       setState('ANALYZING');
       addMessage('loading', 'Mirror 正在分析', { sub: '理解情绪、识别需求、寻找误解', id: 'fullAnalysisLoading' });
 
+      // 从 history 中提取用户实际输入内容（而非 AI 指令）
+      var userInputs = [];
+      if (history && history.length > 0) {
+        for (var i = 0; i < history.length; i++) {
+          if (history[i].role === 'user' && history[i].content) {
+            userInputs.push(history[i].content);
+          }
+        }
+      }
+      var combinedUserInput = userInputs.join('\n\n');
+
       // 传分析指令作为 prompt，history 已包含完整对话
       var analysisPrompt = '请根据以上全部对话，进行完整的单人模式分析。输出完整的 JSON，包含 fact、emotion、need、misread、misreadType、insight、before、inner、after、summary、analyst、status、suggest 等所有字段。';
-      aiAnalyze(analysisPrompt, 'single', history).then(function(result) {
+      aiAnalyze(analysisPrompt, 'single', history, combinedUserInput).then(function(result) {
         var ld = document.getElementById('fullAnalysisLoading');
         if (ld) ld.remove();
 
@@ -3084,7 +3114,7 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
               '<div style="margin-top:20px;padding:16px;background:rgba(126,167,255,0.06);border-radius:14px;border:1px solid rgba(126,167,255,0.12);">' +
                 '<div style="font-size:0.85rem;color:var(--ink);margin-bottom:8px;font-weight:500;">想让结果更精准？</div>' +
                 '<div style="font-size:0.78rem;color:var(--muted);margin-bottom:12px;line-height:1.6;">这是基于你刚才对话推断的初步倾向。完成正式的 MIRA 人格测试（约5分钟），可以获得更精准的人格画像和深度解读。</div>' +
-                '<button class="btn btn-primary" style="width:100%;font-size:0.85rem;padding:10px;" onclick="document.getElementById(\'stepNext\').click();setTimeout(function(){startQuiz();},500);">去测 MIRA 人格 →</button>' +
+                '<button class="btn btn-primary" style="width:100%;font-size:0.85rem;padding:10px;" onclick="startQuizFromAnalysis(\'' + miraType + '\');">去测 MIRA 人格 →</button>' +
               '</div>' +
               '<div style="margin-top:12px;font-size:0.75rem;color:var(--faint);letter-spacing:1px;">也可以稍后在「关系光谱」查看全部 16 种原型</div>' +
             '</div>';
@@ -3137,6 +3167,113 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
       ]);
       // 导流入口
       appendCtaToThread();
+    }
+
+    // MIRA 测试结果对比弹窗（从分析报告引导进入时展示）
+    function showMiraCompareOverlay(inferredType, testData) {
+      var testType = (testData && testData.miraType) || '';
+      var inferredInfo = getMiraInfo(inferredType);
+      var testInfo = getMiraInfo(testType);
+      var overlay = document.createElement('div');
+      overlay.className = 'step-overlay';
+      overlay.id = 'miraCompareOverlay';
+
+      var sameType = inferredType === testType;
+      var html =
+        '<div class="step-card" style="max-width:520px;padding:36px 28px;">' +
+          '<div style="text-align:center;margin-bottom:24px;">' +
+            '<div style="font-size:2.5rem;margin-bottom:8px;">🪞</div>' +
+            '<div style="font-size:1.1rem;font-weight:600;color:var(--ink);">MIRA 人格对比</div>' +
+            '<div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">看看对话推断和正式测试，哪个更贴近你</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:12px;margin-bottom:24px;">' +
+            '<div style="flex:1;padding:16px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.15);border-radius:16px;text-align:center;">' +
+              '<div style="font-size:0.68rem;color:var(--faint);margin-bottom:6px;letter-spacing:1px;">对话推断</div>' +
+              '<div style="font-size:1.3rem;font-weight:700;color:#D4AF37;margin-bottom:4px;">' + escapeHtml(inferredType) + '</div>' +
+              '<div style="font-size:0.8rem;color:var(--ink);font-weight:500;">' + escapeHtml(inferredInfo.name) + '</div>' +
+              '<div style="font-size:0.72rem;color:var(--muted);margin-top:6px;line-height:1.5;">' + escapeHtml(inferredInfo.dim) + ' · ' + escapeHtml(inferredInfo.dir) + '</div>' +
+            '</div>' +
+            '<div style="flex:1;padding:16px;background:rgba(126,167,255,0.06);border:1px solid rgba(126,167,255,0.15);border-radius:16px;text-align:center;">' +
+              '<div style="font-size:0.68rem;color:var(--faint);margin-bottom:6px;letter-spacing:1px;">正式测试</div>' +
+              '<div style="font-size:1.3rem;font-weight:700;color:var(--blue);margin-bottom:4px;">' + escapeHtml(testType) + '</div>' +
+              '<div style="font-size:0.8rem;color:var(--ink);font-weight:500;">' + escapeHtml(testInfo.name) + '</div>' +
+              '<div style="font-size:0.72rem;color:var(--muted);margin-top:6px;line-height:1.5;">' + escapeHtml(testInfo.dim) + ' · ' + escapeHtml(testInfo.dir) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="padding:14px 16px;background:var(--surface);border-radius:12px;margin-bottom:24px;">' +
+            '<div style="font-size:0.78rem;color:var(--muted);line-height:1.7;margin-bottom:8px;">' +
+              '<b style="color:var(--ink);">对话推断：</b>' + escapeHtml(inferredInfo.desc) + '</div>' +
+            '<div style="width:100%;height:1px;background:var(--rule);margin:10px 0;"></div>' +
+            '<div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">' +
+              '<b style="color:var(--ink);">正式测试：</b>' + escapeHtml(testInfo.desc) + '</div>' +
+          '</div>' +
+          '<div style="text-align:center;margin-bottom:16px;">' +
+            '<div style="font-size:0.85rem;color:var(--ink);font-weight:500;margin-bottom:12px;">哪个结果更贴近真实的你？</div>' +
+            '<div style="display:flex;gap:10px;justify-content:center;">' +
+              '<button class="mira-vote-btn" data-vote="inferred" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(212,175,55,0.3);background:rgba(212,175,55,0.06);color:#D4AF37;font-size:0.85rem;cursor:pointer;transition:all 0.2s;">' +
+                '<div style="font-weight:600;">' + escapeHtml(inferredType) + '</div>' +
+                '<div style="font-size:0.72rem;opacity:0.8;margin-top:2px;">对话推断</div>' +
+              '</button>' +
+              '<button class="mira-vote-btn" data-vote="test" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(126,167,255,0.3);background:rgba(126,167,255,0.06);color:var(--blue);font-size:0.85rem;cursor:pointer;transition:all 0.2s;">' +
+                '<div style="font-weight:600;">' + escapeHtml(testType) + '</div>' +
+                '<div style="font-size:0.72rem;opacity:0.8;margin-top:2px;">正式测试</div>' +
+              '</button>' +
+              '<button class="mira-vote-btn" data-vote="both" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--rule);background:var(--surface);color:var(--muted);font-size:0.85rem;cursor:pointer;transition:all 0.2s;">' +
+                '<div style="font-weight:600;">都准</div>' +
+                '<div style="font-size:0.72rem;opacity:0.8;margin-top:2px;">各有道理</div>' +
+              '</button>' +
+            '</div>' +
+          '</div>' +
+          '<div id="miraVoteThanks" style="display:none;text-align:center;padding:16px;background:rgba(90,234,172,0.06);border-radius:12px;border:1px solid rgba(90,234,172,0.15);">' +
+            '<div style="font-size:1.2rem;margin-bottom:4px;">🙏</div>' +
+            '<div style="font-size:0.85rem;color:var(--ink);">感谢反馈，这会让 Mirror 越来越准</div>' +
+          '</div>' +
+          '<div style="text-align:center;margin-top:20px;">' +
+            '<button class="btn btn-primary" id="miraCompareDone" style="padding:12px 32px;">查看完整画像</button>' +
+          '</div>' +
+        '</div>';
+
+      overlay.innerHTML = html;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(function() { overlay.classList.add('active'); });
+
+      // 投票按钮事件
+      var voteBtns = overlay.querySelectorAll('.mira-vote-btn');
+      voteBtns.forEach(function(btn) {
+        btn.onclick = function() {
+          var vote = this.getAttribute('data-vote');
+          submitMiraAccuracyVote(inferredType, testType, vote);
+          // 禁用所有按钮
+          voteBtns.forEach(function(b) {
+            b.style.opacity = '0.4';
+            b.style.pointerEvents = 'none';
+          });
+          this.style.opacity = '1';
+          this.style.transform = 'scale(1.02)';
+          document.getElementById('miraVoteThanks').style.display = 'block';
+        };
+      });
+
+      document.getElementById('miraCompareDone').onclick = function() {
+        overlay.classList.remove('active');
+        setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 400);
+        openProfileOverlay(testData);
+      };
+    }
+
+    // 提交 MIRA 准确度投票
+    function submitMiraAccuracyVote(inferredType, testType, vote) {
+      if (!mirrorToken) return;
+      fetch(WORKER_API_BASE + '/api/mira-accuracy-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + mirrorToken },
+        body: JSON.stringify({
+          inferredType: inferredType,
+          testType: testType,
+          vote: vote,
+          source: 'analysis_compare'
+        })
+      }).catch(function(e) { console.error('MIRA vote submit error:', e); });
     }
 
     // 统一的报告底部导流
@@ -3897,6 +4034,19 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
     }
 
     // 启动答题
+    // 从分析报告引导进入 MIRA 测试
+    function startQuizFromAnalysis(inferredMiraType) {
+      window._analysisInferredMira = inferredMiraType;
+      window._fromAnalysisReport = true;
+      // 关闭当前的 step overlay（如果存在）
+      var overlays = document.querySelectorAll('.step-overlay');
+      overlays.forEach(function(ov) {
+        ov.classList.remove('active');
+        setTimeout(function() { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 400);
+      });
+      startQuiz();
+    }
+
     function startQuiz() {
       hideBottomNav();
       loadQuizBank().then(function(all) {
@@ -4050,6 +4200,14 @@ MIRA 分类（Mirror Identity Reflection Archetype）：
           var ld = document.getElementById('quizLoading');
           if (ov) ov.classList.remove('active');
           if (ld) ld.style.display = 'none';
+
+          // 如果是从分析报告引导来的，展示对比弹窗
+          if (window._fromAnalysisReport && window._analysisInferredMira) {
+            showMiraCompareOverlay(window._analysisInferredMira, data);
+            window._fromAnalysisReport = false;
+            return;
+          }
+
           openProfileOverlay(data);
         } catch (err) {
           console.error('finishQuiz error:', err);
